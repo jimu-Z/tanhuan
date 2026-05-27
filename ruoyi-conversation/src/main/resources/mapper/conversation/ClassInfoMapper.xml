@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.conversation.mapper.ClassInfoMapper">
+
+    <resultMap type="ClassInfo" id="ClassInfoResult">
+        <id     property="classId"    column="class_id"    />
+        <result property="className"  column="class_name"  />
+        <result property="classCode"  column="class_code"  />
+        <result property="majorId"    column="major_id"    />
+        <result property="grade"      column="grade"       />
+        <result property="status"     column="status"      />
+        <result property="createBy"   column="create_by"   />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy"   column="update_by"   />
+        <result property="updateTime" column="update_time" />
+        <result property="remark"     column="remark"      />
+    </resultMap>
+
+    <resultMap type="ClassInfo" id="ClassInfoJoinResult" extends="ClassInfoResult">
+        <result property="majorName"  column="major_name"  />
+        <result property="deptId"     column="dept_id"     />
+    </resultMap>
+
+    <sql id="selectClassVo">
+        select c.class_id, c.class_name, c.class_code, c.major_id, c.grade, c.status,
+               c.create_by, c.create_time, c.update_by, c.update_time, c.remark
+        from biz_class c
+    </sql>
+
+    <select id="selectClassList" parameterType="ClassInfo" resultMap="ClassInfoJoinResult">
+        select c.class_id, c.class_name, c.class_code, c.major_id, c.grade, c.status,
+               c.create_by, c.create_time, c.update_by, c.update_time, c.remark,
+               m.major_name, m.dept_id
+        from biz_class c
+        left join biz_major m on c.major_id = m.major_id
+        left join sys_dept d on m.dept_id = d.dept_id
+        <where>
+            <if test="className != null and className != ''">
+                AND c.class_name like concat('%', #{className}, '%')
+            </if>
+            <if test="classCode != null and classCode != ''">
+                AND c.class_code = #{classCode}
+            </if>
+            <if test="majorId != null">
+                AND c.major_id = #{majorId}
+            </if>
+            <if test="grade != null and grade != ''">
+                AND c.grade = #{grade}
+            </if>
+            <if test="status != null and status != ''">
+                AND c.status = #{status}
+            </if>
+            ${params.dataScope}
+        </where>
+    </select>
+
+    <select id="selectClassById" parameterType="Long" resultMap="ClassInfoJoinResult">
+        select c.class_id, c.class_name, c.class_code, c.major_id, c.grade, c.status,
+               c.create_by, c.create_time, c.update_by, c.update_time, c.remark,
+               m.major_name, m.dept_id
+        from biz_class c
+        left join biz_major m on c.major_id = m.major_id
+        where c.class_id = #{classId}
+    </select>
+
+    <select id="selectClassByMajorId" parameterType="Long" resultMap="ClassInfoResult">
+        <include refid="selectClassVo"/>
+        where c.major_id = #{majorId}
+    </select>
+
+    <insert id="insertClassInfo" parameterType="ClassInfo" useGeneratedKeys="true" keyProperty="classId">
+        insert into biz_class(
+            <if test="className != null and className != ''">class_name,</if>
+            <if test="classCode != null and classCode != ''">class_code,</if>
+            <if test="majorId != null">major_id,</if>
+            <if test="grade != null and grade != ''">grade,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        )values(
+            <if test="className != null and className != ''">#{className},</if>
+            <if test="classCode != null and classCode != ''">#{classCode},</if>
+            <if test="majorId != null">#{majorId},</if>
+            <if test="grade != null and grade != ''">#{grade},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateClassInfo" parameterType="ClassInfo">
+        update biz_class
+        <set>
+            <if test="className != null and className != ''">class_name = #{className},</if>
+            <if test="classCode != null and classCode != ''">class_code = #{classCode},</if>
+            <if test="majorId != null">major_id = #{majorId},</if>
+            <if test="grade != null and grade != ''">grade = #{grade},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where class_id = #{classId}
+    </update>
+
+    <delete id="deleteClassInfoById" parameterType="Long">
+        delete from biz_class where class_id = #{classId}
+    </delete>
+
+    <delete id="deleteClassInfoByIds" parameterType="Long">
+        delete from biz_class where class_id in
+        <foreach collection="array" item="classId" open="(" separator="," close=")">
+            #{classId}
+        </foreach>
+    </delete>
+
+</mapper>

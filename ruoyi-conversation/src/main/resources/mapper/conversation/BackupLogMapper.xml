@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.conversation.mapper.BackupLogMapper">
+
+    <resultMap type="BackupLog" id="BackupLogResult">
+        <id     property="backupId"   column="backup_id"   />
+        <result property="backupType" column="backup_type" />
+        <result property="fileName"   column="file_name"   />
+        <result property="filePath"   column="file_path"   />
+        <result property="fileSize"   column="file_size"   />
+        <result property="status"     column="status"      />
+        <result property="errorMsg"   column="error_msg"   />
+        <result property="duration"   column="duration"    />
+        <result property="createBy"   column="create_by"   />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <sql id="selectBackupLogVo">
+        select backup_id, backup_type, file_name, file_path, file_size,
+               status, error_msg, duration, create_by, create_time
+        from biz_backup_log
+    </sql>
+
+    <select id="selectBackupLogList" parameterType="BackupLog" resultMap="BackupLogResult">
+        <include refid="selectBackupLogVo"/>
+        <where>
+            <if test="backupType != null and backupType != ''">
+                AND backup_type = #{backupType}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="fileName != null and fileName != ''">
+                AND file_name like concat('%', #{fileName}, '%')
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectBackupLogById" parameterType="Long" resultMap="BackupLogResult">
+        <include refid="selectBackupLogVo"/>
+        where backup_id = #{backupId}
+    </select>
+
+    <insert id="insertBackupLog" parameterType="BackupLog" useGeneratedKeys="true" keyProperty="backupId">
+        insert into biz_backup_log(
+            <if test="backupType != null and backupType != ''">backup_type,</if>
+            <if test="fileName != null and fileName != ''">file_name,</if>
+            <if test="filePath != null and filePath != ''">file_path,</if>
+            <if test="fileSize != null">file_size,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="errorMsg != null and errorMsg != ''">error_msg,</if>
+            <if test="duration != null">duration,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time
+        )values(
+            <if test="backupType != null and backupType != ''">#{backupType},</if>
+            <if test="fileName != null and fileName != ''">#{fileName},</if>
+            <if test="filePath != null and filePath != ''">#{filePath},</if>
+            <if test="fileSize != null">#{fileSize},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="errorMsg != null and errorMsg != ''">#{errorMsg},</if>
+            <if test="duration != null">#{duration},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate()
+        )
+    </insert>
+
+    <delete id="deleteBackupLogById" parameterType="Long">
+        delete from biz_backup_log where backup_id = #{backupId}
+    </delete>
+
+    <delete id="deleteBackupLogByIds" parameterType="Long">
+        delete from biz_backup_log where backup_id in
+        <foreach collection="array" item="backupId" open="(" separator="," close=")">
+            #{backupId}
+        </foreach>
+    </delete>
+
+</mapper>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.conversation.mapper.ConversationFollowUpMapper">
+
+    <resultMap type="ConversationFollowUp" id="FollowUpResult">
+        <id     property="followId"       column="follow_id"       />
+        <result property="conversationId" column="conversation_id" />
+        <result property="followTime"     column="follow_time"     />
+        <result property="followContent"  column="follow_content"  />
+        <result property="followStatus"   column="follow_status"   />
+        <result property="followBy"       column="follow_by"       />
+        <result property="createBy"       column="create_by"       />
+        <result property="createTime"     column="create_time"     />
+        <result property="updateBy"       column="update_by"       />
+        <result property="updateTime"     column="update_time"     />
+        <result property="remark"         column="remark"          />
+    </resultMap>
+
+    <sql id="selectFollowUpVo">
+        select follow_id, conversation_id, follow_time, follow_content, follow_status, follow_by,
+               create_by, create_time, update_by, update_time, remark
+        from biz_conversation_follow_up
+    </sql>
+
+    <select id="selectFollowUpList" parameterType="ConversationFollowUp" resultMap="FollowUpResult">
+        <include refid="selectFollowUpVo"/>
+        <where>
+            <if test="conversationId != null">
+                AND conversation_id = #{conversationId}
+            </if>
+            <if test="followStatus != null and followStatus != ''">
+                AND follow_status = #{followStatus}
+            </if>
+            <if test="followBy != null and followBy != ''">
+                AND follow_by = #{followBy}
+            </if>
+        </where>
+        order by follow_time desc
+    </select>
+
+    <select id="selectFollowUpById" parameterType="Long" resultMap="FollowUpResult">
+        <include refid="selectFollowUpVo"/>
+        where follow_id = #{followId}
+    </select>
+
+    <select id="selectFollowUpByConversationId" parameterType="Long" resultMap="FollowUpResult">
+        <include refid="selectFollowUpVo"/>
+        where conversation_id = #{conversationId}
+        order by follow_time desc
+    </select>
+
+    <insert id="insertFollowUp" parameterType="ConversationFollowUp" useGeneratedKeys="true" keyProperty="followId">
+        insert into biz_conversation_follow_up(
+            <if test="conversationId != null">conversation_id,</if>
+            <if test="followTime != null">follow_time,</if>
+            <if test="followContent != null and followContent != ''">follow_content,</if>
+            <if test="followStatus != null and followStatus != ''">follow_status,</if>
+            <if test="followBy != null and followBy != ''">follow_by,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            create_time
+        )values(
+            <if test="conversationId != null">#{conversationId},</if>
+            <if test="followTime != null">#{followTime},</if>
+            <if test="followContent != null and followContent != ''">#{followContent},</if>
+            <if test="followStatus != null and followStatus != ''">#{followStatus},</if>
+            <if test="followBy != null and followBy != ''">#{followBy},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateFollowUp" parameterType="ConversationFollowUp">
+        update biz_conversation_follow_up
+        <set>
+            <if test="followTime != null">follow_time = #{followTime},</if>
+            <if test="followContent != null">follow_content = #{followContent},</if>
+            <if test="followStatus != null and followStatus != ''">follow_status = #{followStatus},</if>
+            <if test="followBy != null">follow_by = #{followBy},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where follow_id = #{followId}
+    </update>
+
+    <delete id="deleteFollowUpById" parameterType="Long">
+        delete from biz_conversation_follow_up where follow_id = #{followId}
+    </delete>
+
+</mapper>
