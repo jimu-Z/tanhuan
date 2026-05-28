@@ -1,0 +1,78 @@
+package com.ruoyi.talk.service;
+
+import java.util.List;
+import java.util.Map;
+import org.springframework.web.multipart.MultipartFile;
+import com.ruoyi.talk.domain.TalkStudent;
+
+/**
+ * 学生信息管理Service接口
+ * 
+ * @author admin
+ * @date 2026-05-27
+ */
+public interface ITalkStudentService {
+    /**
+     * 查询学生信息管理
+     * 
+     * @param studentId 学生信息管理主键
+     * @return 学生信息管理
+     */
+    public TalkStudent selectTalkStudentByStudentId(Long studentId);
+
+    /**
+     * 查询学生信息管理列表
+     * 
+     * @param talkStudent 学生信息管理
+     * @return 学生信息管理集合
+     */
+    public List<TalkStudent> selectTalkStudentList(TalkStudent talkStudent);
+
+    /**
+     * 新增学生信息管理
+     * 
+     * @param talkStudent 学生信息管理
+     * @return 结果
+     */
+    public int insertTalkStudent(TalkStudent talkStudent);
+
+    /**
+     * 修改学生信息管理
+     * 
+     * @param talkStudent 学生信息管理
+     * @return 结果
+     */
+    public int updateTalkStudent(TalkStudent talkStudent);
+
+    /**
+     * 批量删除学生信息管理
+     * 
+     * @param studentIds 需要删除的学生信息管理主键集合
+     * @return 结果
+     */
+    public int deleteTalkStudentByStudentIds(Long[] studentIds);
+
+    /**
+     * 删除学生信息管理信息
+     * 
+     * @param studentId 学生信息管理主键
+     * @return 结果
+     */
+    public int deleteTalkStudentByStudentId(Long studentId);
+
+    /**
+     * Excel导入预览
+     * 
+     * @param file Excel文件
+     * @return 预览结果
+     */
+    public Map<String, Object> importPreview(MultipartFile file);
+
+    /**
+     * 执行Excel导入
+     * 
+     * @param confirmedRows 确认导入的行
+     * @return 导入结果
+     */
+    public Map<String, Object> importExecute(List<Map<String, Object>> confirmedRows);
+}

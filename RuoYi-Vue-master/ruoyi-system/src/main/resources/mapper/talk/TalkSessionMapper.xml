@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.talk.mapper.TalkSessionMapper">
+    
+    <resultMap type="TalkSession" id="TalkSessionResult">
+        <result property="sessionId"    column="session_id"    />
+        <result property="talkType"    column="talk_type"    />
+        <result property="talkTime"    column="talk_time"    />
+        <result property="talkLocation"    column="talk_location"    />
+        <result property="talkPerson"    column="talk_person"    />
+        <result property="talkContent"    column="talk_content"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectTalkSessionVo">
+        select session_id, talk_type, talk_time, talk_location, talk_person, talk_content, create_by, create_time, update_by, update_time from talk_session
+    </sql>
+
+    <select id="selectTalkSessionList" parameterType="TalkSession" resultMap="TalkSessionResult">
+        <include refid="selectTalkSessionVo"/>
+        <where>  
+            <if test="talkType != null  and talkType != ''"> and talk_type = #{talkType}</if>
+            <if test="talkTime != null "> and talk_time = #{talkTime}</if>
+            <if test="talkLocation != null  and talkLocation != ''"> and talk_location = #{talkLocation}</if>
+            <if test="talkPerson != null  and talkPerson != ''"> and talk_person = #{talkPerson}</if>
+            <if test="talkContent != null  and talkContent != ''"> and talk_content = #{talkContent}</if>
+        </where>
+    </select>
+    
+    <select id="selectTalkSessionBySessionId" parameterType="Long" resultMap="TalkSessionResult">
+        <include refid="selectTalkSessionVo"/>
+        where session_id = #{sessionId}
+    </select>
+
+    <insert id="insertTalkSession" parameterType="TalkSession" useGeneratedKeys="true" keyProperty="sessionId">
+        insert into talk_session
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="talkType != null and talkType != ''">talk_type,</if>
+            <if test="talkTime != null">talk_time,</if>
+            <if test="talkLocation != null">talk_location,</if>
+            <if test="talkPerson != null and talkPerson != ''">talk_person,</if>
+            <if test="talkContent != null">talk_content,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="talkType != null and talkType != ''">#{talkType},</if>
+            <if test="talkTime != null">#{talkTime},</if>
+            <if test="talkLocation != null">#{talkLocation},</if>
+            <if test="talkPerson != null and talkPerson != ''">#{talkPerson},</if>
+            <if test="talkContent != null">#{talkContent},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateTalkSession" parameterType="TalkSession">
+        update talk_session
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="talkType != null and talkType != ''">talk_type = #{talkType},</if>
+            <if test="talkTime != null">talk_time = #{talkTime},</if>
+            <if test="talkLocation != null">talk_location = #{talkLocation},</if>
+            <if test="talkPerson != null and talkPerson != ''">talk_person = #{talkPerson},</if>
+            <if test="talkContent != null">talk_content = #{talkContent},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where session_id = #{sessionId}
+    </update>
+
+    <delete id="deleteTalkSessionBySessionId" parameterType="Long">
+        delete from talk_session where session_id = #{sessionId}
+    </delete>
+
+    <delete id="deleteTalkSessionBySessionIds" parameterType="String">
+        delete from talk_session where session_id in 
+        <foreach item="sessionId" collection="array" open="(" separator="," close=")">
+            #{sessionId}
+        </foreach>
+    </delete>
+</mapper>

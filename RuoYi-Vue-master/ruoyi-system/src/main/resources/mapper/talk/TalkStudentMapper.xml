@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.talk.mapper.TalkStudentMapper">
+    
+    <resultMap type="TalkStudent" id="TalkStudentResult">
+        <result property="studentId"    column="student_id"    />
+        <result property="studentCode"    column="student_code"    />
+        <result property="studentName"    column="student_name"    />
+        <result property="deptId"    column="dept_id"    />
+        <result property="gender"    column="gender"    />
+        <result property="politicalStatus"    column="political_status"    />
+        <result property="nation"    column="nation"    />
+        <result property="phone"    column="phone"    />
+        <result property="idCard"    column="id_card"    />
+        <result property="address"    column="address"    />
+        <result property="fatherName"    column="father_name"    />
+        <result property="fatherPhone"    column="father_phone"    />
+        <result property="motherName"    column="mother_name"    />
+        <result property="motherPhone"    column="mother_phone"    />
+        <result property="classMonitor"    column="class_monitor"    />
+        <result property="dormLeader"    column="dorm_leader"    />
+        <result property="dormBuilding"    column="dorm_building"    />
+        <result property="dormRoom"    column="dorm_room"    />
+        <result property="enrollmentStatus"    column="enrollment_status"    />
+        <result property="mentalHealthStatus"    column="mental_health_status"    />
+        <result property="povertyLevel"    column="poverty_level"    />
+        <result property="remark"    column="remark"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectTalkStudentVo">
+        select student_id, student_code, student_name, dept_id, gender, political_status, nation, phone, id_card, address, father_name, father_phone, mother_name, mother_phone, class_monitor, dorm_leader, dorm_building, dorm_room, enrollment_status, mental_health_status, poverty_level, remark, create_by, create_time, update_by, update_time from talk_student
+    </sql>
+
+    <select id="selectTalkStudentList" parameterType="TalkStudent" resultMap="TalkStudentResult">
+        <include refid="selectTalkStudentVo"/>
+        <where>  
+            <if test="studentCode != null  and studentCode != ''"> and student_code = #{studentCode}</if>
+            <if test="studentName != null  and studentName != ''"> and student_name like concat('%', #{studentName}, '%')</if>
+            <if test="deptId != null "> and dept_id = #{deptId}</if>
+            <if test="gender != null  and gender != ''"> and gender = #{gender}</if>
+            <if test="politicalStatus != null  and politicalStatus != ''"> and political_status = #{politicalStatus}</if>
+            <if test="nation != null  and nation != ''"> and nation = #{nation}</if>
+            <if test="phone != null  and phone != ''"> and phone = #{phone}</if>
+            <if test="idCard != null  and idCard != ''"> and id_card = #{idCard}</if>
+            <if test="address != null  and address != ''"> and address = #{address}</if>
+            <if test="fatherName != null  and fatherName != ''"> and father_name like concat('%', #{fatherName}, '%')</if>
+            <if test="fatherPhone != null  and fatherPhone != ''"> and father_phone = #{fatherPhone}</if>
+            <if test="motherName != null  and motherName != ''"> and mother_name like concat('%', #{motherName}, '%')</if>
+            <if test="motherPhone != null  and motherPhone != ''"> and mother_phone = #{motherPhone}</if>
+            <if test="classMonitor != null  and classMonitor != ''"> and class_monitor = #{classMonitor}</if>
+            <if test="dormLeader != null  and dormLeader != ''"> and dorm_leader = #{dormLeader}</if>
+            <if test="dormBuilding != null  and dormBuilding != ''"> and dorm_building = #{dormBuilding}</if>
+            <if test="dormRoom != null  and dormRoom != ''"> and dorm_room = #{dormRoom}</if>
+            <if test="enrollmentStatus != null  and enrollmentStatus != ''"> and enrollment_status = #{enrollmentStatus}</if>
+            <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and mental_health_status = #{mentalHealthStatus}</if>
+            <if test="povertyLevel != null  and povertyLevel != ''"> and poverty_level = #{povertyLevel}</if>
+        </where>
+    </select>
+    
+    <select id="selectTalkStudentByStudentId" parameterType="Long" resultMap="TalkStudentResult">
+        <include refid="selectTalkStudentVo"/>
+        where student_id = #{studentId}
+    </select>
+
+    <insert id="insertTalkStudent" parameterType="TalkStudent" useGeneratedKeys="true" keyProperty="studentId">
+        insert into talk_student
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="studentCode != null and studentCode != ''">student_code,</if>
+            <if test="studentName != null and studentName != ''">student_name,</if>
+            <if test="deptId != null">dept_id,</if>
+            <if test="gender != null">gender,</if>
+            <if test="politicalStatus != null">political_status,</if>
+            <if test="nation != null">nation,</if>
+            <if test="phone != null">phone,</if>
+            <if test="idCard != null">id_card,</if>
+            <if test="address != null">address,</if>
+            <if test="fatherName != null">father_name,</if>
+            <if test="fatherPhone != null">father_phone,</if>
+            <if test="motherName != null">mother_name,</if>
+            <if test="motherPhone != null">mother_phone,</if>
+            <if test="classMonitor != null">class_monitor,</if>
+            <if test="dormLeader != null">dorm_leader,</if>
+            <if test="dormBuilding != null">dorm_building,</if>
+            <if test="dormRoom != null">dorm_room,</if>
+            <if test="enrollmentStatus != null">enrollment_status,</if>
+            <if test="mentalHealthStatus != null">mental_health_status,</if>
+            <if test="povertyLevel != null">poverty_level,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="studentCode != null and studentCode != ''">#{studentCode},</if>
+            <if test="studentName != null and studentName != ''">#{studentName},</if>
+            <if test="deptId != null">#{deptId},</if>
+            <if test="gender != null">#{gender},</if>
+            <if test="politicalStatus != null">#{politicalStatus},</if>
+            <if test="nation != null">#{nation},</if>
+            <if test="phone != null">#{phone},</if>
+            <if test="idCard != null">#{idCard},</if>
+            <if test="address != null">#{address},</if>
+            <if test="fatherName != null">#{fatherName},</if>
+            <if test="fatherPhone != null">#{fatherPhone},</if>
+            <if test="motherName != null">#{motherName},</if>
+            <if test="motherPhone != null">#{motherPhone},</if>
+            <if test="classMonitor != null">#{classMonitor},</if>
+            <if test="dormLeader != null">#{dormLeader},</if>
+            <if test="dormBuilding != null">#{dormBuilding},</if>
+            <if test="dormRoom != null">#{dormRoom},</if>
+            <if test="enrollmentStatus != null">#{enrollmentStatus},</if>
+            <if test="mentalHealthStatus != null">#{mentalHealthStatus},</if>
+            <if test="povertyLevel != null">#{povertyLevel},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateTalkStudent" parameterType="TalkStudent">
+        update talk_student
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="studentCode != null and studentCode != ''">student_code = #{studentCode},</if>
+            <if test="studentName != null and studentName != ''">student_name = #{studentName},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="politicalStatus != null">political_status = #{politicalStatus},</if>
+            <if test="nation != null">nation = #{nation},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="idCard != null">id_card = #{idCard},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="fatherName != null">father_name = #{fatherName},</if>
+            <if test="fatherPhone != null">father_phone = #{fatherPhone},</if>
+            <if test="motherName != null">mother_name = #{motherName},</if>
+            <if test="motherPhone != null">mother_phone = #{motherPhone},</if>
+            <if test="classMonitor != null">class_monitor = #{classMonitor},</if>
+            <if test="dormLeader != null">dorm_leader = #{dormLeader},</if>
+            <if test="dormBuilding != null">dorm_building = #{dormBuilding},</if>
+            <if test="dormRoom != null">dorm_room = #{dormRoom},</if>
+            <if test="enrollmentStatus != null">enrollment_status = #{enrollmentStatus},</if>
+            <if test="mentalHealthStatus != null">mental_health_status = #{mentalHealthStatus},</if>
+            <if test="povertyLevel != null">poverty_level = #{povertyLevel},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where student_id = #{studentId}
+    </update>
+
+    <delete id="deleteTalkStudentByStudentId" parameterType="Long">
+        delete from talk_student where student_id = #{studentId}
+    </delete>
+
+    <delete id="deleteTalkStudentByStudentIds" parameterType="String">
+        delete from talk_student where student_id in 
+        <foreach item="studentId" collection="array" open="(" separator="," close=")">
+            #{studentId}
+        </foreach>
+    </delete>
+</mapper>

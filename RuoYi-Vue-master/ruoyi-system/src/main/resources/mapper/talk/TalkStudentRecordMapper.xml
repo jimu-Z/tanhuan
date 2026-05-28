@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.talk.mapper.TalkStudentRecordMapper">
+    
+    <resultMap type="TalkStudentRecord" id="TalkStudentRecordResult">
+        <result property="recordId"    column="record_id"    />
+        <result property="sessionId"    column="session_id"    />
+        <result property="studentId"    column="student_id"    />
+        <result property="studentFeedback"    column="student_feedback"    />
+        <result property="followupPlan"    column="followup_plan"    />
+        <result property="followupStatus"    column="followup_status"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <sql id="selectTalkStudentRecordVo">
+        select record_id, session_id, student_id, student_feedback, followup_plan, followup_status, create_time from talk_student_record
+    </sql>
+
+    <select id="selectTalkStudentRecordList" parameterType="TalkStudentRecord" resultMap="TalkStudentRecordResult">
+        <include refid="selectTalkStudentRecordVo"/>
+        <where>  
+            <if test="sessionId != null "> and session_id = #{sessionId}</if>
+            <if test="studentId != null "> and student_id = #{studentId}</if>
+            <if test="studentFeedback != null  and studentFeedback != ''"> and student_feedback = #{studentFeedback}</if>
+            <if test="followupPlan != null  and followupPlan != ''"> and followup_plan = #{followupPlan}</if>
+            <if test="followupStatus != null  and followupStatus != ''"> and followup_status = #{followupStatus}</if>
+        </where>
+    </select>
+    
+    <select id="selectTalkStudentRecordByRecordId" parameterType="Long" resultMap="TalkStudentRecordResult">
+        <include refid="selectTalkStudentRecordVo"/>
+        where record_id = #{recordId}
+    </select>
+
+    <insert id="insertTalkStudentRecord" parameterType="TalkStudentRecord" useGeneratedKeys="true" keyProperty="recordId">
+        insert into talk_student_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="sessionId != null">session_id,</if>
+            <if test="studentId != null">student_id,</if>
+            <if test="studentFeedback != null">student_feedback,</if>
+            <if test="followupPlan != null and followupPlan != ''">followup_plan,</if>
+            <if test="followupStatus != null">followup_status,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="sessionId != null">#{sessionId},</if>
+            <if test="studentId != null">#{studentId},</if>
+            <if test="studentFeedback != null">#{studentFeedback},</if>
+            <if test="followupPlan != null and followupPlan != ''">#{followupPlan},</if>
+            <if test="followupStatus != null">#{followupStatus},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateTalkStudentRecord" parameterType="TalkStudentRecord">
+        update talk_student_record
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="sessionId != null">session_id = #{sessionId},</if>
+            <if test="studentId != null">student_id = #{studentId},</if>
+            <if test="studentFeedback != null">student_feedback = #{studentFeedback},</if>
+            <if test="followupPlan != null and followupPlan != ''">followup_plan = #{followupPlan},</if>
+            <if test="followupStatus != null">followup_status = #{followupStatus},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </trim>
+        where record_id = #{recordId}
+    </update>
+
+    <delete id="deleteTalkStudentRecordByRecordId" parameterType="Long">
+        delete from talk_student_record where record_id = #{recordId}
+    </delete>
+
+    <delete id="deleteTalkStudentRecordByRecordIds" parameterType="String">
+        delete from talk_student_record where record_id in 
+        <foreach item="recordId" collection="array" open="(" separator="," close=")">
+            #{recordId}
+        </foreach>
+    </delete>
+</mapper>
