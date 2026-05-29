@@ -1,68 +1,19 @@
 <template>
   <div class="app-container home">
-    <el-row :gutter="20">
-      <el-col :sm="24" :lg="16" style="padding-left:20px">
-        <h2>学生谈心谈话管理系统</h2>
-        <p>
-          基于 RuoYi-Vue 框架开发的高校辅导员谈心谈话工作管理平台。支持学生信息管理、个别/集体谈话记录、
-          谈话标签分类、跟进状态追踪、docx 文档一键导出等功能，助力辅导员高效完成学生思想教育工作。
-        </p>
-        <p><b>当前版本:</b> <span>v1.0.0</span></p>
-        <div style="margin-top:16px">
-          <el-button type="primary" icon="el-icon-edit" size="small" @click="$router.push('/talk/talkInitiate/index')">发起谈话</el-button>
-          <el-button type="success" icon="el-icon-user" size="small" @click="$router.push('/talk/talkStudent/index')">学生管理</el-button>
-          <el-button type="warning" icon="el-icon-s-data" size="small" @click="$router.push('/talk/my-records')">我的记录</el-button>
-          <el-button icon="el-icon-search" size="small" @click="$router.push('/talk/advanced-query')">高级查询</el-button>
-        </div>
-      </el-col>
-      <el-col :sm="24" :lg="8" style="padding-left:20px">
-        <h2>核心功能</h2>
-        <ul>
-          <li>📋 学生台账导入（Excel 自动识别）</li>
-          <li>💬 个别 / 集体谈话记录</li>
-          <li>🏷️ 7 类谈话内容标签</li>
-          <li>📊 跟进状态追踪</li>
-          <li>📄 docx 文档一键导出</li>
-          <li>🔐 角色权限分级（管理员 / 书记 / 辅导员）</li>
-          <li>🔍 多条件高级查询</li>
-          <li>💾 自动数据备份</li>
-        </ul>
+    <el-row :gutter="16">
+      <el-col :span="16">
+        <h2 style="font-weight:300;font-size:28px;margin-bottom:20px">学生谈心谈话管理系统</h2>
       </el-col>
     </el-row>
-    <el-divider />
-    <el-row :gutter="20">
-      <el-col :span="8">
-        <el-card shadow="hover">
-          <div slot="header"><span>技术栈</span></div>
-          <el-descriptions :column="1" size="small" border>
-            <el-descriptions-item label="后端">Spring Boot + MyBatis</el-descriptions-item>
-            <el-descriptions-item label="前端">Vue 2 + Element UI</el-descriptions-item>
-            <el-descriptions-item label="数据库">MySQL + Redis</el-descriptions-item>
-            <el-descriptions-item label="权限">Spring Security + RBAC</el-descriptions-item>
-            <el-descriptions-item label="文档">Apache POI XWPF</el-descriptions-item>
-          </el-descriptions>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card shadow="hover">
-          <div slot="header"><span>快速入门</span></div>
-          <ol style="padding-left:20px;line-height:2">
-            <li>导入学生台账数据</li>
-            <li>在"发起谈话"中创建谈话记录</li>
-            <li>在"谈话会话管理"或"我的记录"中查看</li>
-            <li>在"谈话记录管理"中填写学生反馈和跟进计划</li>
-            <li>导出 docx 文档存档</li>
-          </ol>
-        </el-card>
-      </el-col>
-      <el-col :span="8">
-        <el-card shadow="hover">
-          <div slot="header"><span>关于</span></div>
-          <p style="line-height:1.8">
-            本系统基于 <el-link type="primary" href="https://gitee.com/y_project/RuoYi-Vue" target="_blank">RuoYi-Vue v3.9.2</el-link> 开发，
-            遵循 MIT 开源协议。数据库结构遵循设计文档
-            <el-link type="primary" href="https://github.com/jimu-Z/tanhuan" target="_blank">GitHub</el-link>。
-          </p>
+    <el-row :gutter="16">
+      <el-col :span="8" v-for="card in cards" :key="card.title">
+        <el-card shadow="hover" :body-style="{padding:'24px'}" style="margin-bottom:16px;min-height:200px">
+          <div style="text-align:center">
+            <i :class="card.icon" :style="{fontSize:'48px',color:card.color}"></i>
+            <h3 style="margin:12px 0;font-weight:500">{{ card.title }}</h3>
+            <p style="font-size:13px;color:#909399;line-height:1.8">{{ card.desc }}</p>
+            <el-button :type="card.type" size="small" style="margin-top:12px" @click="$router.push(card.path)">进入</el-button>
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -71,19 +22,23 @@
 
 <script>
 export default {
-  name: "Index",
+  name: 'Index',
   data() {
-    return {}
+    return {
+      cards: [
+        { icon:'el-icon-user', color:'#409EFF', title:'学生管理', desc:'导入台账、查看学生信息、管理学生数据', type:'primary', path:'/talk/talkStudent/index' },
+        { icon:'el-icon-edit', color:'#67C23A', title:'发起谈话', desc:'创建个别/集体谈话记录，选择标签和内容', type:'success', path:'/talk/talkInitiate/index' },
+        { icon:'el-icon-s-order', color:'#E6A23C', title:'会话管理', desc:'查看、编辑、导出历史谈话会话', type:'warning', path:'/talk/talkSession/index' },
+        { icon:'el-icon-document', color:'#F56C6C', title:'记录管理', desc:'管理学生反馈、跟进计划和状态', type:'danger', path:'/talk/talkStudentRecord/index' },
+        { icon:'el-icon-search', color:'#909399', title:'高级查询', desc:'多条件组合查询，批量导出文档', type:'info', path:'/talk/advanced-query' },
+        { icon:'el-icon-s-data', color:'#409EFF', title:'我的记录', desc:'快速查看个人创建的谈话记录', type:'', path:'/talk/my-records' }
+      ]
+    }
   }
 }
 </script>
 
-<style scoped lang="scss">
-.home {
-  h2 { margin-top: 10px; font-size: 26px; font-weight: 100; }
-  h4 { margin-top: 0; }
-  p { margin-top: 10px; b { font-weight: 700; } }
-  ul { list-style-type: none; padding: 0; li { line-height: 2; } }
-  .el-card { margin-bottom: 16px; }
-}
+<style scoped>
+.home { padding-bottom: 20px; }
+h2 { margin-top: 10px; }
 </style>
