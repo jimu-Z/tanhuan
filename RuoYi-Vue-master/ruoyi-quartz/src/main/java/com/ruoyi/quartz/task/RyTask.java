@@ -25,4 +25,17 @@ public class RyTask
     {
         System.out.println("执行无参方法");
     }
+
+    public void talkBackup()
+    {
+        try {
+            String cmd = "mysqldump -uroot -p123456 xuexiaotanhua --result-file=F:/QQ/QQwenjian/backup/talk_backup_" +
+                    new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date()) + ".sql";
+            Process p = Runtime.getRuntime().exec(new String[]{"cmd", "/c", cmd});
+            p.waitFor();
+            System.out.println("谈话数据备份完成");
+        } catch (Exception e) {
+            System.err.println("备份失败: " + e.getMessage());
+        }
+    }
 }

@@ -94,6 +94,18 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/talk/my-records',
+    component: Layout,
+    hidden: true,
+    children: [{ path: '', component: () => import('@/views/talk/myRecords/index'), name: 'MyRecords', meta: { title: '我的谈话记录' } }]
+  },
+  {
+    path: '/talk/advanced-query',
+    component: Layout,
+    hidden: true,
+    children: [{ path: '', component: () => import('@/views/talk/advancedQuery/index'), name: 'AdvancedQuery', meta: { title: '高级查询' } }]
+  },
+  {
     path: '/user',
     component: Layout,
     hidden: true,
