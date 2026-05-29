@@ -269,6 +269,13 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                     continue;
                 }
 
+                String phone = rowData.get("phone");
+                if (!isBlank(phone) && !phone.matches("^1[3-9]\\d{9}$")) {
+                    errors.add("学号" + studentCode + " 手机号格式错误，已跳过: " + phone);
+                    skipCount++;
+                    continue;
+                }
+
                 if (isBlank(college) || isBlank(grade) || isBlank(className)) {
                     skipCount++;
                     continue;

@@ -74,6 +74,10 @@
           v-hasPermi="['talk:session:export']"
         >导出</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button type="info" plain icon="el-icon-download" size="mini" :disabled="multiple2"
+          @click="handleBatchExport" v-hasPermi="['talk:session:export']">批量导出</el-button>
+      </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
@@ -83,9 +87,29 @@
       <el-tab-pane label="集体谈话" name="group" />
     </el-tabs>
 
-    <el-table v-loading="loading" :data="talksessionList" @selection-change="handleSelectionChange">
+    <el-table v-loading="loading" :data="talksessionList" @selection-change="handleSelectionChange" row-key="sessionId" @expand-change="handleExpand">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column type="index" label="序号" width="60" align="center" />
+      <el-table-column type="expand" v-if="talkTypeFilter==='group'">
+        <template slot-scope="scope">
+          <div v-loading="scope.row._loadingStudents" style="padding:8px 20px">
+            <el-table :data="scope.row._students || []" size="mini">
+              <el-table-column label="学生" prop="studentName" width="120" />
+              <el-table-column label="学号" prop="studentCode" width="120" />
+              <el-table-column label="反馈" prop="studentFeedback" min-width="150" show-overflow-tooltip />
+              <el-table-column label="跟进计划" prop="followupPlan" min-width="150" show-overflow-tooltip />
+              <el-table-column label="跟进状态" width="80">
+                <template slot-scope="s2">
+                  <el-tag v-if="s2.row.followupStatus==='pending'" type="info" size="mini">待跟进</el-tag>
+                  <el-tag v-else-if="s2.row.followupStatus==='in_progress'" type="warning" size="mini">跟进中</el-tag>
+                  <el-tag v-else-if="s2.row.followupStatus==='completed'" type="success" size="mini">已完成</el-tag>
+                  <el-tag v-else size="mini">无需跟进</el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column label="谈话类型" align="center" prop="talkType" width="90">
         <template slot-scope="scope">
           <el-tag v-if="scope.row.talkType === 'individual'" type="primary">个别谈话</el-tag>
@@ -184,6 +208,8 @@
 
 <script>
 import { listTalksession, getTalksession, delTalksession, addTalksession, updateTalksession, getSessionTags, TAG_LABELS } from "@/api/talk/talkSession"
+import { listTalkrecord } from "@/api/talk/talkStudentRecord"
+import { getTalk } from "@/api/talk/talkStudent"
 import request from '@/utils/request'
 
 export default {
@@ -198,6 +224,7 @@ export default {
       single: true,
       // 非多个禁用
       multiple: true,
+      multiple2: true,
       // 显示搜索条件
       showSearch: true,
       talkTypeFilter: '',
@@ -263,6 +290,25 @@ export default {
     getTagLabel(value) {
       return TAG_LABELS[value] || value
     },
+    handleExpand(row, expanded) {
+      if (!expanded || row._students) return
+      this.$set(row, '_loadingStudents', true)
+      listTalkrecord({ sessionId: row.sessionId, pageSize: 999 }).then(res => {
+        const records = res.rows || []
+        Promise.all(records.map(r =>
+          getTalk(r.studentId).then(stu => ({
+            studentName: stu.data.studentName,
+            studentCode: stu.data.studentCode,
+            studentFeedback: r.studentFeedback,
+            followupPlan: r.followupPlan,
+            followupStatus: r.followupStatus
+          }))
+        )).then(students => {
+          this.$set(row, '_students', students)
+          this.$set(row, '_loadingStudents', false)
+        })
+      })
+    },
     // 取消按钮
     cancel() {
       this.open = false
@@ -299,6 +345,7 @@ export default {
       this.ids = selection.map(item => item.sessionId)
       this.single = selection.length!==1
       this.multiple = !selection.length
+      this.multiple2 = selection.length < 1
     },
     /** 新增按钮操作 */
     handleAdd() {
@@ -351,6 +398,17 @@ export default {
       this.download('ruoyi-system/talksession/export', {
         ...this.queryParams
       }, `talksession_${new Date().getTime()}.xlsx`)
+    },
+    handleBatchExport() {
+      if (this.ids.length === 0) { this.$modal.msgWarning('请至少选择一条记录'); return }
+      this.$modal.confirm('确认导出选中的 ' + this.ids.length + ' 条会话记录？').then(() => {
+        return request({ url: '/ruoyi-system/talksession/exportDocx/batch', method: 'post', data: this.ids, responseType: 'blob' })
+      }).then(blob => {
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href = url; a.download = '谈话记录批量导出.zip'; a.click()
+        window.URL.revokeObjectURL(url)
+        this.$modal.msgSuccess('导出成功')
+      }).catch(() => {})
     },
     handleExportDocx(row) {
       const isGroup = row.talkType === 'group'

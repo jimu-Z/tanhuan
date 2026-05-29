@@ -125,6 +125,34 @@ public class TalkSessionController extends BaseController {
     /**
      * 获取谈话会话管理详细信息
      */
+    @PreAuthorize("@ss.hasPermi('talk:session:export')")
+    @Log(title = "谈话会话管理", businessType = BusinessType.EXPORT)
+    @PostMapping("/exportDocx/batch")
+    public void exportDocxBatch(@RequestBody List<Long> sessionIds, HttpServletResponse response) throws Exception {
+        ByteArrayOutputStream zip = new ByteArrayOutputStream();
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(zip)) {
+            for (Long sid : sessionIds) {
+                try {
+                    byte[] b = talkDocxService.generateDocxBySession(sid);
+                    TalkSession s = talkSessionService.selectTalkSessionBySessionId(sid);
+                    String name = (s != null ? s.getTalkPerson() : sid) + "_" + sid + ".docx";
+                    zos.putNextEntry(new java.util.zip.ZipEntry(name));
+                    zos.write(b);
+                    zos.closeEntry();
+                } catch (Exception e) {
+                    log.warn("跳过导出失败的会话{}: {}", sid, e.getMessage());
+                }
+            }
+        }
+        response.setContentType("application/zip");
+        response.setHeader("Content-Disposition",
+                "attachment; filename=" + URLEncoder.encode("谈话记录批量导出.zip", StandardCharsets.UTF_8));
+        try (OutputStream os = response.getOutputStream()) {
+            os.write(zip.toByteArray());
+            os.flush();
+        }
+    }
+
     @PreAuthorize("@ss.hasPermi('talk:session:query')")
     @GetMapping(value = "/{sessionId}")
     public AjaxResult getInfo(@PathVariable("sessionId") Long sessionId) {

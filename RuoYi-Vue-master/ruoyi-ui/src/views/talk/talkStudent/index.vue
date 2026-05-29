@@ -17,13 +17,10 @@
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="部门ID(班级)" prop="deptId">
-        <el-input
-          v-model="queryParams.deptId"
-          placeholder="请输入部门ID(班级)"
-          clearable
-          @keyup.enter.native="handleQuery"
-        />
+      <el-form-item label="部门" prop="deptId">
+        <el-cascader v-model="queryParams.deptId" :options="deptTree"
+          :props="{ checkStrictly:true, label:'label', value:'id' }"
+          placeholder="请选择部门" clearable style="width:240px" @change="handleQuery" />
       </el-form-item>
       <el-form-item label="性别" prop="gender">
         <el-input
@@ -379,6 +376,13 @@
           <div class="el-upload__text">将Excel文件拖到此处，或<em>点击上传</em></div>
           <div class="el-upload__tip" slot="tip">支持 .xlsx / .xls 格式，第1行为标题行将自动跳过</div>
         </el-upload>
+        <div style="margin-top:12px">
+          <span style="font-size:13px;color:#666;margin-right:8px">重复处理：</span>
+          <el-radio-group v-model="importMode">
+            <el-radio label="skip">跳过重复学号</el-radio>
+            <el-radio label="update">覆盖已有数据</el-radio>
+          </el-radio-group>
+        </div>
         <div style="text-align: center; margin-top: 20px;">
           <el-button type="primary" :loading="importLoading" @click="handleImportPreview" :disabled="!uploadFile">开始预览</el-button>
         </div>
@@ -422,6 +426,7 @@
 
 <script>
 import { listTalk, getTalk, delTalk, addTalk, updateTalk, importPreview, importExecute } from "@/api/talk/talkStudent"
+import { listDept } from "@/api/system/dept"
 
 export default {
   name: "Talk",
@@ -491,13 +496,31 @@ export default {
       importLoading: false,
       uploadFile: null,
       fileList: [],
-      importResult: { totalRows: 0, errorCount: 0, warnCount: 0, previewRows: [] }
+      importResult: { totalRows: 0, errorCount: 0, warnCount: 0, previewRows: [] },
+      importMode: 'skip',
+      deptTree: []
     }
   },
   created() {
     this.getList()
+    this.loadDeptTree()
   },
   methods: {
+    loadDeptTree() {
+      listDept().then(res => {
+        this.deptTree = this.buildTree(res.data || [])
+      })
+    },
+    buildTree(list) {
+      const map = {}, tree = []
+      list.forEach(d => { map[d.deptId] = { id:d.deptId, label:d.deptName, children:[], deptType:d.deptType, parentId:d.parentId } })
+      list.forEach(d => {
+        const node = map[d.deptId]
+        if (d.parentId && map[d.parentId]) { map[d.parentId].children.push(node) }
+        else if (!d.parentId || d.parentId === 0 || d.parentId === 100) { tree.push(node) }
+      })
+      return tree
+    },
     /** 查询学生信息管理列表 */
     getList() {
       this.loading = true
@@ -649,6 +672,7 @@ export default {
     handleImportExecute() {
       this.importLoading = true
       const importData = this.importResult.previewRows.map(row => row.data)
+      importData._importMode = this.importMode
       importExecute(importData).then(response => {
         this.$modal.msgSuccess("导入成功，共导入 " + response.data.successCount + " 条记录")
         this.importOpen = false
