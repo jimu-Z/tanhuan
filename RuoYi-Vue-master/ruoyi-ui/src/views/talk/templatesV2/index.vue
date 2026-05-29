@@ -271,18 +271,8 @@ export default {
   methods: {
     loadTemplates: function() {
       var self = this
-      listSystemTemplate().then(function(res) {
-        console.log('[DEBUG-tpl] system templates res:', res)
-        self.systemTemplates = (res.data || res.rows || (Array.isArray(res) ? res : [])).filter(Boolean)
-      }).catch(function(e) {
-        console.error('[DEBUG-tpl] system templates error:', e)
-      })
-      listTemplate({ templateType: 'personal', pageSize: 999 }).then(function(res) {
-        console.log('[DEBUG-tpl] personal templates res:', res)
-        self.myTemplates = res.rows || (Array.isArray(res) ? res : [])
-      }).catch(function(e) {
-        console.error('[DEBUG-tpl] personal templates error:', e)
-      })
+      listSystemTemplate().then(function(res) { self.systemTemplates = (res.data || res.rows || (Array.isArray(res) ? res : [])).filter(Boolean) }).catch(function() {})
+      listTemplate({ templateType: 'personal', pageSize: 999 }).then(function(res) { self.myTemplates = res.rows || (Array.isArray(res) ? res : []) }).catch(function() {})
     },
 
     useTemplate(tmpl) {
