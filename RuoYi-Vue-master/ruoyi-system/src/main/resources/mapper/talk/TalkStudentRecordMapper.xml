@@ -8,6 +8,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="recordId"    column="record_id"    />
         <result property="sessionId"    column="session_id"    />
         <result property="studentId"    column="student_id"    />
+        <result property="studentName"    column="student_name"    />
         <result property="studentFeedback"    column="student_feedback"    />
         <result property="followupPlan"    column="followup_plan"    />
         <result property="followupStatus"    column="followup_status"    />
@@ -15,23 +16,37 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectTalkStudentRecordVo">
-        select record_id, session_id, student_id, student_feedback, followup_plan, followup_status, create_time from talk_student_record
+        select tsr.record_id, tsr.session_id, tsr.student_id, st.student_name,
+               tsr.student_feedback, tsr.followup_plan, tsr.followup_status, tsr.create_time
+        from talk_student_record tsr
+        left join talk_student st on tsr.student_id = st.student_id
     </sql>
 
     <select id="selectTalkStudentRecordList" parameterType="TalkStudentRecord" resultMap="TalkStudentRecordResult">
         <include refid="selectTalkStudentRecordVo"/>
         <where>  
-            <if test="sessionId != null "> and session_id = #{sessionId}</if>
-            <if test="studentId != null "> and student_id = #{studentId}</if>
-            <if test="studentFeedback != null  and studentFeedback != ''"> and student_feedback = #{studentFeedback}</if>
-            <if test="followupPlan != null  and followupPlan != ''"> and followup_plan = #{followupPlan}</if>
-            <if test="followupStatus != null  and followupStatus != ''"> and followup_status = #{followupStatus}</if>
+            <if test="sessionId != null "> and tsr.session_id = #{sessionId}</if>
+            <if test="studentId != null "> and tsr.student_id = #{studentId}</if>
+            <if test="studentFeedback != null  and studentFeedback != ''"> and tsr.student_feedback = #{studentFeedback}</if>
+            <if test="followupPlan != null  and followupPlan != ''"> and tsr.followup_plan = #{followupPlan}</if>
+            <if test="followupStatus != null  and followupStatus != ''"> and tsr.followup_status = #{followupStatus}</if>
+            ${params.dataScope}
         </where>
     </select>
     
     <select id="selectTalkStudentRecordByRecordId" parameterType="Long" resultMap="TalkStudentRecordResult">
         <include refid="selectTalkStudentRecordVo"/>
-        where record_id = #{recordId}
+        where tsr.record_id = #{recordId}
+    </select>
+
+    <select id="selectTalkStudentRecordBySessionId" parameterType="Long" resultMap="TalkStudentRecordResult">
+        <include refid="selectTalkStudentRecordVo"/>
+        where tsr.session_id = #{sessionId}
+    </select>
+
+    <select id="selectTalkStudentRecordByStudentId" parameterType="Long" resultMap="TalkStudentRecordResult">
+        <include refid="selectTalkStudentRecordVo"/>
+        where tsr.student_id = #{studentId}
     </select>
 
     <insert id="insertTalkStudentRecord" parameterType="TalkStudentRecord" useGeneratedKeys="true" keyProperty="recordId">

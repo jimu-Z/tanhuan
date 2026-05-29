@@ -77,10 +77,22 @@
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
+    <el-tabs v-model="talkTypeFilter" @tab-click="handleQuery" style="margin-bottom:8px">
+      <el-tab-pane label="全部" name="" />
+      <el-tab-pane label="个别谈话" name="individual" />
+      <el-tab-pane label="集体谈话" name="group" />
+    </el-tabs>
+
     <el-table v-loading="loading" :data="talksessionList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="会话ID" align="center" prop="sessionId" />
-      <el-table-column label="谈话类型" align="center" prop="talkType" />
+      <el-table-column type="index" label="序号" width="60" align="center" />
+      <el-table-column label="谈话类型" align="center" prop="talkType" width="90">
+        <template slot-scope="scope">
+          <el-tag v-if="scope.row.talkType === 'individual'" type="primary">个别谈话</el-tag>
+          <el-tag v-else-if="scope.row.talkType === 'group'" type="success">集体谈话</el-tag>
+          <span v-else>{{ scope.row.talkType }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="谈话时间" align="center" prop="talkTime" width="180">
         <template slot-scope="scope">
           <span>{{ parseTime(scope.row.talkTime, '{y}-{m}-{d}') }}</span>
@@ -89,6 +101,14 @@
       <el-table-column label="谈话地点" align="center" prop="talkLocation" />
       <el-table-column label="谈话人(默认当前班主任)" align="center" prop="talkPerson" />
       <el-table-column label="谈话内容" align="center" prop="talkContent" />
+      <el-table-column label="内容标签" align="center" width="100">
+        <template slot-scope="scope">
+          <span v-if="tagMap[scope.row.sessionId]" style="font-size:12px;color:#666">
+            {{ tagMap[scope.row.sessionId].map(t => getTagLabel(t.tagValue)).join('、') || '-' }}
+          </span>
+          <span v-else style="color:#ccc">-</span>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button
@@ -105,6 +125,12 @@
             @click="handleDelete(scope.row)"
             v-hasPermi="['ruoyi-system:talksession:remove']"
           >删除</el-button>
+          <el-button
+            size="mini"
+            type="text"
+            icon="el-icon-download"
+            @click="handleExportDocx(scope.row)"
+          >导出</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -157,7 +183,8 @@
 </template>
 
 <script>
-import { listTalksession, getTalksession, delTalksession, addTalksession, updateTalksession } from "@/api/talk/talkSession"
+import { listTalksession, getTalksession, delTalksession, addTalksession, updateTalksession, getSessionTags, TAG_LABELS } from "@/api/talk/talkSession"
+import request from '@/utils/request'
 
 export default {
   name: "Talksession",
@@ -173,10 +200,12 @@ export default {
       multiple: true,
       // 显示搜索条件
       showSearch: true,
+      talkTypeFilter: '',
       // 总条数
       total: 0,
       // 谈话会话管理表格数据
       talksessionList: [],
+      tagMap: {},
       // 弹出层标题
       title: "",
       // 是否显示弹出层
@@ -214,11 +243,25 @@ export default {
     /** 查询谈话会话管理列表 */
     getList() {
       this.loading = true
+      this.queryParams.talkType = this.talkTypeFilter || null
       listTalksession(this.queryParams).then(response => {
         this.talksessionList = response.rows
         this.total = response.total
         this.loading = false
+        this.loadTags()
       })
+    },
+    loadTags() {
+      const ids = this.talksessionList.map(s => s.sessionId)
+      if (ids.length === 0) return
+      ids.forEach(id => {
+        getSessionTags(id).then(res => {
+          this.$set(this.tagMap, id, res.data || [])
+        })
+      })
+    },
+    getTagLabel(value) {
+      return TAG_LABELS[value] || value
     },
     // 取消按钮
     cancel() {
@@ -308,6 +351,21 @@ export default {
       this.download('ruoyi-system/talksession/export', {
         ...this.queryParams
       }, `talksession_${new Date().getTime()}.xlsx`)
+    },
+    handleExportDocx(row) {
+      const isGroup = row.talkType === 'group'
+      const ext = isGroup ? '.zip' : '.docx'
+      this.$modal.confirm('确认导出' + row.talkPerson + '的谈话记录吗？' + (isGroup ? '（集体谈话将打包为zip）' : '')).then(() => {
+        return request({ url: '/ruoyi-system/talksession/exportDocx/' + row.sessionId, method: 'get', responseType: 'blob' })
+      }).then(blob => {
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = '谈话记录_' + (row.talkPerson || row.sessionId) + ext
+        a.click()
+        window.URL.revokeObjectURL(url)
+        this.$modal.msgSuccess('导出成功')
+      }).catch(() => {})
     }
   }
 }

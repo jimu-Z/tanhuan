@@ -205,7 +205,11 @@
       <el-table-column label="学号" align="center" prop="studentCode" />
       <el-table-column label="姓名" align="center" prop="studentName" />
       <el-table-column label="部门ID(班级)" align="center" prop="deptId" />
-      <el-table-column label="性别" align="center" prop="gender" />
+      <el-table-column label="性别" align="center" prop="gender">
+        <template slot-scope="scope">
+          <span>{{ scope.row.gender === '1' ? '女' : '男' }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="政治面貌" align="center" prop="politicalStatus" />
       <el-table-column label="民族" align="center" prop="nation" />
       <el-table-column label="本人联系电话" align="center" prop="phone" />
@@ -225,6 +229,12 @@
       <el-table-column label="备注" align="center" prop="remark" />
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
+          <el-button
+            size="mini"
+            type="text"
+            icon="el-icon-document"
+            @click="handleDetail(scope.row)"
+          >详情</el-button>
           <el-button
             size="mini"
             type="text"
@@ -555,6 +565,10 @@ export default {
       this.reset()
       this.open = true
       this.title = "添加学生信息管理"
+    },
+    /** 查看详情 */
+    handleDetail(row) {
+      this.$router.push({ path: '/talk/student-detail/' + row.studentId })
     },
     /** 修改按钮操作 */
     handleUpdate(row) {

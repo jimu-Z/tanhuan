@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.ruoyi.common.annotation.DataScope;
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.common.core.domain.entity.SysUser;
@@ -83,6 +84,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
      * @return 学生信息管理
      */
     @Override
+    @DataScope(deptAlias = "d")
     public List<TalkStudent> selectTalkStudentList(TalkStudent talkStudent) {
         return talkStudentMapper.selectTalkStudentList(talkStudent);
     }
@@ -301,6 +303,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 student.setEnrollmentStatus(getString(rowData, "enrollment_status"));
                 student.setMentalHealthStatus(getString(rowData, "mental_health_status"));
                 student.setPovertyLevel(getString(rowData, "poverty_level"));
+                student.setPoliticalStatus(getString(rowData, "political_status"));
                 student.setRemark(getString(rowData, "remark"));
                 student.setCreateTime(DateUtils.getNowDate());
                 talkStudentMapper.insertTalkStudent(student);
@@ -361,7 +364,13 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 mapping.put(String.valueOf(i), 101);
             } else if (h.contains("班级")) {
                 mapping.put(String.valueOf(i), 102);
-            } else if (h.contains("学生姓名") || h.contains("姓名")) {
+            } else if (h.contains("学生姓名")) {
+                mapping.put(String.valueOf(i), 200);
+            } else if (h.contains("父亲姓名")) {
+                mapping.put(String.valueOf(i), 207);
+            } else if (h.contains("母亲姓名")) {
+                mapping.put(String.valueOf(i), 209);
+            } else if (h.contains("姓名")) {
                 mapping.put(String.valueOf(i), 200);
             } else if (h.contains("学号")) {
                 mapping.put(String.valueOf(i), 201);
@@ -384,10 +393,6 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 mapping.put(String.valueOf(i), 205);
             } else if (h.contains("家庭住址") || h.contains("住址")) {
                 mapping.put(String.valueOf(i), 206);
-            } else if (h.contains("父亲姓名")) {
-                mapping.put(String.valueOf(i), 207);
-            } else if (h.contains("母亲姓名")) {
-                mapping.put(String.valueOf(i), 209);
             } else if (h.contains("班长")) {
                 mapping.put(String.valueOf(i), 211);
             } else if (h.contains("舍长") || h.contains("宿舍长")) {
@@ -412,6 +417,8 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 mapping.put(String.valueOf(i), 402);
             } else if (h.contains("班主任")) {
                 mapping.put(String.valueOf(i), 403);
+            } else if (h.contains("政治面貌")) {
+                mapping.put(String.valueOf(i), 219);
             } else {
                 mapping.put(String.valueOf(i), -1);
             }
@@ -469,6 +476,8 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 return "poverty_level";
             case 218:
                 return "remark";
+            case 219:
+                return "political_status";
             case 300:
                 return "phone";
             case 301:

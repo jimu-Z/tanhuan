@@ -26,6 +26,8 @@ public class TalkStudentRecord extends BaseEntity
     @Excel(name = "学生ID")
     private Long studentId;
 
+    private String studentName;
+
     /** 学生反馈 */
     @Excel(name = "学生反馈")
     private String studentFeedback;
@@ -66,6 +68,16 @@ public class TalkStudentRecord extends BaseEntity
     public Long getStudentId() 
     {
         return studentId;
+    }
+
+    public void setStudentName(String studentName) 
+    {
+        this.studentName = studentName;
+    }
+
+    public String getStudentName() 
+    {
+        return studentName;
     }
 
     public void setStudentFeedback(String studentFeedback) 

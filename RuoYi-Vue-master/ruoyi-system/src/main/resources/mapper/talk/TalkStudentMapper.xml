@@ -34,38 +34,45 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectTalkStudentVo">
-        select student_id, student_code, student_name, dept_id, gender, political_status, nation, phone, id_card, address, father_name, father_phone, mother_name, mother_phone, class_monitor, dorm_leader, dorm_building, dorm_room, enrollment_status, mental_health_status, poverty_level, remark, create_by, create_time, update_by, update_time from talk_student
+        select s.student_id, s.student_code, s.student_name, s.dept_id, s.gender, 
+               s.political_status, s.nation, s.phone, s.id_card, s.address, s.father_name, 
+               s.father_phone, s.mother_name, s.mother_phone, s.class_monitor, s.dorm_leader, 
+               s.dorm_building, s.dorm_room, s.enrollment_status, s.mental_health_status, 
+               s.poverty_level, s.remark, s.create_by, s.create_time, s.update_by, s.update_time 
+        from talk_student s
+        left join sys_dept d on s.dept_id = d.dept_id
     </sql>
 
     <select id="selectTalkStudentList" parameterType="TalkStudent" resultMap="TalkStudentResult">
         <include refid="selectTalkStudentVo"/>
         <where>  
-            <if test="studentCode != null  and studentCode != ''"> and student_code = #{studentCode}</if>
-            <if test="studentName != null  and studentName != ''"> and student_name like concat('%', #{studentName}, '%')</if>
-            <if test="deptId != null "> and dept_id = #{deptId}</if>
-            <if test="gender != null  and gender != ''"> and gender = #{gender}</if>
-            <if test="politicalStatus != null  and politicalStatus != ''"> and political_status = #{politicalStatus}</if>
-            <if test="nation != null  and nation != ''"> and nation = #{nation}</if>
-            <if test="phone != null  and phone != ''"> and phone = #{phone}</if>
-            <if test="idCard != null  and idCard != ''"> and id_card = #{idCard}</if>
-            <if test="address != null  and address != ''"> and address = #{address}</if>
-            <if test="fatherName != null  and fatherName != ''"> and father_name like concat('%', #{fatherName}, '%')</if>
-            <if test="fatherPhone != null  and fatherPhone != ''"> and father_phone = #{fatherPhone}</if>
-            <if test="motherName != null  and motherName != ''"> and mother_name like concat('%', #{motherName}, '%')</if>
-            <if test="motherPhone != null  and motherPhone != ''"> and mother_phone = #{motherPhone}</if>
-            <if test="classMonitor != null  and classMonitor != ''"> and class_monitor = #{classMonitor}</if>
-            <if test="dormLeader != null  and dormLeader != ''"> and dorm_leader = #{dormLeader}</if>
-            <if test="dormBuilding != null  and dormBuilding != ''"> and dorm_building = #{dormBuilding}</if>
-            <if test="dormRoom != null  and dormRoom != ''"> and dorm_room = #{dormRoom}</if>
-            <if test="enrollmentStatus != null  and enrollmentStatus != ''"> and enrollment_status = #{enrollmentStatus}</if>
-            <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and mental_health_status = #{mentalHealthStatus}</if>
-            <if test="povertyLevel != null  and povertyLevel != ''"> and poverty_level = #{povertyLevel}</if>
+            <if test="studentCode != null  and studentCode != ''"> and s.student_code = #{studentCode}</if>
+            <if test="studentName != null  and studentName != ''"> and s.student_name like concat('%', #{studentName}, '%')</if>
+            <if test="deptId != null "> and s.dept_id = #{deptId}</if>
+            <if test="gender != null  and gender != ''"> and s.gender = #{gender}</if>
+            <if test="politicalStatus != null  and politicalStatus != ''"> and s.political_status = #{politicalStatus}</if>
+            <if test="nation != null  and nation != ''"> and s.nation = #{nation}</if>
+            <if test="phone != null  and phone != ''"> and s.phone = #{phone}</if>
+            <if test="idCard != null  and idCard != ''"> and s.id_card = #{idCard}</if>
+            <if test="address != null  and address != ''"> and s.address = #{address}</if>
+            <if test="fatherName != null  and fatherName != ''"> and s.father_name like concat('%', #{fatherName}, '%')</if>
+            <if test="fatherPhone != null  and fatherPhone != ''"> and s.father_phone = #{fatherPhone}</if>
+            <if test="motherName != null  and motherName != ''"> and s.mother_name like concat('%', #{motherName}, '%')</if>
+            <if test="motherPhone != null  and motherPhone != ''"> and s.mother_phone = #{motherPhone}</if>
+            <if test="classMonitor != null  and classMonitor != ''"> and s.class_monitor = #{classMonitor}</if>
+            <if test="dormLeader != null  and dormLeader != ''"> and s.dorm_leader = #{dormLeader}</if>
+            <if test="dormBuilding != null  and dormBuilding != ''"> and s.dorm_building = #{dormBuilding}</if>
+            <if test="dormRoom != null  and dormRoom != ''"> and s.dorm_room = #{dormRoom}</if>
+            <if test="enrollmentStatus != null  and enrollmentStatus != ''"> and s.enrollment_status = #{enrollmentStatus}</if>
+            <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and s.mental_health_status = #{mentalHealthStatus}</if>
+            <if test="povertyLevel != null  and povertyLevel != ''"> and s.poverty_level = #{povertyLevel}</if>
+            ${params.dataScope}
         </where>
     </select>
     
     <select id="selectTalkStudentByStudentId" parameterType="Long" resultMap="TalkStudentResult">
         <include refid="selectTalkStudentVo"/>
-        where student_id = #{studentId}
+        where s.student_id = #{studentId}
     </select>
 
     <insert id="insertTalkStudent" parameterType="TalkStudent" useGeneratedKeys="true" keyProperty="studentId">

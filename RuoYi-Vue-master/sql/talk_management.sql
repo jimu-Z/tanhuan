@@ -42,7 +42,7 @@ CREATE TABLE talk_student (
   UNIQUE KEY uk_student_code (student_code),
   KEY idx_talk_student_dept (dept_id),
   KEY idx_talk_student_name (student_name)
-) ENGINE=INNODB AUTO_INCREMENT=1000 COMMENT = '学生基础信息表';
+) ENGINE=INNODB AUTO_INCREMENT=1 COMMENT = '学生基础信息表';
 
 -- ----------------------------
 -- 3、谈话会话表

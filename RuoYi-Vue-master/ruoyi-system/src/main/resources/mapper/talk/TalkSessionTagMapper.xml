@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.talk.mapper.TalkSessionTagMapper">
+
+    <resultMap type="TalkSessionTag" id="TalkSessionTagResult">
+        <result property="sessionId" column="session_id" />
+        <result property="tagValue" column="tag_value" />
+    </resultMap>
+
+    <insert id="insertTalkSessionTag">
+        insert into talk_session_tag values(#{sessionId}, #{tagValue})
+    </insert>
+
+    <delete id="deleteTalkSessionTagBySessionId" parameterType="Long">
+        delete from talk_session_tag where session_id = #{sessionId}
+    </delete>
+
+    <select id="selectTalkSessionTagBySessionId" parameterType="Long" resultMap="TalkSessionTagResult">
+        select session_id, tag_value from talk_session_tag where session_id = #{sessionId}
+    </select>
+</mapper>

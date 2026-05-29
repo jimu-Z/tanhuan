@@ -58,4 +58,10 @@ public interface TalkStudentRecordMapper
      * @return 结果
      */
     public int deleteTalkStudentRecordByRecordIds(Long[] recordIds);
+
+    public int deleteTalkStudentRecordBySessionId(Long sessionId);
+
+    public List<TalkStudentRecord> selectTalkStudentRecordBySessionId(Long sessionId);
+
+    public List<TalkStudentRecord> selectTalkStudentRecordByStudentId(Long studentId);
 }

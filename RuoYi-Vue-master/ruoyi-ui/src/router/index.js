@@ -81,6 +81,19 @@ export const constantRoutes = [
     meta: { title: '锁定屏幕' }
   },
   {
+    path: '/talk/student-detail/:studentId(\\d+)',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/talk/talkStudent/detail'),
+        name: 'StudentDetail',
+        meta: { title: '学生详情' }
+      }
+    ]
+  },
+  {
     path: '/user',
     component: Layout,
     hidden: true,

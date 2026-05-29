@@ -71,12 +71,19 @@
 
     <el-table v-loading="loading" :data="talkrecordList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="记录ID" align="center" prop="recordId" />
-      <el-table-column label="会话ID" align="center" prop="sessionId" />
-      <el-table-column label="学生ID" align="center" prop="studentId" />
-      <el-table-column label="学生反馈" align="center" prop="studentFeedback" />
-      <el-table-column label="跟进计划" align="center" prop="followupPlan" />
-      <el-table-column label="跟进状态" align="center" prop="followupStatus" />
+      <el-table-column type="index" label="序号" width="60" align="center" />
+      <el-table-column label="学生姓名" align="center" prop="studentName" min-width="90" />
+      <el-table-column label="学生反馈" align="center" prop="studentFeedback" min-width="150" show-overflow-tooltip />
+      <el-table-column label="跟进计划" align="center" prop="followupPlan" min-width="150" show-overflow-tooltip />
+      <el-table-column label="跟进状态" align="center" prop="followupStatus" width="100">
+        <template slot-scope="scope">
+          <el-tag v-if="scope.row.followupStatus === 'pending'" type="info">待跟进</el-tag>
+          <el-tag v-else-if="scope.row.followupStatus === 'in_progress'" type="warning">跟进中</el-tag>
+          <el-tag v-else-if="scope.row.followupStatus === 'completed'" type="success">已完成</el-tag>
+          <el-tag v-else-if="scope.row.followupStatus === 'none'" type="">无需跟进</el-tag>
+          <span v-else>{{ scope.row.followupStatus }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button

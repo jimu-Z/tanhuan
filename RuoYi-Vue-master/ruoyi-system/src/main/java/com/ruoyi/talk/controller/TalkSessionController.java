@@ -17,9 +17,14 @@ import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.talk.domain.TalkSession;
+import com.ruoyi.talk.domain.TalkSessionCreateRequest;
 import com.ruoyi.talk.service.ITalkSessionService;
+import com.ruoyi.talk.service.TalkDocxService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
+import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 谈话会话管理Controller
@@ -32,6 +37,12 @@ import com.ruoyi.common.core.page.TableDataInfo;
 public class TalkSessionController extends BaseController {
     @Autowired
     private ITalkSessionService talkSessionService;
+
+    @Autowired
+    private TalkDocxService talkDocxService;
+
+    @Autowired
+    private com.ruoyi.talk.mapper.TalkSessionTagMapper talkSessionTagMapper;
 
     /**
      * 查询谈话会话管理列表
@@ -57,12 +68,73 @@ public class TalkSessionController extends BaseController {
     }
 
     /**
+     * 导出谈话记录为 .docx 文档
+     */
+    @PreAuthorize("@ss.hasPermi('talk:session:export')")
+    @Log(title = "谈话会话管理", businessType = BusinessType.EXPORT)
+    @GetMapping("/exportDocx/{sessionId}")
+    public void exportDocx(@PathVariable Long sessionId, HttpServletResponse response) throws Exception {
+        byte[] docxBytes = talkDocxService.generateDocxBySession(sessionId);
+        TalkSession session = talkSessionService.selectTalkSessionBySessionId(sessionId);
+        boolean isZip = docxBytes.length >= 2 && docxBytes[0] == 'P' && docxBytes[1] == 'K'
+                && !(docxBytes.length >= 4 && docxBytes[2] == 0x03 && docxBytes[3] == 0x04);
+        String ext = isZip ? ".zip" : ".docx";
+        String contentType = isZip ? "application/zip"
+                : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        String fileName = "谈话记录_" + (session != null ? session.getTalkPerson() : sessionId) + ext;
+        response.setContentType(contentType);
+        response.setHeader("Content-Disposition",
+                "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
+        try (OutputStream os = response.getOutputStream()) {
+            os.write(docxBytes);
+            os.flush();
+        }
+    }
+
+    /**
+     * 导出单个学生的谈话记录为 .docx
+     */
+    @PreAuthorize("@ss.hasPermi('talk:session:export')")
+    @Log(title = "谈话会话管理", businessType = BusinessType.EXPORT)
+    @GetMapping("/exportDocx/{sessionId}/student/{studentId}")
+    public void exportDocxForStudent(@PathVariable Long sessionId, @PathVariable Long studentId,
+            HttpServletResponse response) throws Exception {
+        byte[] docxBytes = talkDocxService.generateDocxByStudent(studentId, sessionId);
+        TalkSession session = talkSessionService.selectTalkSessionBySessionId(sessionId);
+        String fileName = "谈话记录_" + (session != null ? session.getTalkPerson() : sessionId) + ".docx";
+        response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        response.setHeader("Content-Disposition",
+                "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
+        try (OutputStream os = response.getOutputStream()) {
+            os.write(docxBytes);
+            os.flush();
+        }
+    }
+
+    /**
+     * 发起谈话（集体/个体）— 创建 session + N条 record
+     */
+    @PreAuthorize("@ss.hasPermi('talk:session:add')")
+    @Log(title = "谈话会话管理", businessType = BusinessType.INSERT)
+    @PostMapping("/create")
+    public AjaxResult createTalk(@RequestBody TalkSessionCreateRequest request) {
+        TalkSession session = talkSessionService.createTalkWithRecords(request);
+        return success(session);
+    }
+
+    /**
      * 获取谈话会话管理详细信息
      */
     @PreAuthorize("@ss.hasPermi('talk:session:query')")
     @GetMapping(value = "/{sessionId}")
     public AjaxResult getInfo(@PathVariable("sessionId") Long sessionId) {
         return success(talkSessionService.selectTalkSessionBySessionId(sessionId));
+    }
+
+    @PreAuthorize("@ss.hasPermi('talk:session:query')")
+    @GetMapping("/tags/{sessionId}")
+    public AjaxResult getTags(@PathVariable("sessionId") Long sessionId) {
+        return success(talkSessionTagMapper.selectTalkSessionTagBySessionId(sessionId));
     }
 
     /**

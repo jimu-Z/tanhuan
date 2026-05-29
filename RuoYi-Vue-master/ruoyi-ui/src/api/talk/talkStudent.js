@@ -43,6 +43,14 @@ export function delTalk(studentId) {
   })
 }
 
+// 查询学生详情（含历史谈话记录）
+export function getStudentDetail(studentId) {
+  return request({
+    url: '/ruoyi-system/talk/detail/' + studentId,
+    method: 'get'
+  })
+}
+
 // 导入预览
 export function importPreview(data) {
   return request({

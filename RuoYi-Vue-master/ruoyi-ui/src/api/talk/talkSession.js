@@ -42,3 +42,22 @@ export function delTalksession(sessionId) {
     method: 'delete'
   })
 }
+
+// 获取会话标签
+export function getSessionTags(sessionId) {
+  return request({
+    url: '/ruoyi-system/talksession/tags/' + sessionId,
+    method: 'get'
+  })
+}
+
+// 标签字典映射
+export const TAG_LABELS = {
+  thought_education: '思想理论教育',
+  party_class: '党团班级建设',
+  study_style: '学风建设',
+  daily_affairs: '日常事务',
+  mental_health: '心理健康',
+  crisis_response: '危机应对',
+  career_guidance: '职业规划就业'
+}
