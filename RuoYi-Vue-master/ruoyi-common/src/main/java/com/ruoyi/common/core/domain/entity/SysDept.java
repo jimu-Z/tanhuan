@@ -37,6 +37,8 @@ public class SysDept extends BaseEntity
     /** 负责人 */
     private String leader;
 
+    private String deptType;
+
     /** 联系电话 */
     private String phone;
 
@@ -116,6 +118,16 @@ public class SysDept extends BaseEntity
     public void setLeader(String leader)
     {
         this.leader = leader;
+    }
+
+    public String getDeptType()
+    {
+        return deptType;
+    }
+
+    public void setDeptType(String deptType)
+    {
+        this.deptType = deptType;
     }
 
     @Size(min = 0, max = 11, message = "联系电话长度不能超过11个字符")

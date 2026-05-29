@@ -31,7 +31,7 @@
           icon="el-icon-plus"
           size="mini"
           @click="handleAdd"
-          v-hasPermi="['ruoyi-system:talkrecord:add']"
+          v-hasPermi="['talk:record:add']"
         >新增</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -42,7 +42,7 @@
           size="mini"
           :disabled="single"
           @click="handleUpdate"
-          v-hasPermi="['ruoyi-system:talkrecord:edit']"
+          v-hasPermi="['talk:record:edit']"
         >修改</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -53,7 +53,7 @@
           size="mini"
           :disabled="multiple"
           @click="handleDelete"
-          v-hasPermi="['ruoyi-system:talkrecord:remove']"
+          v-hasPermi="['talk:record:remove']"
         >删除</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -63,7 +63,7 @@
           icon="el-icon-download"
           size="mini"
           @click="handleExport"
-          v-hasPermi="['ruoyi-system:talkrecord:export']"
+          v-hasPermi="['talk:record:export']"
         >导出</el-button>
       </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
@@ -91,14 +91,14 @@
             type="text"
             icon="el-icon-edit"
             @click="handleUpdate(scope.row)"
-            v-hasPermi="['ruoyi-system:talkrecord:edit']"
+            v-hasPermi="['talk:record:edit']"
           >修改</el-button>
           <el-button
             size="mini"
             type="text"
             icon="el-icon-delete"
             @click="handleDelete(scope.row)"
-            v-hasPermi="['ruoyi-system:talkrecord:remove']"
+            v-hasPermi="['talk:record:remove']"
           >删除</el-button>
         </template>
       </el-table-column>

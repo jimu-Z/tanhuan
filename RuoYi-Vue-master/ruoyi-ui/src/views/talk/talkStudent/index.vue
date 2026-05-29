@@ -151,7 +151,7 @@
           icon="el-icon-plus"
           size="mini"
           @click="handleAdd"
-          v-hasPermi="['ruoyi-system:talk:add']"
+          v-hasPermi="['talk:student:add']"
         >新增</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -162,7 +162,7 @@
           size="mini"
           :disabled="single"
           @click="handleUpdate"
-          v-hasPermi="['ruoyi-system:talk:edit']"
+          v-hasPermi="['talk:student:edit']"
         >修改</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -173,7 +173,7 @@
           size="mini"
           :disabled="multiple"
           @click="handleDelete"
-          v-hasPermi="['ruoyi-system:talk:remove']"
+          v-hasPermi="['talk:student:remove']"
         >删除</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -183,7 +183,7 @@
           icon="el-icon-download"
           size="mini"
           @click="handleExport"
-          v-hasPermi="['ruoyi-system:talk:export']"
+          v-hasPermi="['talk:student:export']"
         >导出</el-button>
       </el-col>
       <el-col :span="1.5">
@@ -240,14 +240,14 @@
             type="text"
             icon="el-icon-edit"
             @click="handleUpdate(scope.row)"
-            v-hasPermi="['ruoyi-system:talk:edit']"
+            v-hasPermi="['talk:student:edit']"
           >修改</el-button>
           <el-button
             size="mini"
             type="text"
             icon="el-icon-delete"
             @click="handleDelete(scope.row)"
-            v-hasPermi="['ruoyi-system:talk:remove']"
+            v-hasPermi="['talk:student:remove']"
           >删除</el-button>
         </template>
       </el-table-column>
