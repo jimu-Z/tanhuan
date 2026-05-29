@@ -206,6 +206,7 @@ public class SysDept extends BaseEntity
             .append("email", getEmail())
             .append("status", getStatus())
             .append("delFlag", getDelFlag())
+            .append("deptType", getDeptType())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())
             .append("updateBy", getUpdateBy())

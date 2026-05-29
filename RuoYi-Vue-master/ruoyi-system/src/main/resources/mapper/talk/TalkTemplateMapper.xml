@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.talk.mapper.TalkTemplateMapper">
+
+    <resultMap type="TalkTemplate" id="TalkTemplateResult">
+        <result property="templateId"      column="template_id"      />
+        <result property="templateName"    column="template_name"    />
+        <result property="templateContent" column="template_content" />
+        <result property="templateType"    column="template_type"    />
+        <result property="templateTags"    column="template_tags"    />
+        <result property="createBy"        column="create_by"        />
+        <result property="createTime"      column="create_time"      />
+        <result property="updateBy"        column="update_by"        />
+        <result property="updateTime"      column="update_time"      />
+        <result property="delFlag"         column="del_flag"         />
+    </resultMap>
+
+    <sql id="selectTalkTemplateVo">
+        select template_id, template_name, template_content, template_type, template_tags,
+               create_by, create_time, update_by, update_time, del_flag
+        from talk_template
+    </sql>
+
+    <select id="selectTalkTemplateList" parameterType="TalkTemplate" resultMap="TalkTemplateResult">
+        <include refid="selectTalkTemplateVo"/>
+        <where>
+            del_flag = '0'
+            <if test="templateType != null and templateType != ''"> and template_type = #{templateType}</if>
+            <if test="templateName != null and templateName != ''"> and template_name like concat('%', #{templateName}, '%')</if>
+        </where>
+    </select>
+
+    <select id="selectTalkTemplateById" parameterType="Long" resultMap="TalkTemplateResult">
+        <include refid="selectTalkTemplateVo"/>
+        where template_id = #{templateId} and del_flag = '0'
+    </select>
+
+    <select id="selectSystemTemplates" resultMap="TalkTemplateResult">
+        <include refid="selectTalkTemplateVo"/>
+        where template_type = 'system' and del_flag = '0'
+    </select>
+
+    <insert id="insertTalkTemplate" parameterType="TalkTemplate" useGeneratedKeys="true" keyProperty="templateId">
+        insert into talk_template
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="templateName != null and templateName != ''">template_name,</if>
+            <if test="templateContent != null">template_content,</if>
+            <if test="templateType != null and templateType != ''">template_type,</if>
+            <if test="templateTags != null">template_tags,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="delFlag != null">del_flag,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="templateName != null and templateName != ''">#{templateName},</if>
+            <if test="templateContent != null">#{templateContent},</if>
+            <if test="templateType != null and templateType != ''">#{templateType},</if>
+            <if test="templateTags != null">#{templateTags},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+        </trim>
+    </insert>
+
+    <update id="updateTalkTemplate" parameterType="TalkTemplate">
+        update talk_template
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="templateName != null and templateName != ''">template_name = #{templateName},</if>
+            <if test="templateContent != null">template_content = #{templateContent},</if>
+            <if test="templateType != null and templateType != ''">template_type = #{templateType},</if>
+            <if test="templateTags != null">template_tags = #{templateTags},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where template_id = #{templateId}
+    </update>
+
+    <delete id="deleteTalkTemplateById" parameterType="Long">
+        update talk_template set del_flag = '2' where template_id = #{templateId}
+    </delete>
+
+</mapper>

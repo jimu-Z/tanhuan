@@ -46,6 +46,14 @@ public class TalkStudentRecordServiceImpl implements ITalkStudentRecordService
                     " and tsr.session_id in (select ts.session_id from talk_session ts where ts.create_by = '"
                     + SecurityUtils.getUsername() + "')");
         }
+        if (SecurityUtils.hasRole("talk_secretary"))
+        {
+            Long deptId = SecurityUtils.getDeptId();
+            talkStudentRecord.getParams().put("dataScope",
+                    " and tsr.student_id in (select stu.student_id from talk_student stu" +
+                    " join sys_dept d on stu.dept_id = d.dept_id" +
+                    " where d.dept_id = " + deptId + " or find_in_set(" + deptId + ", d.ancestors))");
+        }
     }
 
     @Override

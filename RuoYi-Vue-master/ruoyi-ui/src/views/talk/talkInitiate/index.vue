@@ -121,8 +121,19 @@
             </el-col>
           </el-row>
           <el-form-item label="谈话内容" prop="talkContent">
-            <el-input v-model="form.talkContent" type="textarea" :rows="4"
-                      :placeholder="form.talkType === 'group' ? '此内容将共享给所有参与学生' : '输入谈话内容'" />
+            <div class="ti-content-area">
+              <div class="ti-content-toolbar">
+                <el-button type="primary" size="mini" icon="el-icon-document-copy" @click="openTemplateDialog">
+                  从模板库选择
+                </el-button>
+                <el-button type="warning" size="mini" icon="el-icon-delete" @click="clearContent"
+                           :disabled="!form.talkContent">
+                  清空内容
+                </el-button>
+              </div>
+              <el-input v-model="form.talkContent" type="textarea" :rows="6"
+                        :placeholder="form.talkType === 'group' ? '此内容将共享给所有参与学生。可点击上方「从模板库选择」快速填充内容' : '输入谈话内容，可点击上方「从模板库选择」快速填充'" />
+            </div>
           </el-form-item>
           <el-form-item label="内容标签">
             <el-select v-model="form.tags" multiple placeholder="请选择谈话主题标签" style="width:100%">
@@ -160,6 +171,41 @@
           <el-button type="primary" @click="submitForm" :loading="submitting">保存谈话</el-button>
         </div>
       </div>
+
+      <el-dialog title="选择谈话模板" :visible.sync="templateDialogVisible" width="700px" append-to-body>
+        <el-tabs v-model="templateTab">
+          <el-tab-pane label="系统预置模板" name="system">
+            <div class="ti-template-grid">
+              <div v-for="tpl in systemTemplates" :key="tpl.templateId" class="ti-template-card"
+                   :class="{ selected: selectedTemplateId === tpl.templateId }"
+                   @click="selectedTemplateId = tpl.templateId">
+                <div class="ti-tpl-name">{{ tpl.templateName }}</div>
+                <div class="ti-tpl-preview">{{ tpl.templateContent.substring(0, 80) }}...</div>
+                <div class="ti-tpl-tags">
+                  <el-tag v-for="tag in (tpl.templateTags||'').split(',').filter(Boolean)" :key="tag" size="mini" type="info">{{ getTagLabel(tag) }}</el-tag>
+                </div>
+              </div>
+              <div v-if="systemTemplates.length === 0" class="ti-empty">暂无系统模板</div>
+            </div>
+          </el-tab-pane>
+          <el-tab-pane label="我的模板" name="personal">
+            <div class="ti-template-grid">
+              <div v-for="tpl in personalTemplates" :key="tpl.templateId" class="ti-template-card"
+                   :class="{ selected: selectedTemplateId === tpl.templateId }"
+                   @click="selectedTemplateId = tpl.templateId">
+                <div class="ti-tpl-name">{{ tpl.templateName }}</div>
+                <div class="ti-tpl-preview">{{ tpl.templateContent.substring(0, 80) }}...</div>
+              </div>
+              <div v-if="personalTemplates.length === 0" class="ti-empty">暂无个人模板，请在「模板库」页面创建</div>
+            </div>
+          </el-tab-pane>
+        </el-tabs>
+        <span slot="footer" class="dialog-footer">
+          <el-button @click="insertTemplate('replace')" type="primary" :disabled="!selectedTemplateId">替换当前内容</el-button>
+          <el-button @click="insertTemplate('append')" type="success" :disabled="!selectedTemplateId">追加到末尾</el-button>
+          <el-button @click="templateDialogVisible = false">取消</el-button>
+        </span>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -167,6 +213,7 @@
 <script>
 import { listTalk } from '@/api/talk/talkStudent'
 import { createTalk } from '@/api/talk/talkInitiate'
+import { listSystemTemplate, listTemplate } from '@/api/talk/talkTemplate'
 
 export default {
   name: 'TalkInitiate',
@@ -176,6 +223,11 @@ export default {
       searchKey: '',
       studentLoading: false,
       submitting: false,
+      templateDialogVisible: false,
+      templateTab: 'system',
+      selectedTemplateId: null,
+      systemTemplates: [],
+      personalTemplates: [],
       activeCollapse: [0],
       allStudents: [],
       selectedStudents: [],
@@ -250,6 +302,63 @@ export default {
     },
     removeAllSelected() {
       this.selectedStudents = []
+    },
+    openTemplateDialog() {
+      this.selectedTemplateId = null
+      this.templateTab = 'system'
+      this.templateDialogVisible = true
+      this.loadTemplates()
+    },
+    loadTemplates() {
+      listSystemTemplate().then(res => { this.systemTemplates = res.rows || res.data || [] })
+      listTemplate({ templateType: 'personal' }).then(res => { this.personalTemplates = res.rows || [] })
+    },
+    clearContent() {
+      this.$confirm('确认清空谈话内容？', '提示', { type: 'warning' }).then(() => {
+        this.form.talkContent = ''
+        this.$message.success('已清空')
+      }).catch(() => {})
+    },
+    insertTemplate(mode) {
+      if (!this.selectedTemplateId) return
+      const all = [...this.systemTemplates, ...this.personalTemplates]
+      const tpl = all.find(t => t.templateId === this.selectedTemplateId)
+      if (!tpl) return
+      
+      if (mode === 'replace') {
+        if (this.form.talkContent) {
+          this.$confirm('当前内容将被替换，是否继续？', '提示', { type: 'warning' }).then(() => {
+            this.doInsert(tpl)
+          }).catch(() => {})
+        } else {
+          this.doInsert(tpl)
+        }
+      } else {
+        this.doInsert(tpl, true)
+      }
+    },
+    doInsert(tpl, append) {
+      if (append) {
+        this.form.talkContent = (this.form.talkContent ? this.form.talkContent + '\n\n' : '') + tpl.templateContent
+      } else {
+        this.form.talkContent = tpl.templateContent
+      }
+      if (tpl.templateTags) {
+        const tags = tpl.templateTags.split(',').map(t => t.trim()).filter(Boolean)
+        const existing = this.form.tags || []
+        tags.forEach(t => { if (!existing.includes(t)) existing.push(t) })
+        this.form.tags = [...existing]
+      }
+      this.templateDialogVisible = false
+      this.$message.success(append ? '模板内容已追加' : '模板内容已替换')
+    },
+    getTagLabel(value) {
+      const map = {
+        thought_education: '思想理论教育', party_class: '党团班级建设', study_style: '学风建设',
+        daily_affairs: '日常事务', mental_health: '心理健康', crisis_response: '危机应对',
+        career_guidance: '职业规划就业'
+      }
+      return map[value] || value
     },
     submitForm() {
       this.$refs.talkForm.validate(valid => {
@@ -336,4 +445,21 @@ export default {
   margin-top: 20px; padding-top: 12px;
   border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 8px;
 }
+.ti-content-area { width: 100%; }
+.ti-content-toolbar {
+  display: flex; gap: 6px; margin-bottom: 6px;
+  padding: 6px 10px; background: #f5f7fa; border-radius: 6px 6px 0 0;
+}
+.ti-template-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-height: 380px; overflow-y: auto;
+}
+.ti-template-card {
+  padding: 14px; border: 2px solid #e8e8e8; border-radius: 10px;
+  cursor: pointer; transition: all .2s;
+}
+.ti-template-card:hover { border-color: #409eff; background: #ecf5ff; }
+.ti-template-card.selected { border-color: #409eff; background: #e6f7ff; box-shadow: 0 0 0 2px rgba(64,158,255,.2); }
+.ti-tpl-name { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.ti-tpl-preview { font-size: 12px; color: #999; margin-bottom: 8px; line-height: 1.5; }
+.ti-tpl-tags { display: flex; gap: 4px; flex-wrap: wrap; }
 </style>

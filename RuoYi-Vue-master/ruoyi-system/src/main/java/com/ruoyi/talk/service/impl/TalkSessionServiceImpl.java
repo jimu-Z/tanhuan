@@ -56,6 +56,15 @@ public class TalkSessionServiceImpl implements ITalkSessionService
             talkSession.getParams().put("dataScope",
                     " and ts.create_by = '" + SecurityUtils.getUsername() + "'");
         }
+        if (SecurityUtils.hasRole("talk_secretary"))
+        {
+            Long deptId = SecurityUtils.getDeptId();
+            talkSession.getParams().put("dataScope",
+                    " and ts.session_id in (select tsr.session_id from talk_student_record tsr" +
+                    " join talk_student stu on tsr.student_id = stu.student_id" +
+                    " join sys_dept d on stu.dept_id = d.dept_id" +
+                    " where (d.dept_id = " + deptId + " or find_in_set(" + deptId + ", d.ancestors)))");
+        }
     }
 
     @Override

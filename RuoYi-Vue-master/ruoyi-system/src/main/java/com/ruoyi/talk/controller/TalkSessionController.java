@@ -81,8 +81,7 @@ public class TalkSessionController extends BaseController {
     public void exportDocx(@PathVariable Long sessionId, HttpServletResponse response) throws Exception {
         byte[] docxBytes = talkDocxService.generateDocxBySession(sessionId);
         TalkSession session = talkSessionService.selectTalkSessionBySessionId(sessionId);
-        boolean isZip = docxBytes.length >= 2 && docxBytes[0] == 'P' && docxBytes[1] == 'K'
-                && !(docxBytes.length >= 4 && docxBytes[2] == 0x03 && docxBytes[3] == 0x04);
+        boolean isZip = "group".equals(session.getTalkType());
         String ext = isZip ? ".zip" : ".docx";
         String contentType = isZip ? "application/zip"
                 : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";

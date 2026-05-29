@@ -48,3 +48,35 @@ INSERT INTO sys_role_menu VALUES(3, 2000),(3, 2001),(3, 2002),(3, 2003),(3, 2004
 INSERT INTO sys_role_menu VALUES(4, 2000),(4, 2001),(4, 2002),(4, 2006),(4, 2010),(4, 2011),(4, 2015),(4, 2020),(4, 2021),(4, 2025),(4, 2030),(4, 2040),(4, 2041);
 -- 辅导员/班主任角色（id=5）拥有查看和新增权限
 INSERT INTO sys_role_menu VALUES(5, 2000),(5, 2001),(5, 2002),(5, 2006),(5, 2010),(5, 2011),(5, 2012),(5, 2015),(5, 2020),(5, 2021),(5, 2022),(5, 2025),(5, 2030),(5, 2040),(5, 2041);
+
+-- ============================================
+-- 2026-05-29 新增功能菜单
+-- ============================================
+
+-- 统计分析仪表盘（二级菜单）
+INSERT INTO sys_menu VALUES(2050, '统计分析', @talkMenuId, 7, 'dashboard', 'talk/dashboardV2/index', '', '', 1, 0, 'C', '0', '0', 'talk:dashboard:view', 'chart', 'admin', NOW(), '', NULL, '统计分析仪表盘');
+
+-- 预警提醒（二级菜单）
+INSERT INTO sys_menu VALUES(2055, '预警提醒', @talkMenuId, 8, 'alert', 'talk/alertsV2/index', '', '', 1, 0, 'C', '0', '0', 'talk:alert:view', 'warning', 'admin', NOW(), '', NULL, '谈话预警提醒');
+
+-- 谈话模板库（二级菜单）
+INSERT INTO sys_menu VALUES(2060, '谈话模板库', @talkMenuId, 9, 'template', 'talk/templatesV2/index', '', '', 1, 0, 'C', '0', '0', 'talk:template:list', 'documentation', 'admin', NOW(), '', NULL, '谈话内容模板管理');
+SET @templateMenuId = 2060;
+INSERT INTO sys_menu VALUES(2061, '模板查询', @templateMenuId, 1, '#', '', '', '', 1, 0, 'F', '0', '0', 'talk:template:query', '#', 'admin', NOW(), '', NULL, '');
+INSERT INTO sys_menu VALUES(2062, '模板新增', @templateMenuId, 2, '#', '', '', '', 1, 0, 'F', '0', '0', 'talk:template:add', '#', 'admin', NOW(), '', NULL, '');
+INSERT INTO sys_menu VALUES(2063, '模板修改', @templateMenuId, 3, '#', '', '', '', 1, 0, 'F', '0', '0', 'talk:template:edit', '#', 'admin', NOW(), '', NULL, '');
+INSERT INTO sys_menu VALUES(2064, '模板删除', @templateMenuId, 4, '#', '', '', '', 1, 0, 'F', '0', '0', 'talk:template:remove', '#', 'admin', NOW(), '', NULL, '');
+
+-- 数据大屏（二级菜单）
+INSERT INTO sys_menu VALUES(2065, '数据大屏', @talkMenuId, 10, 'bigscreen', 'talk/bigscreenV2/index', '', '', 1, 0, 'C', '0', '0', 'talk:bigscreen:view', 'monitor', 'admin', NOW(), '', NULL, '数据可视化大屏');
+
+-- 统一查询（二级菜单）
+INSERT INTO sys_menu VALUES(2070, '统一查询', @talkMenuId, 11, 'query', 'talk/unifiedQuery/index', '', '', 1, 0, 'C', '0', '0', 'talk:unified:view', 'search', 'admin', NOW(), '', NULL, '统一查询（合并谈话会话/记录/高级查询）');
+
+-- 为角色分配新增菜单权限
+-- 管理员（id=3）全部可见
+INSERT INTO sys_role_menu VALUES(3, 2050),(3, 2055),(3, 2060),(3, 2061),(3, 2062),(3, 2063),(3, 2064),(3, 2065),(3, 2070);
+-- 书记/副书记（id=4）查看权限
+INSERT INTO sys_role_menu VALUES(4, 2050),(4, 2055),(4, 2060),(4, 2061),(4, 2065),(4, 2070);
+-- 辅导员/班主任（id=5）查看+新增模板
+INSERT INTO sys_role_menu VALUES(5, 2050),(5, 2055),(5, 2060),(5, 2061),(5, 2062),(5, 2065),(5, 2070);
