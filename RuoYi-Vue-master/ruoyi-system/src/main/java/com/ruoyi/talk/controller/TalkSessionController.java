@@ -22,9 +22,12 @@ import com.ruoyi.talk.service.ITalkSessionService;
 import com.ruoyi.talk.service.TalkDocxService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
+import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 谈话会话管理Controller
@@ -35,6 +38,8 @@ import java.nio.charset.StandardCharsets;
 @RestController
 @RequestMapping("/ruoyi-system/talksession")
 public class TalkSessionController extends BaseController {
+    private static final Logger log = LoggerFactory.getLogger(TalkSessionController.class);
+
     @Autowired
     private ITalkSessionService talkSessionService;
 
