@@ -175,4 +175,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{studentId}
         </foreach>
     </delete>
+
+    <select id="countTalkStudents" resultType="int">
+        select count(*) from talk_student
+    </select>
+
+    <select id="countStudentsByDeptId" parameterType="Long" resultType="int">
+        select count(*) from talk_student where dept_id = #{deptId}
+    </select>
 </mapper>

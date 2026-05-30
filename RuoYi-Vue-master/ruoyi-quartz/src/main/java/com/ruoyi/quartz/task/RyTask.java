@@ -29,13 +29,32 @@ public class RyTask
     public void talkBackup()
     {
         try {
-            String cmd = "mysqldump -uroot -p123456 xuexiaotanhua --result-file=F:/QQ/QQwenjian/backup/talk_backup_" +
+            String backupDir = "F:/QQ/QQwenjian/backup";
+            java.io.File dir = new java.io.File(backupDir);
+            if (!dir.exists()) dir.mkdirs();
+            String fileName = backupDir + "/talk_backup_" +
                     new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date()) + ".sql";
-            Process p = Runtime.getRuntime().exec(new String[]{"cmd", "/c", cmd});
+            ProcessBuilder pb = new ProcessBuilder(
+                "mysqldump",
+                "--defaults-extra-file=" + getDefaultsFile(),
+                "xuexiaotanhua",
+                "--result-file=" + fileName
+            );
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
             p.waitFor();
-            System.out.println("谈话数据备份完成");
+            System.out.println("谈话数据备份完成: " + fileName);
         } catch (Exception e) {
             System.err.println("备份失败: " + e.getMessage());
         }
+    }
+
+    private String getDefaultsFile() throws Exception {
+        String appConfig = System.getProperty("user.dir") + "/ruoyi-admin/src/main/resources/application-druid.yml";
+        java.io.File f = new java.io.File(appConfig);
+        if (!f.exists()) {
+            appConfig = System.getProperty("user.dir") + "/../ruoyi-admin/src/main/resources/application-druid.yml";
+        }
+        return appConfig;
     }
 }

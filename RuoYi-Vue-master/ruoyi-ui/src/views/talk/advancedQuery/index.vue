@@ -79,9 +79,7 @@
 
 <script>
 import { listTalkrecord } from '@/api/talk/talkStudentRecord'
-import { getTalk } from '@/api/talk/talkStudent'
-import { listTalksession } from '@/api/talk/talkSession'
-import request from '@/utils/request'
+import { getTalksession } from '@/api/talk/talkSession'
 
 export default {
   name: 'AdvancedQuery',
@@ -104,26 +102,71 @@ export default {
     search() {
       this.loading = true
       const p = { ...this.q }
-      if (p.dateRange) { p.beginTime = p.dateRange[0]; p.endTime = p.dateRange[1] }
-      listTalkrecord({ pageNum: p.pageNum, pageSize: p.pageSize }).then(res => {
-        const rows = (res.rows || []).filter(r => {
-          if (p.followupStatus && r.followupStatus !== p.followupStatus) return false
-          return true
-        })
-        Promise.all(rows.map(r => Promise.all([getTalk(r.studentId), listTalksession({ pageSize:1 })]).then(([stu, ss]) => ({
-          ...r, studentName: stu.data.studentName, studentCode: stu.data.studentCode,
-          talkType: ss.rows?.[0]?.talkType || '', talkPerson: ss.rows?.[0]?.talkPerson || '',
-          talkContent: ss.rows?.[0]?.talkContent || '', talkTime: ss.rows?.[0]?.talkTime || ''
-        })))).then(enriched => {
+      const apiParams = {
+        pageNum: p.pageNum,
+        pageSize: p.pageSize,
+        followupStatus: p.followupStatus || undefined
+      }
+      listTalkrecord(apiParams).then(res => {
+        const rows = res.rows || []
+        if (rows.length === 0) {
+          this.result = []
+          this.total = 0
+          this.loading = false
+          return
+        }
+        Promise.all(rows.map(r =>
+          getTalksession(r.sessionId).then(sesRes => {
+            const ses = sesRes.data || sesRes
+            return {
+              ...r,
+              talkType: ses.talkType || '',
+              talkPerson: ses.talkPerson || '',
+              talkContent: ses.talkContent || '',
+              talkTime: ses.talkTime || ''
+            }
+          }).catch(() => ({
+            ...r,
+            talkType: '',
+            talkPerson: '',
+            talkContent: '',
+            talkTime: ''
+          }))
+        )).then(enriched => {
           let filtered = enriched
           if (p.keyword) {
             const kw = p.keyword.toLowerCase()
-            filtered = filtered.filter(r => r.studentName.toLowerCase().includes(kw) || r.studentCode.includes(kw))
+            filtered = filtered.filter(r =>
+              (r.studentName || '').toLowerCase().includes(kw) ||
+              (r.studentCode || '').toString().includes(kw)
+            )
           }
-          if (p.talkType) filtered = filtered.filter(r => r.talkType === p.talkType)
-          if (p.talkPerson) filtered = filtered.filter(r => r.talkPerson.includes(p.talkPerson))
-          this.result = filtered; this.total = filtered.length; this.loading = false
+          if (p.talkType) {
+            filtered = filtered.filter(r => r.talkType === p.talkType)
+          }
+          if (p.talkPerson) {
+            filtered = filtered.filter(r => (r.talkPerson || '').includes(p.talkPerson))
+          }
+          if (p.tags && p.tags.length > 0) {
+            filtered = filtered.filter(r => {
+              if (!r.tags || r.tags.length === 0) return false
+              return p.tags.some(t => r.tags.includes(t))
+            })
+          }
+          if (p.dateRange && p.dateRange.length === 2) {
+            const start = p.dateRange[0]
+            const end = p.dateRange[1]
+            filtered = filtered.filter(r => {
+              if (!r.talkTime) return false
+              return r.talkTime >= start && r.talkTime <= end
+            })
+          }
+          this.result = filtered
+          this.total = filtered.length
+          this.loading = false
         })
+      }).catch(() => {
+        this.loading = false
       })
     },
     reset() {
@@ -131,13 +174,14 @@ export default {
       this.search()
     },
     exportOne(row) {
-      listTalksession({ talkTime: row.talkTime, talkPerson: row.talkPerson, pageSize: 1 }).then(r => {
-        const sid = r.rows?.[0]?.sessionId
-        if (!sid) { this.$modal.msgError('未找到对应会话'); return }
+      const sid = row.sessionId
+      if (!sid) { this.$modal.msgError('未找到对应会话'); return }
+      const fileName = '谈话记录_' + (row.studentName || 'unknown') + '.docx'
+      import('@/utils/request').then(({ default: request }) => {
         request({ url: '/ruoyi-system/talksession/exportDocx/' + sid, method: 'get', responseType: 'blob' }).then(blob => {
           const url = window.URL.createObjectURL(blob)
           const a = document.createElement('a'); a.href = url
-          a.download = '谈话记录_' + row.studentName + '.docx'; a.click(); window.URL.revokeObjectURL(url)
+          a.download = fileName; a.click(); window.URL.revokeObjectURL(url)
         })
       })
     },

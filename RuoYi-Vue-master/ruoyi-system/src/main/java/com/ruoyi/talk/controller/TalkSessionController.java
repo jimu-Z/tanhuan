@@ -79,13 +79,18 @@ public class TalkSessionController extends BaseController {
     @Log(title = "谈话会话管理", businessType = BusinessType.EXPORT)
     @GetMapping("/exportDocx/{sessionId}")
     public void exportDocx(@PathVariable Long sessionId, HttpServletResponse response) throws Exception {
-        byte[] docxBytes = talkDocxService.generateDocxBySession(sessionId);
         TalkSession session = talkSessionService.selectTalkSessionBySessionId(sessionId);
+        if (session == null) {
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"msg\":\"会话不存在\",\"code\":500}");
+            return;
+        }
+        byte[] docxBytes = talkDocxService.generateDocxBySession(sessionId);
         boolean isZip = "group".equals(session.getTalkType());
         String ext = isZip ? ".zip" : ".docx";
         String contentType = isZip ? "application/zip"
                 : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        String fileName = "谈话记录_" + (session != null ? session.getTalkPerson() : sessionId) + ext;
+        String fileName = "谈话记录_" + session.getTalkPerson() + ext;
         response.setContentType(contentType);
         response.setHeader("Content-Disposition",
                 "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
@@ -127,7 +132,7 @@ public class TalkSessionController extends BaseController {
     }
 
     /**
-     * 获取谈话会话管理详细信息
+     * 批量导出谈话记录为 .docx 文档（打包zip）
      */
     @PreAuthorize("@ss.hasPermi('talk:session:export')")
     @Log(title = "谈话会话管理", businessType = BusinessType.EXPORT)

@@ -254,8 +254,10 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
         for (Map<String, Object> rowMap : confirmedRows) {
             try {
-                @SuppressWarnings("unchecked")
-                Map<String, String> rowData = (Map<String, String>) (Object) rowMap;
+                Map<String, String> rowData = new HashMap<>();
+                for (Map.Entry<String, Object> entry : rowMap.entrySet()) {
+                    rowData.put(entry.getKey(), entry.getValue() != null ? entry.getValue().toString() : "");
+                }
                 log.info("[IMPORT-DEBUG] Execute row: code={}, name={}, college={}",
                         rowData.get("student_code"), rowData.get("student_name"), rowData.get("college"));
                 String studentCode = rowData.get("student_code");

@@ -28,6 +28,8 @@ public class TalkStudentRecord extends BaseEntity
 
     private String studentName;
 
+    private String studentCode;
+
     /** 学生反馈 */
     @Excel(name = "学生反馈")
     private String studentFeedback;
@@ -78,6 +80,16 @@ public class TalkStudentRecord extends BaseEntity
     public String getStudentName() 
     {
         return studentName;
+    }
+
+    public void setStudentCode(String studentCode) 
+    {
+        this.studentCode = studentCode;
+    }
+
+    public String getStudentCode() 
+    {
+        return studentCode;
     }
 
     public void setStudentFeedback(String studentFeedback) 

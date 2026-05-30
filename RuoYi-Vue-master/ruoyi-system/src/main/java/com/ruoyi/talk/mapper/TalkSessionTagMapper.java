@@ -10,4 +10,6 @@ public interface TalkSessionTagMapper {
     public int deleteTalkSessionTagBySessionId(Long sessionId);
 
     public List<TalkSessionTag> selectTalkSessionTagBySessionId(Long sessionId);
+
+    public List<java.util.HashMap<String, Object>> countTagsByValue();
 }

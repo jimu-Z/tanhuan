@@ -1,6 +1,5 @@
 package com.ruoyi.talk.service.impl;
 
-import java.text.SimpleDateFormat;
 import java.util.List;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.SecurityUtils;
@@ -53,10 +52,11 @@ public class TalkSessionServiceImpl implements ITalkSessionService
         }
         if (SecurityUtils.hasRole("talk_counselor"))
         {
+            String username = SecurityUtils.getUsername().replace("'", "''");
             talkSession.getParams().put("dataScope",
-                    " and ts.create_by = '" + SecurityUtils.getUsername() + "'");
+                    " and ts.create_by = '" + username + "'");
         }
-        if (SecurityUtils.hasRole("talk_secretary"))
+        else if (SecurityUtils.hasRole("talk_secretary"))
         {
             Long deptId = SecurityUtils.getDeptId();
             talkSession.getParams().put("dataScope",

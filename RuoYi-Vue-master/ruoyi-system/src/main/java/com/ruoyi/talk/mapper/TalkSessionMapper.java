@@ -58,4 +58,8 @@ public interface TalkSessionMapper
      * @return 结果
      */
     public int deleteTalkSessionBySessionIds(Long[] sessionIds);
+
+    public int countTalkSessions();
+    public List<java.util.HashMap<String, Object>> countTalkSessionsByMonth();
+    public List<java.util.HashMap<String, Object>> countTalkSessionsByType();
 }

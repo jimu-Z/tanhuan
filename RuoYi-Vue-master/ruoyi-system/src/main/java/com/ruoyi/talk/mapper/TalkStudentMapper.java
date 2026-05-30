@@ -58,4 +58,7 @@ public interface TalkStudentMapper
      * @return 结果
      */
     public int deleteTalkStudentByStudentIds(Long[] studentIds);
+
+    public int countTalkStudents();
+    public int countStudentsByDeptId(Long deptId);
 }

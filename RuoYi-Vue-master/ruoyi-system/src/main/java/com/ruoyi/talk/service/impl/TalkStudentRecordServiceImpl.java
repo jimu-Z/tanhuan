@@ -42,11 +42,12 @@ public class TalkStudentRecordServiceImpl implements ITalkStudentRecordService
         }
         if (SecurityUtils.hasRole("talk_counselor"))
         {
+            String username = SecurityUtils.getUsername().replace("'", "''");
             talkStudentRecord.getParams().put("dataScope",
                     " and tsr.session_id in (select ts.session_id from talk_session ts where ts.create_by = '"
-                    + SecurityUtils.getUsername() + "')");
+                    + username + "')");
         }
-        if (SecurityUtils.hasRole("talk_secretary"))
+        else if (SecurityUtils.hasRole("talk_secretary"))
         {
             Long deptId = SecurityUtils.getDeptId();
             talkStudentRecord.getParams().put("dataScope",

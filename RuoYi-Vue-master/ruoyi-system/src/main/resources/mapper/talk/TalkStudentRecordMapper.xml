@@ -9,6 +9,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="sessionId"    column="session_id"    />
         <result property="studentId"    column="student_id"    />
         <result property="studentName"    column="student_name"    />
+        <result property="studentCode"    column="student_code"    />
         <result property="studentFeedback"    column="student_feedback"    />
         <result property="followupPlan"    column="followup_plan"    />
         <result property="followupStatus"    column="followup_status"    />
@@ -16,7 +17,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectTalkStudentRecordVo">
-        select tsr.record_id, tsr.session_id, tsr.student_id, st.student_name,
+        select tsr.record_id, tsr.session_id, tsr.student_id, st.student_name, st.student_code,
                tsr.student_feedback, tsr.followup_plan, tsr.followup_status, tsr.create_time
         from talk_student_record tsr
         left join talk_student st on tsr.student_id = st.student_id
@@ -96,4 +97,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <delete id="deleteTalkStudentRecordBySessionId" parameterType="Long">
         delete from talk_student_record where session_id = #{sessionId}
     </delete>
+
+    <select id="countRecords" resultType="int">
+        select count(*) from talk_student_record
+    </select>
+
+    <select id="countRecordsByFollowupStatus" resultType="java.util.HashMap">
+        select followup_status as status, count(*) as cnt
+        from talk_student_record group by followup_status
+    </select>
+
+    <select id="countRecordsBySessionId" parameterType="Long" resultType="int">
+        select count(*) from talk_student_record where session_id = #{sessionId}
+    </select>
 </mapper>

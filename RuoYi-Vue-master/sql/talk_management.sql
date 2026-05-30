@@ -176,8 +176,7 @@ INSERT INTO sys_role VALUES(3, '系统管理员', 'talk_admin',      1, 1, 1, 1,
 INSERT INTO sys_role VALUES(4, '书记/副书记', 'talk_secretary',  2, 2, 1, 1, '0', '0', 'admin', sysdate(), '', null, '查看本学院所有学生谈话记录');
 INSERT INTO sys_role VALUES(5, '辅导员/班主任', 'talk_counselor', 3, 5, 1, 1, '0', '0', 'admin', sysdate(), '', null, '仅查看自己负责谈话的学生记录');
 
--- ========== ���ݱ��ݶ�ʱ���� ==========
+-- ========== 数据备份定时任务 ==========
 
--- ���ӱ������� Quartz ����
-INSERT INTO sys_job VALUES(100, 'talkBackup', 'ryTask', 'talkBackup', '0 0 2 * * ?', '0', '0', '0', 'admin', NOW(), '', NULL, '̸��̸�����ݱ���');
-
+-- 添加备份任务到 Quartz 调度
+INSERT INTO sys_job VALUES(100, 'talkBackup', 'ryTask', 'talkBackup', '0 0 2 * * ?', '0', '0', '0', 'admin', NOW(), '', NULL, '谈心谈话数据备份');

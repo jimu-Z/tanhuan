@@ -294,6 +294,12 @@ export default {
       this.selectedStudents = this.selectedStudents.filter(s => s.studentId !== stu.studentId)
     },
     selectAllAvailable() {
+      if (this.form.talkType === 'individual') {
+        if (this.filteredAvailable.length > 0) {
+          this.selectStudent(this.filteredAvailable[0])
+        }
+        return
+      }
       this.filteredAvailable.forEach(s => {
         if (!this.selectedIds.has(s.studentId)) {
           this.selectedStudents.push({ ...s, _feedback: '', _plan: '' })
@@ -388,7 +394,7 @@ export default {
           this.activeCollapse = [0]
           this.$refs.talkForm.resetFields()
         }).catch(err => {
-          this.$modal.msgError(err + '')
+          this.$modal.msgError(err.message || err.msg || '操作失败')
         }).finally(() => {
           this.submitting = false
         })

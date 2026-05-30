@@ -298,6 +298,7 @@ public class TalkDocxService {
     }
 
     private String trunc(String v, int max) {
+        if (v == null) return "";
         return v.length() > max ? v.substring(0, max) + "..." : v;
     }
 

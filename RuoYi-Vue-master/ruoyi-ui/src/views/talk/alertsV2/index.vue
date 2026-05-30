@@ -1,623 +1,428 @@
-<!--
-  ================================================================================
-  THROWAWAY PROTOTYPE — alertsV2/index.vue
-  学生谈心谈话管理系统 · 预警与提醒系统 V2
-  所有数据均为模拟数据，无API调用
-  ================================================================================
--->
 <template>
-  <div class="alerts-root">
-    <div class="alerts-container">
+  <div class="alerts-container">
+    <el-row :gutter="16" class="summary-row">
+      <el-col :span="8">
+        <el-card shadow="hover" class="summary-card summary-card-danger">
+          <div class="summary-body">
+            <div class="summary-icon danger-bg">
+              <i class="el-icon-warning-outline"></i>
+            </div>
+            <div class="summary-info">
+              <div class="summary-label">待跟进</div>
+              <div class="summary-value" :style="{ color: '#f56c6c' }">{{ alertData.pendingFollowups }}</div>
+            </div>
+          </div>
+          <el-divider class="summary-divider"></el-divider>
+          <div class="summary-footer">
+            <span class="summary-tag">
+              <el-tag size="small" type="danger" effect="dark">需处理</el-tag>
+            </span>
+            <span class="summary-desc">待跟进预警事项</span>
+          </div>
+        </el-card>
+      </el-col>
 
-      <!-- ==================== Top Banner ==================== -->
-      <div class="banner-wrap">
-        <div class="banner-card">
-          <div class="banner-icon">
-            <i class="el-icon-warning-outline"></i>
+      <el-col :span="8">
+        <el-card shadow="hover" class="summary-card summary-card-primary">
+          <div class="summary-body">
+            <div class="summary-icon primary-bg">
+              <i class="el-icon-loading"></i>
+            </div>
+            <div class="summary-info">
+              <div class="summary-label">跟进中</div>
+              <div class="summary-value" :style="{ color: '#409eff' }">{{ alertData.inProgressFollowups }}</div>
+            </div>
           </div>
-          <div class="banner-body">
-            <div class="banner-title">共 <strong class="banner-count">{{ summaryCount }}</strong> 条预警信息需处理</div>
-            <div class="banner-sub">请及时处理以下预警，避免影响学生工作进度</div>
+          <el-divider class="summary-divider"></el-divider>
+          <div class="summary-footer">
+            <span class="summary-tag">
+              <el-tag size="small" type="primary" effect="dark">处理中</el-tag>
+            </span>
+            <span class="summary-desc">正在跟进的事项</span>
           </div>
-          <div class="banner-progress">
+        </el-card>
+      </el-col>
+
+      <el-col :span="8">
+        <el-card shadow="hover" class="summary-card" :class="totalAlertsCardClass">
+          <div class="summary-body">
+            <div class="summary-icon" :class="totalAlertsIconClass">
+              <i :class="totalAlertsIcon"></i>
+            </div>
+            <div class="summary-info">
+              <div class="summary-label">总预警数</div>
+              <div class="summary-value" :style="{ color: totalAlertsColor }">{{ alertData.totalAlerts }}</div>
+            </div>
+          </div>
+          <el-divider class="summary-divider"></el-divider>
+          <div class="summary-footer">
             <el-progress
-              type="circle"
-              :percentage="summaryResolved ? Math.round(summaryResolved / (summaryCount + summaryResolved) * 100) : 0"
-              :width="72"
+              :percentage="totalAlertsProgress"
+              :color="totalAlertsProgressColor"
               :stroke-width="6"
-              color="#f56c6c"
             ></el-progress>
           </div>
-        </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-card shadow="never" class="dept-card">
+      <div slot="header" class="dept-card-header">
+        <span class="dept-card-title">
+          <i class="el-icon-school"></i>
+          部门/班级预警覆盖
+        </span>
+        <el-tag size="small" type="info" effect="plain">
+          共 {{ alertData.deptCoverage.length }} 个部门/班级
+        </el-tag>
       </div>
 
-      <!-- ==================== Alert Cards Grid ==================== -->
-      <div class="alert-grid">
+      <el-table
+        :data="alertData.deptCoverage"
+        stripe
+        style="width: 100%"
+        :default-sort="{ prop: 'percentage', order: 'descending' }"
+      >
+        <el-table-column
+          prop="deptName"
+          label="部门/班级名称"
+          min-width="200"
+          show-overflow-tooltip
+        >
+          <template slot-scope="scope">
+            <span class="dept-name-cell">{{ scope.row.deptName }}</span>
+          </template>
+        </el-table-column>
 
-        <!-- 🔴 RED: 心理异常 -->
-        <div class="alert-block alert-block-red">
-          <div class="block-header">
-            <div class="block-header-left">
-              <span class="block-indicator red-bg"></span>
-              <span class="block-title">心理异常预警</span>
-              <el-tag size="small" type="danger" effect="dark">{{ mentalAlerts.length }}人</el-tag>
-            </div>
-            <span class="block-badge">需立即关注</span>
-          </div>
-          <div class="block-cards">
-            <div
-              class="alert-item alert-item-red"
-              v-for="(item, idx) in mentalAlerts"
-              :key="'m' + idx"
+        <el-table-column
+          prop="studentCount"
+          label="学生人数"
+          width="140"
+          align="center"
+          sortable
+        >
+          <template slot-scope="scope">
+            <el-tag
+              size="small"
+              :type="getStudentCountTagType(scope.row.studentCount)"
+              effect="plain"
             >
-              <div class="item-left">
-                <div class="item-avatar" :style="{ background: avatarColors[idx % avatarColors.length] }">
-                  {{ item.studentName.charAt(0) }}
-                </div>
-                <div class="item-info">
-                  <div class="item-name">{{ item.studentName }}</div>
-                  <div class="item-meta">
-                    <span>{{ item.studentCode }}</span>
-                    <span class="meta-sep">·</span>
-                    <span>{{ item.className }}</span>
-                  </div>
-                  <div class="item-detail">
-                    <el-tag size="mini" type="danger" effect="plain">{{ item.mentalStatus }}</el-tag>
-                    <span class="detail-text">上次谈话：{{ item.lastTalkDate }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="item-right">
-                <el-button size="small" type="danger" plain round @click="handleTalk(item)">
-                  发起谈话
-                </el-button>
-              </div>
-            </div>
-          </div>
-        </div>
+              {{ scope.row.studentCount }}
+            </el-tag>
+          </template>
+        </el-table-column>
 
-        <!-- 🟠 ORANGE: 长期未谈 >30天 -->
-        <div class="alert-block alert-block-orange">
-          <div class="block-header">
-            <div class="block-header-left">
-              <span class="block-indicator orange-bg"></span>
-              <span class="block-title">长期未谈话预警</span>
-              <el-tag size="small" type="warning" effect="dark">{{ longNoTalkAlerts.length }}人</el-tag>
+        <el-table-column
+          prop="percentage"
+          label="占比"
+          width="160"
+          align="center"
+          sortable
+        >
+          <template slot-scope="scope">
+            <div class="percentage-cell">
+              <el-progress
+                :percentage="parseFloat(scope.row.percentage)"
+                :color="getPercentageColor(scope.row.percentage)"
+                :stroke-width="8"
+              ></el-progress>
+              <span class="percentage-text" :style="{ color: getPercentageColor(scope.row.percentage) }">
+                {{ scope.row.percentage }}%
+              </span>
             </div>
-            <span class="block-badge">超过30天</span>
-          </div>
-          <div class="block-cards">
-            <div
-              class="alert-item alert-item-orange"
-              v-for="(item, idx) in longNoTalkAlerts"
-              :key="'o' + idx"
+          </template>
+        </el-table-column>
+
+        <el-table-column
+          label="预警等级"
+          width="120"
+          align="center"
+        >
+          <template slot-scope="scope">
+            <el-tag
+              size="small"
+              :type="getAlertLevelTagType(scope.row.percentage)"
+              effect="dark"
             >
-              <div class="item-left">
-                <div class="item-avatar" :style="{ background: avatarColors[(idx + 1) % avatarColors.length] }">
-                  {{ item.studentName.charAt(0) }}
-                </div>
-                <div class="item-info">
-                  <div class="item-name">{{ item.studentName }}</div>
-                  <div class="item-meta">
-                    <span>{{ item.studentCode }}</span>
-                    <span class="meta-sep">·</span>
-                    <span>{{ item.className }}</span>
-                  </div>
-                  <div class="item-detail">
-                    <el-tag size="mini" type="warning" effect="plain">{{ item.days }}天未谈话</el-tag>
-                    <span class="detail-text">上次谈话：{{ item.lastTalkDate }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="item-right">
-                <el-button size="small" type="warning" plain round @click="handleTalk(item)">
-                  发起谈话
-                </el-button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 🟡 YELLOW: 待跟进到期 -->
-        <div class="alert-block alert-block-yellow">
-          <div class="block-header">
-            <div class="block-header-left">
-              <span class="block-indicator yellow-bg"></span>
-              <span class="block-title">待跟进事项到期</span>
-              <el-tag size="small" type="warning" effect="dark">{{ followupAlerts.length }}项</el-tag>
-            </div>
-            <span class="block-badge">即将到期</span>
-          </div>
-          <div class="block-cards">
-            <div
-              class="alert-item alert-item-yellow"
-              v-for="(item, idx) in followupAlerts"
-              :key="'y' + idx"
-            >
-              <div class="item-left">
-                <div class="item-avatar" :style="{ background: avatarColors[(idx + 2) % avatarColors.length] }">
-                  {{ item.studentName.charAt(0) }}
-                </div>
-                <div class="item-info">
-                  <div class="item-name">{{ item.studentName }}</div>
-                  <div class="item-meta">
-                    <span>{{ item.plan }}</span>
-                  </div>
-                  <div class="item-detail">
-                    <el-tag size="mini" type="warning" effect="plain">
-                      截止 {{ item.deadline }}
-                    </el-tag>
-                    <span class="detail-text urgency">{{ item.days }}天后到期</span>
-                  </div>
-                </div>
-              </div>
-              <div class="item-right">
-                <el-dropdown trigger="click" @command="function(cmd) { handleFollowupStatus(cmd, item) }">
-                  <el-button size="small" type="warning" plain round>
-                    更新状态 <i class="el-icon-arrow-down el-icon--right"></i>
-                  </el-button>
-                  <el-dropdown-menu slot="dropdown">
-                    <el-dropdown-item command="done">
-                      <i class="el-icon-success" style="color:#67c23a"></i> 已完成
-                    </el-dropdown-item>
-                    <el-dropdown-item command="progress">
-                      <i class="el-icon-loading" style="color:#409eff"></i> 进行中
-                    </el-dropdown-item>
-                    <el-dropdown-item command="delay">
-                      <i class="el-icon-time" style="color:#e6a23c"></i> 延期处理
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </el-dropdown>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 🔵 BLUE: 贫困关注 -->
-        <div class="alert-block alert-block-blue">
-          <div class="block-header">
-            <div class="block-header-left">
-              <span class="block-indicator blue-bg"></span>
-              <span class="block-title">贫困学生关注</span>
-              <el-tag size="small" effect="dark" color="#409eff">{{ poorAlerts.length }}人</el-tag>
-            </div>
-            <span class="block-badge">特别困难</span>
-          </div>
-          <div class="block-cards">
-            <div
-              class="alert-item alert-item-blue"
-              v-for="(item, idx) in poorAlerts"
-              :key="'b' + idx"
-            >
-              <div class="item-left">
-                <div class="item-avatar" :style="{ background: avatarColors[(idx + 3) % avatarColors.length] }">
-                  {{ item.studentName.charAt(0) }}
-                </div>
-                <div class="item-info">
-                  <div class="item-name">{{ item.studentName }}</div>
-                  <div class="item-meta">
-                    <span>{{ item.studentCode }}</span>
-                    <span class="meta-sep">·</span>
-                    <span>{{ item.className }}</span>
-                  </div>
-                  <div class="item-detail">
-                    <el-tag size="mini" type="info" effect="plain">{{ item.povertyLevel }}</el-tag>
-                    <el-tag size="mini" type="info" effect="plain" v-if="item.subsidyStatus">
-                      {{ item.subsidyStatus }}
-                    </el-tag>
-                  </div>
-                </div>
-              </div>
-              <div class="item-right">
-                <el-button size="small" type="primary" plain round @click="handleTalk(item)">
-                  安排关怀
-                </el-button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-    </div>
+              {{ getAlertLevelText(scope.row.percentage) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
 <script>
-import { listTalk } from '@/api/talk/talkStudent'
-import { listTalkrecord } from '@/api/talk/talkStudentRecord'
-import request from '@/utils/request'
+import { getAlerts } from '@/api/talk/talkStatistics'
 
 export default {
   name: 'AlertsV2',
 
-  data: function() {
+  data() {
     return {
-      avatarColors: ['#f56c6c', '#e6a23c', '#409eff', '#67c23a'],
-
-      mentalAlerts: [],
-      longNoTalkAlerts: [],
-      followupAlerts: [],
-      poorAlerts: [],
-      summaryCount: 0,
-      summaryResolved: 0
+      alertData: {
+        pendingFollowups: 0,
+        inProgressFollowups: 0,
+        totalAlerts: 0,
+        deptCoverage: []
+      },
+      loading: false
     }
   },
 
-  mounted: function() {
-    this.fetchData()
+  computed: {
+    totalAlertsProgress() {
+      var pending = this.alertData.pendingFollowups
+      var inProgress = this.alertData.inProgressFollowups
+      var total = this.alertData.totalAlerts
+      if (total === 0) return 100
+      return Math.round((inProgress / total) * 100)
+    },
+
+    totalAlertsProgressColor() {
+      var pending = this.alertData.pendingFollowups
+      var total = this.alertData.totalAlerts
+      if (total === 0) return '#67c23a'
+      if (pending === 0) return '#67c23a'
+      var ratio = pending / total
+      if (ratio > 0.6) return '#f56c6c'
+      if (ratio > 0.3) return '#e6a23c'
+      return '#67c23a'
+    },
+
+    totalAlertsColor() {
+      var total = this.alertData.totalAlerts
+      if (total === 0) return '#67c23a'
+      if (total >= 20) return '#f56c6c'
+      if (total >= 10) return '#e6a23c'
+      return '#67c23a'
+    },
+
+    totalAlertsIcon() {
+      var total = this.alertData.totalAlerts
+      if (total >= 20) return 'el-icon-warning'
+      if (total >= 10) return 'el-icon-warning-outline'
+      return 'el-icon-success'
+    },
+
+    totalAlertsIconClass() {
+      var total = this.alertData.totalAlerts
+      if (total >= 20) return 'danger-bg'
+      if (total >= 10) return 'warning-bg'
+      return 'success-bg'
+    },
+
+    totalAlertsCardClass() {
+      var total = this.alertData.totalAlerts
+      if (total >= 20) return 'summary-card-danger-border'
+      if (total >= 10) return 'summary-card-warning-border'
+      return 'summary-card-success-border'
+    }
+  },
+
+  mounted() {
+    this.fetchAlerts()
   },
 
   methods: {
-    fetchData: function() {
+    fetchAlerts() {
       var self = this
-
-      listTalk({ pageSize: 9999 }).then(function(res) {
-        var students = res.rows || []
-        self.mentalAlerts = students
-          .filter(function(s) { return s.mentalHealthStatus && s.mentalHealthStatus !== 'normal' })
-          .map(function(s) { return { studentName: s.studentName, studentCode: s.studentCode, className: '', mentalStatus: s.mentalHealthStatus, lastTalkDate: '' } })
-      })
-
-      listTalk({ pageSize: 9999 }).then(function(r) {
-        var students = r.rows || []
-        self.poorAlerts = students
-          .filter(function(s) { return s.povertyLevel === 'severe' || s.povertyLevel === 'difficult' })
-          .map(function(s) { return { studentName: s.studentName, studentCode: s.studentCode, className: '', povertyLevel: s.povertyLevel } })
-      })
-
-      listTalkrecord({ pageSize: 9999 }).then(function(res) {
-        var records = res.rows || []
-        var lastTalkMap = {}
-        var now = new Date()
-        records.forEach(function(r) {
-          if (!lastTalkMap[r.studentId] || new Date(r.createTime) > new Date(lastTalkMap[r.studentId])) {
-            lastTalkMap[r.studentId] = r.createTime
-          }
-        })
-        listTalk({ pageSize: 9999 }).then(function(r2) {
-          var allStudents = r2.rows || []
-          self.longNoTalkAlerts = allStudents
-            .filter(function(s) {
-              var last = lastTalkMap[s.studentId]
-              if (!last) return true
-              return (now - new Date(last)) / (1000 * 86400) > 30
-            })
-            .slice(0, 10)
-            .map(function(s) {
-              var last = lastTalkMap[s.studentId]
-              var days = last ? Math.floor((now - new Date(last)) / (1000 * 86400)) : 999
-              return { studentName: s.studentName, studentCode: s.studentCode, className: '', days: days, lastTalkDate: last || '从未' }
-            })
-        })
-      })
-
-      listTalkrecord({ followupStatus: 'pending', pageSize: 9999 }).then(function(res) {
-        var records = res.rows || []
-        Promise.all(records.map(function(r) {
-          return listTalk({ pageSize: 1 }).then(function(r2) {
-            return { ...r, studentName: (r2.rows || [])[0]?.studentName || '', studentCode: (r2.rows || [])[0]?.studentCode || '' }
-          }).catch(function() { return r })
-        })).then(function(enriched) {
-          self.followupAlerts = enriched.map(function(r) {
-            var days = r.createTime ? Math.floor((new Date() - new Date(r.createTime)) / (1000 * 86400)) : 0
-            return { studentName: r.studentName, studentCode: r.studentCode, plan: r.followupPlan || '', days: days, deadline: r.createTime || '' }
-          })
-        })
-      })
-
-      this.$watch(function() {
-        self.summaryCount = self.mentalAlerts.length + self.longNoTalkAlerts.length + self.followupAlerts.length + self.poorAlerts.length
-        self.summaryResolved = 2
+      self.loading = true
+      getAlerts().then(function(res) {
+        var data = res.data
+        self.alertData.pendingFollowups = data.pendingFollowups || 0
+        self.alertData.inProgressFollowups = data.inProgressFollowups || 0
+        self.alertData.totalAlerts = data.totalAlerts || 0
+        self.alertData.deptCoverage = data.deptCoverage || []
+        self.loading = false
+      }).catch(function() {
+        self.loading = false
       })
     },
 
-    handleTalk: function(item) {
-      this.$message.success('已跳转至谈话发起页面：' + (item.studentName || item.name))
+    getPercentageColor(percentage) {
+      var val = parseFloat(percentage)
+      if (val >= 30) return '#f56c6c'
+      if (val >= 15) return '#e6a23c'
+      return '#67c23a'
     },
 
-    handleFollowupStatus: function(cmd, item) {
-      var statusMap = {
-        done: '已完成',
-        progress: '进行中',
-        delay: '延期处理'
-      }
-      item.status = cmd
-      this.$message.success(
-        '跟进事项【' + item.studentName + '】状态已更新为：' + statusMap[cmd]
-      )
+    getAlertLevelText(percentage) {
+      var val = parseFloat(percentage)
+      if (val >= 30) return '高'
+      if (val >= 15) return '中'
+      return '低'
+    },
+
+    getAlertLevelTagType(percentage) {
+      var val = parseFloat(percentage)
+      if (val >= 30) return 'danger'
+      if (val >= 15) return 'warning'
+      return 'success'
+    },
+
+    getStudentCountTagType(count) {
+      if (count >= 50) return 'danger'
+      if (count >= 30) return 'warning'
+      if (count >= 10) return 'primary'
+      return 'success'
     }
   }
 }
 </script>
 
 <style scoped>
-/* ============================================================
-   Root & Container
-   ============================================================ */
-.alerts-root {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
-  padding: 24px;
-  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
-  box-sizing: border-box;
-}
-
 .alerts-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 16px;
 }
 
-/* ============================================================
-   Top Banner
-   ============================================================ */
-.banner-wrap {
-  margin-bottom: 28px;
+.summary-row {
+  margin-bottom: 20px;
 }
 
-.banner-card {
-  background: linear-gradient(135deg, #fff5f5, #fff);
-  border: 1px solid #fde2e2;
-  border-radius: 16px;
-  padding: 20px 28px;
+.summary-card {
+  border-radius: 8px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-3px);
+}
+
+.summary-card-danger {
+  border-top: 3px solid #f56c6c;
+}
+
+.summary-card-primary {
+  border-top: 3px solid #409eff;
+}
+
+.summary-card-danger-border {
+  border-top: 3px solid #f56c6c;
+}
+
+.summary-card-warning-border {
+  border-top: 3px solid #e6a23c;
+}
+
+.summary-card-success-border {
+  border-top: 3px solid #67c23a;
+}
+
+.summary-body {
   display: flex;
   align-items: center;
-  gap: 20px;
-  box-shadow: 0 2px 16px rgba(245, 108, 108, 0.08);
-  animation: bannerPulse 2.4s ease-in-out infinite;
-}
-
-@keyframes bannerPulse {
-  0%, 100% {
-    box-shadow: 0 2px 16px rgba(245, 108, 108, 0.08), 0 0 0 0 rgba(245, 108, 108, 0.2);
-  }
-  50% {
-    box-shadow: 0 2px 16px rgba(245, 108, 108, 0.08), 0 0 0 12px rgba(245, 108, 108, 0);
-  }
-}
-
-.banner-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #f56c6c, #e04040);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.banner-icon .el-icon-warning-outline {
-  font-size: 28px;
-  color: #fff;
-}
-
-.banner-body {
-  flex: 1;
-}
-
-.banner-title {
-  font-size: 18px;
-  color: #303133;
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
-.banner-count {
-  font-size: 26px;
-  color: #f56c6c;
-  font-weight: 800;
-}
-
-.banner-sub {
-  font-size: 13px;
-  color: #909399;
-}
-
-.banner-progress {
-  flex-shrink: 0;
-}
-
-/* ============================================================
-   Alert Grid
-   ============================================================ */
-.alert-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-
-/* ============================================================
-   Alert Block (Colored Section Card)
-   ============================================================ */
-.alert-block {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  transition: box-shadow 0.3s ease, transform 0.3s ease;
-  border-left: 4px solid transparent;
-}
-
-.alert-block:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
-}
-
-.alert-block-red    { border-left-color: #f56c6c; }
-.alert-block-orange { border-left-color: #e6a23c; }
-.alert-block-yellow { border-left-color: #f2c811; }
-.alert-block-blue   { border-left-color: #409eff; }
-
-/* ============================================================
-   Block Header
-   ============================================================ */
-.block-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.block-header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.block-indicator {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.red-bg    { background: #f56c6c; }
-.orange-bg { background: #e6a23c; }
-.yellow-bg { background: #f2c811; }
-.blue-bg   { background: #409eff; }
-
-.block-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.block-badge {
-  font-size: 11px;
-  color: #909399;
-  background: #f5f7fa;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-weight: 500;
-}
-
-/* ============================================================
-   Block Cards (Alert Items)
-   ============================================================ */
-.block-cards {
+  gap: 16px;
   padding: 8px 0;
 }
 
-.alert-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  transition: background 0.2s ease;
-  border-bottom: 1px solid #fafafa;
-  border-left: 3px solid transparent;
-}
-
-.alert-item:last-child {
-  border-bottom: none;
-}
-
-.alert-item:hover {
-  background: #fafbfc;
-}
-
-.alert-item-red:hover    { border-left-color: #f56c6c; background: #fef8f8; }
-.alert-item-orange:hover { border-left-color: #e6a23c; background: #fef9f0; }
-.alert-item-yellow:hover { border-left-color: #f2c811; background: #fffef5; }
-.alert-item-blue:hover   { border-left-color: #409eff; background: #f5f9ff; }
-
-/* ============================================================
-   Item Left
-   ============================================================ */
-.item-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex: 1;
-  min-width: 0;
-}
-
-.item-avatar {
-  width: 42px;
-  height: 42px;
+.summary-icon {
+  width: 56px;
+  height: 56px;
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 700;
   flex-shrink: 0;
 }
 
-.item-info {
+.summary-icon i {
+  font-size: 28px;
+  color: #fff;
+}
+
+.danger-bg {
+  background: linear-gradient(135deg, #f56c6c, #e04040);
+}
+
+.primary-bg {
+  background: linear-gradient(135deg, #409eff, #3a8ee6);
+}
+
+.warning-bg {
+  background: linear-gradient(135deg, #e6a23c, #d4932e);
+}
+
+.success-bg {
+  background: linear-gradient(135deg, #67c23a, #5daf34);
+}
+
+.summary-info {
+  flex: 1;
   min-width: 0;
 }
 
-.item-name {
+.summary-label {
   font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 2px;
-}
-
-.item-meta {
-  font-size: 12px;
   color: #909399;
-  margin-bottom: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-bottom: 4px;
 }
 
-.meta-sep {
-  margin: 0 4px;
-  color: #c0c4cc;
+.summary-value {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
 }
 
-.item-detail {
+.summary-divider {
+  margin: 12px 0;
+}
+
+.summary-footer {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.detail-text {
-  font-size: 12px;
+.summary-tag {
+  flex-shrink: 0;
+}
+
+.summary-desc {
+  font-size: 13px;
   color: #909399;
 }
 
-.detail-text.urgency {
-  color: #e6a23c;
+.dept-card {
+  border-radius: 8px;
+}
+
+.dept-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dept-card-title {
+  font-size: 15px;
   font-weight: 600;
+  color: #303133;
 }
 
-/* ============================================================
-   Item Right
-   ============================================================ */
-.item-right {
-  flex-shrink: 0;
-  margin-left: 16px;
+.dept-card-title i {
+  margin-right: 6px;
+  color: #409eff;
 }
 
-/* ============================================================
-   Responsive
-   ============================================================ */
-@media (max-width: 900px) {
-  .alert-grid {
-    grid-template-columns: 1fr;
-  }
+.dept-name-cell {
+  font-weight: 500;
+  color: #303133;
+}
 
-  .banner-card {
-    flex-direction: column;
-    text-align: center;
-  }
+.percentage-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
-  .alert-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
+.percentage-cell .el-progress {
+  flex: 1;
+}
 
-  .item-right {
-    margin-left: 0;
-    align-self: flex-end;
-  }
+.percentage-text {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 </style>

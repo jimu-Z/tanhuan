@@ -42,6 +42,11 @@ module.exports = {
           ['^' + process.env.VUE_APP_BASE_API]: ''
         }
       },
+      // ruoyi 微服务路径代理
+      '^/ruoyi-system': {
+        target: baseUrl,
+        changeOrigin: true
+      },
       // springdoc proxy
       '^/v3/api-docs/(.*)': {
         target: baseUrl,

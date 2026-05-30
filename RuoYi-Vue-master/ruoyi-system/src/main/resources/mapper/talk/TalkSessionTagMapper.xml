@@ -9,6 +9,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="tagValue" column="tag_value" />
     </resultMap>
 
+    <sql id="selectTalkSessionTagVo">
+        select session_id, tag_value from talk_session_tag
+    </sql>
+
     <insert id="insertTalkSessionTag">
         insert into talk_session_tag values(#{sessionId}, #{tagValue})
     </insert>
@@ -18,6 +22,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </delete>
 
     <select id="selectTalkSessionTagBySessionId" parameterType="Long" resultMap="TalkSessionTagResult">
-        select session_id, tag_value from talk_session_tag where session_id = #{sessionId}
+        <include refid="selectTalkSessionTagVo"/>
+        where session_id = #{sessionId}
+    </select>
+
+    <select id="countTagsByValue" resultType="java.util.HashMap">
+        select tag_value as tag, count(*) as cnt
+        from talk_session_tag group by tag_value
     </select>
 </mapper>

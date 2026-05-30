@@ -64,4 +64,8 @@ public interface TalkStudentRecordMapper
     public List<TalkStudentRecord> selectTalkStudentRecordBySessionId(Long sessionId);
 
     public List<TalkStudentRecord> selectTalkStudentRecordByStudentId(Long studentId);
+
+    public int countRecords();
+    public List<java.util.HashMap<String, Object>> countRecordsByFollowupStatus();
+    public int countRecordsBySessionId(Long sessionId);
 }

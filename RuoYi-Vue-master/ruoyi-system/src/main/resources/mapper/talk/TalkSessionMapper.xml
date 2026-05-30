@@ -90,4 +90,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{sessionId}
         </foreach>
     </delete>
+
+    <select id="countTalkSessions" resultType="int">
+        select count(*) from talk_session
+    </select>
+
+    <select id="countTalkSessionsByMonth" resultType="java.util.HashMap">
+        select DATE_FORMAT(talk_time, '%Y-%m') as month, count(*) as cnt
+        from talk_session group by DATE_FORMAT(talk_time, '%Y-%m')
+        order by month asc limit 12
+    </select>
+
+    <select id="countTalkSessionsByType" resultType="java.util.HashMap">
+        select talk_type as type, count(*) as cnt
+        from talk_session group by talk_type
+    </select>
 </mapper>
