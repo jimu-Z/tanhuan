@@ -106,6 +106,12 @@ export const constantRoutes = [
     children: [{ path: '', component: () => import('@/views/talk/advancedQuery/index'), name: 'AdvancedQuery', meta: { title: '高级查询' } }]
   },
   {
+    path: '/talk/followup',
+    component: Layout,
+    hidden: true,
+    children: [{ path: '', component: () => import('@/views/talk/followup/index'), name: 'Followup', meta: { title: '谈话跟进' } }]
+  },
+  {
     path: '/user',
     component: Layout,
     hidden: true,

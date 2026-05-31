@@ -77,6 +77,7 @@ CREATE TABLE talk_student_record (
   followup_plan    VARCHAR(500)    NOT NULL DEFAULT ''        COMMENT '跟进计划',
   followup_status  VARCHAR(20)     DEFAULT 'pending'          COMMENT '跟进状态（none=无需跟进 pending=待跟进 in_progress=跟进中 completed=已完成）',
   create_time      DATETIME                                   COMMENT '创建时间',
+  update_time      DATETIME                                   COMMENT '更新时间',
   PRIMARY KEY (record_id),
   KEY idx_tsr_session (session_id),
   KEY idx_tsr_student (student_id),

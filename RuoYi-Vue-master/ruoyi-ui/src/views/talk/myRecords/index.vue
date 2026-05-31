@@ -75,11 +75,11 @@ export default {
         this.total = res.total
         this.loadTags()
         this.loadStudents()
-      }).finally(() => { this.loading = false })
+      }).catch(() => { this.loading = false }).finally(() => { this.loading = false })
     },
     loadTags() {
       this.talksessionList.forEach(s => {
-        getSessionTags(s.sessionId).then(r => this.$set(this.tagMap, s.sessionId, r.data || []))
+        getSessionTags(s.sessionId).then(r => this.$set(this.tagMap, s.sessionId, r.data || [])).catch(() => {})
       })
     },
     loadStudents() {
@@ -87,21 +87,23 @@ export default {
         listTalkrecord({ sessionId: s.sessionId, pageSize: 999 }).then(r => {
           const ids = (r.rows || []).map(rec => rec.studentId)
           Promise.all(ids.map(id => getTalk(id))).then(students => {
-            this.$set(this.studentMap, s.sessionId, students.map(st => st.data.studentName))
-          })
-        })
+            this.$set(this.studentMap, s.sessionId, students.map(st => st.data ? st.data.studentName : '-'))
+          }).catch(() => {})
+        }).catch(() => {})
       })
     },
     getTagLabel(v) { return TAG_LABELS[v] || v },
     handleExport(row) {
-      const ext = row.talkType === 'group' ? '.zip' : '.docx'
+      let url = '/ruoyi-system/talksession/exportDocx/' + row.sessionId;
       this.$modal.confirm('导出' + row.talkPerson + '的谈话记录？').then(() => {
-        return request({ url: '/ruoyi-system/talksession/exportDocx/' + row.sessionId, method: 'get', responseType: 'blob' })
+        return request({ url: url, method: 'get', responseType: 'blob' }).catch(() => { this.$modal.msgError('导出失败') })
       }).then(blob => {
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a'); a.href = url
-        a.download = '谈话记录_' + (row.talkPerson || row.sessionId) + ext
-        a.click(); window.URL.revokeObjectURL(url)
+        const blobUrl = window.URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href = blobUrl
+        const contentType = blob.type || ''
+        const actualExt = contentType.includes('zip') ? '.zip' : '.docx'
+        a.download = '谈话记录_' + (row.talkPerson || row.sessionId) + actualExt
+        a.click(); window.URL.revokeObjectURL(blobUrl)
         this.$modal.msgSuccess('导出成功')
       }).catch(() => {})
     }

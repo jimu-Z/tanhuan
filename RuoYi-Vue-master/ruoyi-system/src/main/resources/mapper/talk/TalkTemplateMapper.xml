@@ -26,9 +26,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectTalkTemplateList" parameterType="TalkTemplate" resultMap="TalkTemplateResult">
         <include refid="selectTalkTemplateVo"/>
         <where>
-            del_flag = '0'
-            <if test="templateType != null and templateType != ''"> and template_type = #{templateType}</if>
-            <if test="templateName != null and templateName != ''"> and template_name like concat('%', #{templateName}, '%')</if>
+            <if test="templateName != null  and templateName != ''"> and template_name like concat('%', #{templateName}, '%')</if>
+            <if test="templateType != null  and templateType != ''"> and template_type = #{templateType}</if>
+            and del_flag = '0'
         </where>
     </select>
 

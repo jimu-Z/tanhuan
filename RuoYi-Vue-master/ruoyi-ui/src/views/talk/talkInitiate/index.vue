@@ -214,6 +214,7 @@
 import { listTalk } from '@/api/talk/talkStudent'
 import { createTalk } from '@/api/talk/talkInitiate'
 import { listSystemTemplate, listTemplate } from '@/api/talk/talkTemplate'
+import { TAG_LABELS } from '@/api/talk/talkSession'
 
 export default {
   name: 'TalkInitiate',
@@ -239,15 +240,7 @@ export default {
         talkContent: '',
         tags: []
       },
-      tagOptions: [
-        { value: 'thought_education', label: '思想理论教育和价值引领' },
-        { value: 'party_class', label: '党团和班级建设' },
-        { value: 'study_style', label: '学风建设' },
-        { value: 'daily_affairs', label: '日常事务' },
-        { value: 'mental_health', label: '心理健康教育与咨询' },
-        { value: 'crisis_response', label: '危机事件应对' },
-        { value: 'career_guidance', label: '职业规划与就业创业指导' }
-      ],
+      tagOptions: Object.keys(TAG_LABELS).map(k => ({ value: k, label: TAG_LABELS[k] })),
       rules: {
         talkTime: [{ required: true, message: '请选择谈话时间', trigger: 'change' }],
         talkLocation: [{ required: true, message: '请输入谈话地点', trigger: 'blur' }],
@@ -277,7 +270,7 @@ export default {
       this.studentLoading = true
       listTalk({ pageNum: 1, pageSize: 9999 }).then(res => {
         this.allStudents = res.rows || []
-      }).finally(() => {
+      }).catch(() => {}).finally(() => {
         this.studentLoading = false
       })
     },
@@ -316,8 +309,8 @@ export default {
       this.loadTemplates()
     },
     loadTemplates() {
-      listSystemTemplate().then(res => { this.systemTemplates = res.rows || res.data || [] })
-      listTemplate({ templateType: 'personal' }).then(res => { this.personalTemplates = res.rows || [] })
+      listSystemTemplate().then(res => { this.systemTemplates = res.rows || res.data || [] }).catch(() => {})
+      listTemplate({ templateType: 'personal' }).then(res => { this.personalTemplates = res.rows || [] }).catch(() => {})
     },
     clearContent() {
       this.$confirm('确认清空谈话内容？', '提示', { type: 'warning' }).then(() => {
@@ -359,12 +352,7 @@ export default {
       this.$message.success(append ? '模板内容已追加' : '模板内容已替换')
     },
     getTagLabel(value) {
-      const map = {
-        thought_education: '思想理论教育', party_class: '党团班级建设', study_style: '学风建设',
-        daily_affairs: '日常事务', mental_health: '心理健康', crisis_response: '危机应对',
-        career_guidance: '职业规划就业'
-      }
-      return map[value] || value
+      return TAG_LABELS[value] || value
     },
     submitForm() {
       this.$refs.talkForm.validate(valid => {

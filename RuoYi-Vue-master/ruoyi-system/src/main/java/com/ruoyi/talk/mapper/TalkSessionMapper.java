@@ -1,5 +1,6 @@
 package com.ruoyi.talk.mapper;
 
+import java.util.HashMap;
 import java.util.List;
 import com.ruoyi.talk.domain.TalkSession;
 
@@ -60,6 +61,8 @@ public interface TalkSessionMapper
     public int deleteTalkSessionBySessionIds(Long[] sessionIds);
 
     public int countTalkSessions();
-    public List<java.util.HashMap<String, Object>> countTalkSessionsByMonth();
-    public List<java.util.HashMap<String, Object>> countTalkSessionsByType();
+    public List<HashMap<String, Object>> countTalkSessionsByMonth();
+    public List<HashMap<String, Object>> countTalkSessionsByType();
+
+    public List<TalkSession> selectTalkSessionBySessionIds(Long[] sessionIds);
 }

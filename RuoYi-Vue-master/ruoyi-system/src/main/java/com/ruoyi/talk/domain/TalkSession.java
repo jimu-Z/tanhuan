@@ -21,7 +21,7 @@ public class TalkSession extends BaseEntity
     private Long sessionId;
 
     /** 谈话类型（individual 个体谈话 / group 集体谈话） */
-    @Excel(name = "谈话类型", readConverterExp = "i=ndividual,个=体谈话,/=,g=roup,集=体谈话")
+    @Excel(name = "谈话类型", readConverterExp = "individual=个别谈话,group=集体谈话")
     private String talkType;
 
     /** 谈话时间 */
@@ -38,7 +38,7 @@ public class TalkSession extends BaseEntity
     private String talkPerson;
 
     /** 谈话内容（所有参与学生共享） */
-    @Excel(name = "谈话内容", readConverterExp = "所=有参与学生共享")
+    @Excel(name = "谈话内容")
     private String talkContent;
 
     public void setSessionId(Long sessionId) 

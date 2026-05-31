@@ -128,10 +128,13 @@ public class TalkStudentRecord extends BaseEntity
             .append("recordId", getRecordId())
             .append("sessionId", getSessionId())
             .append("studentId", getStudentId())
+            .append("studentName", getStudentName())
+            .append("studentCode", getStudentCode())
             .append("studentFeedback", getStudentFeedback())
             .append("followupPlan", getFollowupPlan())
             .append("followupStatus", getFollowupStatus())
             .append("createTime", getCreateTime())
+            .append("updateTime", getUpdateTime())
             .toString();
     }
 }

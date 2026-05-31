@@ -80,3 +80,21 @@ INSERT INTO sys_role_menu VALUES(3, 2050),(3, 2055),(3, 2060),(3, 2061),(3, 2062
 INSERT INTO sys_role_menu VALUES(4, 2050),(4, 2055),(4, 2060),(4, 2061),(4, 2065),(4, 2070);
 -- 辅导员/班主任（id=5）查看+新增模板
 INSERT INTO sys_role_menu VALUES(5, 2050),(5, 2055),(5, 2060),(5, 2061),(5, 2062),(5, 2065),(5, 2070);
+
+-- ============================================
+-- 2026-05-30 新增功能菜单：谈话跟进
+-- ============================================
+
+-- 谈话跟进（二级菜单）
+INSERT INTO sys_menu VALUES(2075, '谈话跟进', @talkMenuId, 12, 'followup', 'talk/followup/index', '', '', 1, 0, 'C', '0', '0', 'talk:followup:list', 'list', 'admin', NOW(), '', NULL, '谈话跟进管理');
+SET @followupMenuId = 2075;
+INSERT INTO sys_menu VALUES(2076, '谈话跟进查询', @followupMenuId, 1, '#', '', '', '', 1, 0, 'F', '0', '0', 'talk:followup:query', '#', 'admin', NOW(), '', NULL, '');
+INSERT INTO sys_menu VALUES(2077, '谈话跟进修改', @followupMenuId, 2, '#', '', '', '', 1, 0, 'F', '0', '0', 'talk:followup:edit', '#', 'admin', NOW(), '', NULL, '');
+
+-- 为角色分配跟进菜单权限
+-- 管理员（id=3）全部可见
+INSERT INTO sys_role_menu VALUES(3, 2075),(3, 2076),(3, 2077);
+-- 书记/副书记（id=4）查看
+INSERT INTO sys_role_menu VALUES(4, 2075),(4, 2076);
+-- 辅导员/班主任（id=5）查看+编辑
+INSERT INTO sys_role_menu VALUES(5, 2075),(5, 2076),(5, 2077);

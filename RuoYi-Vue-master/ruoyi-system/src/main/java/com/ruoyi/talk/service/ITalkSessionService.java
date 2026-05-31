@@ -3,6 +3,7 @@ package com.ruoyi.talk.service;
 import java.util.List;
 import com.ruoyi.talk.domain.TalkSession;
 import com.ruoyi.talk.domain.TalkSessionCreateRequest;
+import com.ruoyi.talk.domain.TalkSessionTag;
 
 /**
  * 谈话会话管理Service接口
@@ -30,4 +31,5 @@ public interface ITalkSessionService
      * @return 创建的 session
      */
     public TalkSession createTalkWithRecords(TalkSessionCreateRequest request);
+    public List<TalkSessionTag> selectTalkSessionTags(Long sessionId);
 }

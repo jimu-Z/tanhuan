@@ -208,7 +208,7 @@ export default {
         this.talkrecordList = response.rows
         this.total = response.total
         this.loading = false
-      })
+      }).catch(() => { this.loading = false })
     },
     // 取消按钮
     cancel() {
@@ -255,10 +255,10 @@ export default {
       this.reset()
       const recordId = row.recordId || this.ids
       getTalkrecord(recordId).then(response => {
-        this.form = response.data
+        this.form = response.data || {}
         this.open = true
         this.title = "修改谈话记录管理"
-      })
+      }).catch(() => { this.$modal.msgError('获取记录详情失败') })
     },
     /** 提交按钮 */
     submitForm() {
@@ -269,13 +269,13 @@ export default {
               this.$modal.msgSuccess("修改成功")
               this.open = false
               this.getList()
-            })
+            }).catch(() => {})
           } else {
             addTalkrecord(this.form).then(response => {
               this.$modal.msgSuccess("新增成功")
               this.open = false
               this.getList()
-            })
+            }).catch(() => {})
           }
         }
       })

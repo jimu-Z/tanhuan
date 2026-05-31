@@ -20,9 +20,6 @@ import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.talk.domain.TalkStudent;
-import com.ruoyi.talk.domain.TalkStudentRecord;
-import com.ruoyi.talk.mapper.TalkSessionMapper;
-import com.ruoyi.talk.mapper.TalkStudentRecordMapper;
 import com.ruoyi.talk.service.ITalkStudentService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
@@ -38,12 +35,6 @@ import com.ruoyi.common.core.page.TableDataInfo;
 public class TalkStudentController extends BaseController {
     @Autowired
     private ITalkStudentService talkStudentService;
-
-    @Autowired
-    private TalkStudentRecordMapper talkStudentRecordMapper;
-
-    @Autowired
-    private TalkSessionMapper talkSessionMapper;
 
     /**
      * 查询学生信息管理列表
@@ -74,24 +65,7 @@ public class TalkStudentController extends BaseController {
     @PreAuthorize("@ss.hasPermi('talk:student:query')")
     @GetMapping("/detail/{studentId}")
     public AjaxResult getDetail(@PathVariable("studentId") Long studentId) {
-        TalkStudent student = talkStudentService.selectTalkStudentByStudentId(studentId);
-        if (student == null) {
-            return error("学生不存在");
-        }
-        List<TalkStudentRecord> records = talkStudentRecordMapper.selectTalkStudentRecordByStudentId(studentId);
-        List<java.util.Map<String, Object>> history = new java.util.ArrayList<>();
-        if (records != null) {
-            for (TalkStudentRecord rec : records) {
-                java.util.Map<String, Object> item = new java.util.HashMap<>();
-                item.put("record", rec);
-                item.put("session", talkSessionMapper.selectTalkSessionBySessionId(rec.getSessionId()));
-                history.add(item);
-            }
-        }
-        java.util.Map<String, Object> result = new java.util.HashMap<>();
-        result.put("student", student);
-        result.put("history", history);
-        return success(result);
+        return success(talkStudentService.getStudentDetail(studentId));
     }
 
     /**

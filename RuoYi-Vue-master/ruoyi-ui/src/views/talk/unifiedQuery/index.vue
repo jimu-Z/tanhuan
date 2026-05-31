@@ -142,15 +142,7 @@ export default {
         tags: []
       },
 
-      tagOptions: [
-        { value: 'thought_education', label: '思想理论教育和价值引领' },
-        { value: 'party_class', label: '党团和班级建设' },
-        { value: 'study_style', label: '学风建设' },
-        { value: 'daily_affairs', label: '日常事务' },
-        { value: 'mental_health', label: '心理健康教育与咨询' },
-        { value: 'crisis_response', label: '危机事件应对' },
-        { value: 'career_guidance', label: '职业规划与就业创业指导' }
-      ]
+      tagOptions: Object.keys(TAG_LABELS).map(k => ({ value: k, label: TAG_LABELS[k] }))
     }
   },
   created() {
@@ -168,8 +160,17 @@ export default {
       delete params.keyword
       delete params.tags
 
+      const hasFrontendFilters = this.queryParams.keyword || this.queryParams.talkType ||
+        (this.queryParams.tags && this.queryParams.tags.length > 0) ||
+        (this.queryParams.dateRange && this.queryParams.dateRange.length === 2)
+
       if (this.talkTypeFilter) {
         params.talkType = this.talkTypeFilter
+      }
+
+      if (hasFrontendFilters) {
+        params.pageNum = 1
+        params.pageSize = 9999
       }
 
       listTalksession(params).then(response => {
@@ -225,7 +226,12 @@ export default {
 
         Promise.all(recordPromises).then(results => {
           this.allData = results.flat()
-          this.applyFilters()
+          if (hasFrontendFilters) {
+            this.applyFilters()
+          } else {
+            this.total = response.total
+            this.displayList = this.allData.slice()
+          }
           this.loading = false
         }).catch(() => {
           this.allData = []
@@ -260,8 +266,8 @@ export default {
       if (this.queryParams.keyword) {
         const kw = this.queryParams.keyword.toLowerCase()
         data = data.filter(row =>
-          row.studentName.toLowerCase().indexOf(kw) > -1 ||
-          row.studentCode.toLowerCase().indexOf(kw) > -1
+          (row.studentName || '').toLowerCase().indexOf(kw) > -1 ||
+          (row.studentCode || '').toLowerCase().indexOf(kw) > -1
         )
       }
 
@@ -335,7 +341,9 @@ export default {
         a.click()
         window.URL.revokeObjectURL(url)
         this.$modal.msgSuccess('导出成功')
-      }).catch(() => {})
+      }).catch(() => {
+        this.$modal.msgError('导出失败')
+      })
     },
 
     handleBatchExport() {
@@ -359,7 +367,9 @@ export default {
         a.click()
         window.URL.revokeObjectURL(url)
         this.$modal.msgSuccess('导出成功')
-      }).catch(() => {})
+      }).catch(() => {
+        this.$modal.msgError('批量导出失败')
+      })
     }
   }
 }

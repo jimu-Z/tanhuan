@@ -101,6 +101,7 @@ export default {
   data() {
     return {
       loading: false,
+      fetching: false,
       refreshTimer: null,
       clockTimer: null,
       currentDateTime: '',
@@ -171,6 +172,8 @@ export default {
     },
 
     fetchData() {
+      if (this.fetching) return
+      this.fetching = true
       var self = this
       getBigscreen().then(function(res) {
         var data = res.data || res
@@ -189,7 +192,11 @@ export default {
         self.$nextTick(function() {
           self.initAllCharts()
         })
-      }).catch(function() {})
+      }).catch(() => {
+        console.error('Bigscreen fetch error')
+      }).finally(() => {
+        self.fetching = false
+      })
     },
 
     formatTime(date) {
@@ -206,7 +213,7 @@ export default {
     },
 
     createChart(refName) {
-      if (this.chartInstances[refName]) {
+      if (this.chartInstances[refName] && !this.chartInstances[refName].isDisposed()) {
         this.chartInstances[refName].dispose()
       }
       var dom = this.$refs[refName]
@@ -217,11 +224,11 @@ export default {
     },
 
     disposeAllCharts() {
-      for (var key in this.chartInstances) {
-        if (this.chartInstances[key]) {
+      Object.keys(this.chartInstances).forEach(key => {
+        if (this.chartInstances[key] && !this.chartInstances[key].isDisposed()) {
           this.chartInstances[key].dispose()
         }
-      }
+      })
       this.chartInstances = {}
     },
 

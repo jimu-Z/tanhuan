@@ -79,7 +79,7 @@
 
 <script>
 import { listTalkrecord } from '@/api/talk/talkStudentRecord'
-import { getTalksession } from '@/api/talk/talkSession'
+import { getTalksession, TAG_LABELS } from '@/api/talk/talkSession'
 
 export default {
   name: 'AdvancedQuery',
@@ -87,24 +87,18 @@ export default {
     return {
       loading: false, total: 0, result: [], selected: [],
       q: { pageNum: 1, pageSize: 10, dateRange: null, keyword: '', talkType: '', tags: [], talkPerson: '', followupStatus: '' },
-      tagOptions: [
-        { value:'thought_education', label:'思想理论教育和价值引领' },
-        { value:'party_class', label:'党团和班级建设' },
-        { value:'study_style', label:'学风建设' },
-        { value:'daily_affairs', label:'日常事务' },
-        { value:'mental_health', label:'心理健康教育与咨询' },
-        { value:'crisis_response', label:'危机事件应对' },
-        { value:'career_guidance', label:'职业规划与就业创业指导' }
-      ]
+      tagOptions: Object.keys(TAG_LABELS).map(k => ({ value: k, label: TAG_LABELS[k] }))
     }
   },
   methods: {
     search() {
       this.loading = true
       const p = { ...this.q }
+      const hasFrontendFilters = p.keyword || p.talkType || p.talkPerson ||
+        (p.tags && p.tags.length > 0) || (p.dateRange && p.dateRange.length === 2)
       const apiParams = {
-        pageNum: p.pageNum,
-        pageSize: p.pageSize,
+        pageNum: hasFrontendFilters ? 1 : p.pageNum,
+        pageSize: hasFrontendFilters ? 9999 : p.pageSize,
         followupStatus: p.followupStatus || undefined
       }
       listTalkrecord(apiParams).then(res => {
@@ -161,11 +155,19 @@ export default {
               return r.talkTime >= start && r.talkTime <= end
             })
           }
-          this.result = filtered
-          this.total = filtered.length
+          if (hasFrontendFilters) {
+            this.total = filtered.length
+            const startIdx = (p.pageNum - 1) * p.pageSize
+            this.result = filtered.slice(startIdx, startIdx + p.pageSize)
+          } else {
+            this.result = filtered
+            this.total = res.total
+          }
           this.loading = false
         })
       }).catch(() => {
+        this.result = []
+        this.total = 0
         this.loading = false
       })
     },
@@ -182,7 +184,11 @@ export default {
           const url = window.URL.createObjectURL(blob)
           const a = document.createElement('a'); a.href = url
           a.download = fileName; a.click(); window.URL.revokeObjectURL(url)
+        }).catch(() => {
+          this.$modal.msgError('导出失败')
         })
+      }).catch(() => {
+        this.$modal.msgError('导出失败')
       })
     },
     batchExport() {

@@ -83,15 +83,18 @@ export default {
     loadDetail(studentId) {
       this.loadingHistory = true
       getStudentDetail(studentId).then(res => {
-        this.student = res.data.student || {}
-        this.history = (res.data.history || []).sort((a, b) => {
-          return (b.session.talkTime || '').localeCompare(a.session.talkTime || '')
+        const data = res.data || {}
+        this.student = data.student || {}
+        this.history = (data.history || []).sort((a, b) => {
+          return ((b.session && b.session.talkTime) || '').localeCompare((a.session && a.session.talkTime) || '')
         })
         this.history.forEach(h => {
-          const sid = h.session.sessionId
-          getSessionTags(sid).then(r => { this.$set(this.tagCache, sid, (r.data || []).map(t => TAG_LABELS[t.tagValue] || t.tagValue).join('、')) })
+          const sid = h.session ? h.session.sessionId : null
+          if (sid) {
+            getSessionTags(sid).then(r => { this.$set(this.tagCache, sid, (r.data || []).map(t => TAG_LABELS[t.tagValue] || t.tagValue).join('、')) }).catch(() => {})
+          }
         })
-      }).finally(() => {
+      }).catch(() => {}).finally(() => {
         this.loadingHistory = false
       })
     },

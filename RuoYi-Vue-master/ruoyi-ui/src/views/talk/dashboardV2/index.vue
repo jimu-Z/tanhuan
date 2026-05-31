@@ -153,6 +153,10 @@ export default {
             this.renderAllCharts()
           })
         })
+        .catch((err) => {
+          this.loading = false
+          this.$message.error('数据加载失败')
+        })
         .finally(() => {
           this.loading = false
         })
@@ -422,13 +426,13 @@ export default {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1) !important;
 }
 
-.chart-card >>> .el-card__header {
+.chart-card ::v-deep .el-card__header {
   padding: 14px 20px;
   border-bottom-color: #f2f3f5;
   background: #fafbfc;
 }
 
-.chart-card >>> .el-card__body {
+.chart-card ::v-deep .el-card__body {
   padding: 16px 20px;
 }
 

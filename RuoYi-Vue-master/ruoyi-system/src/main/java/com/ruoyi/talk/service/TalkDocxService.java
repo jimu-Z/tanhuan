@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.system.mapper.SysDeptMapper;
+import com.ruoyi.talk.constant.TalkConstants;
 import com.ruoyi.talk.domain.TalkSession;
 import com.ruoyi.talk.domain.TalkSessionTag;
 import com.ruoyi.talk.domain.TalkStudent;
@@ -30,18 +31,8 @@ import com.ruoyi.talk.mapper.TalkStudentRecordMapper;
 public class TalkDocxService {
 
     private static final Logger log = LoggerFactory.getLogger(TalkDocxService.class);
-    private static final SimpleDateFormat FMT = new SimpleDateFormat("yyyy年MM月dd日");
-
-    private static final Map<String, String> TAG_MAP = new LinkedHashMap<>();
-    static {
-        TAG_MAP.put("thought_education", "思想理论教育和价值引领");
-        TAG_MAP.put("party_class", "党团和班级建设");
-        TAG_MAP.put("study_style", "学风建设");
-        TAG_MAP.put("daily_affairs", "日常事务");
-        TAG_MAP.put("mental_health", "心理健康教育与咨询");
-        TAG_MAP.put("crisis_response", "危机事件应对");
-        TAG_MAP.put("career_guidance", "职业规划与就业创业指导");
-    }
+    private static final ThreadLocal<SimpleDateFormat> FMT = ThreadLocal
+            .withInitial(() -> new SimpleDateFormat("yyyy年MM月dd日"));
 
     @Value("${talk.docx.template-path:templates/学生谈心谈话记录表.docx}")
     private String templatePath;
@@ -71,7 +62,7 @@ public class TalkDocxService {
             }
             return true;
         } catch (Exception e) {
-            log.info("模板不可用: {}", e.getMessage());
+            log.warn("模板不可用: {}", e.getMessage());
             return false;
         }
     }
@@ -98,7 +89,9 @@ public class TalkDocxService {
                     continue;
                 byte[] b = fill(session, stu, rec, tags);
                 zos.putNextEntry(
-                        new ZipEntry(stu.getStudentName() + "_" + FMT.format(session.getTalkTime()) + ".docx"));
+                        new ZipEntry(stu.getStudentName() + "_"
+                                + (session.getTalkTime() != null ? FMT.get().format(session.getTalkTime()) : "未知")
+                                + ".docx"));
                 zos.write(b);
                 zos.closeEntry();
             }
@@ -231,15 +224,15 @@ public class TalkDocxService {
         }
 
         m.put("${talk_type}", "group".equals(session.getTalkType()) ? "集体谈话" : "个别谈话");
-        m.put("${talk_time}", session.getTalkTime() != null ? FMT.format(session.getTalkTime()) : "");
+        m.put("${talk_time}", session.getTalkTime() != null ? FMT.get().format(session.getTalkTime()) : "");
         m.put("${talk_person}", s(session.getTalkPerson()));
-        m.put("${talk_content}", s(session.getTalkContent()));
+        m.put("${talk_content}", stripTalkRecord(s(session.getTalkContent())));
 
         // 标签：列出全部7项，勾选已选
         Set<String> sel = tags != null ? tags.stream().map(TalkSessionTag::getTagValue).collect(Collectors.toSet())
                 : Collections.emptySet();
         StringBuilder tb = new StringBuilder();
-        for (Map.Entry<String, String> e : TAG_MAP.entrySet()) {
+        for (Map.Entry<String, String> e : TalkConstants.TAG_LABELS.entrySet()) {
             if (tb.length() > 0)
                 tb.append("\n");
             tb.append(sel.contains(e.getKey()) ? "☑ " : "☐ ").append(e.getValue());
@@ -259,11 +252,11 @@ public class TalkDocxService {
                         continue;
                     if (hb.length() > 0)
                         hb.append("\n");
-                    hb.append(n++).append(". ").append(ts.getTalkTime() != null ? FMT.format(ts.getTalkTime()) : "未知")
+                    hb.append(n++).append(". ")
+                            .append(ts.getTalkTime() != null ? FMT.get().format(ts.getTalkTime()) : "未知")
                             .append("  ")
                             .append("group".equals(ts.getTalkType()) ? "集体" : "个别").append(" | ")
-                            .append(s(ts.getTalkPerson()))
-                            .append(" | ").append(trunc(s(ts.getTalkContent()), 50));
+                            .append(s(ts.getTalkPerson()));
                 }
             m.put("${history}", hb.length() == 0 ? "无" : hb.toString());
         }
@@ -272,17 +265,14 @@ public class TalkDocxService {
             m.put("${student_feedback}", s(rec.getStudentFeedback()));
             m.put("${followup_plan}", s(rec.getFollowupPlan()));
             m.put("${followup_status}",
-                    Map.of("none", "无需跟进", "pending", "待跟进", "in_progress", "跟进中", "completed", "已完成")
-                            .getOrDefault(rec.getFollowupStatus(), ""));
+                    TalkConstants.FOLLOWUP_STATUS_LABELS.getOrDefault(rec.getFollowupStatus(), ""));
         }
 
         if (stu != null) {
-            m.put("${enrollment_status}", lb(stu.getEnrollmentStatus(),
-                    Map.of("active", "在读", "suspended", "休学", "withdrawn", "退学", "graduated", "毕业")));
-            m.put("${mental_health}", lb(stu.getMentalHealthStatus(),
-                    Map.of("normal", "正常", "weekly_track", "周跟踪", "monthly_track", "月跟踪")));
-            m.put("${poverty_level}", lb(stu.getPovertyLevel(),
-                    Map.of("none", "无", "general", "一般困难", "difficult", "困难", "severe", "特别困难")));
+            m.put("${enrollment_status}",
+                    TalkConstants.ENROLLMENT_STATUS_LABELS.getOrDefault(stu.getEnrollmentStatus(), ""));
+            m.put("${mental_health}", TalkConstants.MENTAL_HEALTH_LABELS.getOrDefault(stu.getMentalHealthStatus(), ""));
+            m.put("${poverty_level}", TalkConstants.POVERTY_LEVEL_LABELS.getOrDefault(stu.getPovertyLevel(), ""));
             m.put("${remark}", s(stu.getRemark()));
         }
 
@@ -293,13 +283,15 @@ public class TalkDocxService {
         return v == null ? "" : v;
     }
 
-    private String lb(String v, Map<String, String> map) {
-        return v == null ? "" : map.getOrDefault(v, v);
-    }
-
-    private String trunc(String v, int max) {
-        if (v == null) return "";
-        return v.length() > max ? v.substring(0, max) + "..." : v;
+    static String stripTalkRecord(String content) {
+        if (content == null) {
+            return null;
+        }
+        int idx = content.indexOf("【谈话记录】");
+        if (idx < 0) {
+            return content;
+        }
+        return content.substring(0, idx).replaceAll("\\s+$", "");
     }
 
     // ======== 程序化回退 ========
@@ -307,15 +299,19 @@ public class TalkDocxService {
     private byte[] fallback(TalkSession session, List<TalkStudentRecord> records, List<TalkSessionTag> tags)
             throws Exception {
         try (XWPFDocument d = new XWPFDocument(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
-            t(d, "学生谈心谈话记录表");
+            t(d, "学生谈心谈话表");
             bl(d);
             f(d, "谈话类型", "group".equals(session.getTalkType()) ? "集体谈话" : "个别谈话");
-            f(d, "谈话时间", FMT.format(session.getTalkTime()));
+            f(d, "谈话时间", session.getTalkTime() != null ? FMT.get().format(session.getTalkTime()) : "");
             f(d, "谈话人", s(session.getTalkPerson()));
-            f(d, "标签", tags != null ? tags.stream().map(t -> TAG_MAP.getOrDefault(t.getTagValue(), t.getTagValue()))
-                    .collect(Collectors.joining("、")) : "");
+            f(d, "标签",
+                    tags != null
+                            ? tags.stream()
+                                    .map(t -> TalkConstants.TAG_LABELS.getOrDefault(t.getTagValue(), t.getTagValue()))
+                                    .collect(Collectors.joining("、"))
+                            : "");
             h(d, "谈话内容");
-            c(d, s(session.getTalkContent()));
+            c(d, stripTalkRecord(s(session.getTalkContent())));
             bl(d);
             if (records != null)
                 for (TalkStudentRecord r : records) {
@@ -330,15 +326,15 @@ public class TalkDocxService {
 
     private byte[] fallbackStudent(TalkSession session, TalkStudent stu, TalkStudentRecord rec) throws Exception {
         try (XWPFDocument d = new XWPFDocument(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
-            t(d, "学生谈心谈话记录表");
+            t(d, "学生谈心谈话表");
             bl(d);
             f(d, "学号", s(stu.getStudentCode()));
             f(d, "姓名", s(stu.getStudentName()));
             f(d, "谈话类型", "group".equals(session.getTalkType()) ? "集体谈话" : "个别谈话");
-            f(d, "谈话时间", FMT.format(session.getTalkTime()));
+            f(d, "谈话时间", session.getTalkTime() != null ? FMT.get().format(session.getTalkTime()) : "");
             f(d, "谈话人", s(session.getTalkPerson()));
             h(d, "谈话内容");
-            c(d, s(session.getTalkContent()));
+            c(d, stripTalkRecord(s(session.getTalkContent())));
             bl(d);
             if (rec != null) {
                 h(d, "反馈");
@@ -347,9 +343,12 @@ public class TalkDocxService {
                 c(d, s(rec.getFollowupPlan()));
             }
             h(d, "备注");
-            f(d, "学籍", s(stu.getEnrollmentStatus()));
-            f(d, "心理", s(stu.getMentalHealthStatus()));
-            f(d, "贫困", s(stu.getPovertyLevel()));
+            f(d, "学籍", TalkConstants.ENROLLMENT_STATUS_LABELS.getOrDefault(stu.getEnrollmentStatus(),
+                    s(stu.getEnrollmentStatus())));
+            f(d, "心理", TalkConstants.MENTAL_HEALTH_LABELS.getOrDefault(stu.getMentalHealthStatus(),
+                    s(stu.getMentalHealthStatus())));
+            f(d, "贫困",
+                    TalkConstants.POVERTY_LEVEL_LABELS.getOrDefault(stu.getPovertyLevel(), s(stu.getPovertyLevel())));
             f(d, "备注", s(stu.getRemark()));
             d.write(bos);
             return bos.toByteArray();

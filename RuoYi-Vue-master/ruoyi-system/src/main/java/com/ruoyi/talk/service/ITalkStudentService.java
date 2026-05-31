@@ -75,4 +75,6 @@ public interface ITalkStudentService {
      * @return 导入结果
      */
     public Map<String, Object> importExecute(List<Map<String, Object>> confirmedRows);
+
+    public Map<String, Object> getStudentDetail(Long studentId);
 }

@@ -15,5 +15,7 @@ public interface ITalkTemplateService
 
     public int deleteTalkTemplateById(Long templateId);
 
+    public int deleteTalkTemplateByIds(Long[] templateIds);
+
     public List<TalkTemplate> selectSystemTemplates();
 }

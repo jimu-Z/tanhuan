@@ -1,6 +1,8 @@
 package com.ruoyi.talk.controller;
 
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,9 +48,6 @@ public class TalkSessionController extends BaseController {
     @Autowired
     private TalkDocxService talkDocxService;
 
-    @Autowired
-    private com.ruoyi.talk.mapper.TalkSessionTagMapper talkSessionTagMapper;
-
     /**
      * 查询谈话会话管理列表
      */
@@ -81,23 +80,13 @@ public class TalkSessionController extends BaseController {
     public void exportDocx(@PathVariable Long sessionId, HttpServletResponse response) throws Exception {
         TalkSession session = talkSessionService.selectTalkSessionBySessionId(sessionId);
         if (session == null) {
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"msg\":\"会话不存在\",\"code\":500}");
+            writeJsonError(response, "会话不存在");
             return;
         }
         byte[] docxBytes = talkDocxService.generateDocxBySession(sessionId);
         boolean isZip = "group".equals(session.getTalkType());
-        String ext = isZip ? ".zip" : ".docx";
-        String contentType = isZip ? "application/zip"
-                : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-        String fileName = "谈话记录_" + session.getTalkPerson() + ext;
-        response.setContentType(contentType);
-        response.setHeader("Content-Disposition",
-                "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
-        try (OutputStream os = response.getOutputStream()) {
-            os.write(docxBytes);
-            os.flush();
-        }
+        String fileName = "谈话记录_" + session.getTalkPerson() + (isZip ? ".zip" : ".docx");
+        writeFileDownload(response, docxBytes, fileName, isZip);
     }
 
     /**
@@ -111,13 +100,7 @@ public class TalkSessionController extends BaseController {
         byte[] docxBytes = talkDocxService.generateDocxByStudent(studentId, sessionId);
         TalkSession session = talkSessionService.selectTalkSessionBySessionId(sessionId);
         String fileName = "谈话记录_" + (session != null ? session.getTalkPerson() : sessionId) + ".docx";
-        response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-        response.setHeader("Content-Disposition",
-                "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
-        try (OutputStream os = response.getOutputStream()) {
-            os.write(docxBytes);
-            os.flush();
-        }
+        writeFileDownload(response, docxBytes, fileName, false);
     }
 
     /**
@@ -139,13 +122,13 @@ public class TalkSessionController extends BaseController {
     @PostMapping("/exportDocx/batch")
     public void exportDocxBatch(@RequestBody List<Long> sessionIds, HttpServletResponse response) throws Exception {
         ByteArrayOutputStream zip = new ByteArrayOutputStream();
-        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(zip)) {
+        try (ZipOutputStream zos = new ZipOutputStream(zip)) {
             for (Long sid : sessionIds) {
                 try {
                     byte[] b = talkDocxService.generateDocxBySession(sid);
                     TalkSession s = talkSessionService.selectTalkSessionBySessionId(sid);
                     String name = (s != null ? s.getTalkPerson() : sid) + "_" + sid + ".docx";
-                    zos.putNextEntry(new java.util.zip.ZipEntry(name));
+                    zos.putNextEntry(new ZipEntry(name));
                     zos.write(b);
                     zos.closeEntry();
                 } catch (Exception e) {
@@ -162,6 +145,25 @@ public class TalkSessionController extends BaseController {
         }
     }
 
+    private void writeFileDownload(HttpServletResponse response, byte[] data, String fileName, boolean isZip)
+            throws Exception {
+        String contentType = isZip ? "application/zip"
+                : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        response.setContentType(contentType);
+        response.setHeader("Content-Disposition",
+                "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
+        try (OutputStream os = response.getOutputStream()) {
+            os.write(data);
+            os.flush();
+        }
+    }
+
+    private void writeJsonError(HttpServletResponse response, String msg) throws Exception {
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter()
+                .write("{\"msg\":\"" + msg.replace("\\", "\\\\").replace("\"", "\\\"") + "\",\"code\":500}");
+    }
+
     @PreAuthorize("@ss.hasPermi('talk:session:query')")
     @GetMapping(value = "/{sessionId}")
     public AjaxResult getInfo(@PathVariable("sessionId") Long sessionId) {
@@ -171,7 +173,7 @@ public class TalkSessionController extends BaseController {
     @PreAuthorize("@ss.hasPermi('talk:session:query')")
     @GetMapping("/tags/{sessionId}")
     public AjaxResult getTags(@PathVariable("sessionId") Long sessionId) {
-        return success(talkSessionTagMapper.selectTalkSessionTagBySessionId(sessionId));
+        return success(talkSessionService.selectTalkSessionTags(sessionId));
     }
 
     /**

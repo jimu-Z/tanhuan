@@ -218,6 +218,8 @@ export default {
         this.templateList = response.rows
         this.total = response.total
         this.loading = false
+      }).catch(() => {
+        this.loading = false
       })
     },
     parseTags(tags) {
@@ -266,6 +268,8 @@ export default {
         this.form = response.data
         this.open = true
         this.title = '修改谈话模板'
+      }).catch(() => {
+        this.$modal.msgError('获取模板信息失败')
       })
     },
     submitForm() {
@@ -277,12 +281,16 @@ export default {
               self.$modal.msgSuccess('修改成功')
               self.open = false
               self.getList()
+            }).catch(function() {
+              self.$modal.msgError('修改失败')
             })
           } else {
             addTemplate(self.form).then(function() {
               self.$modal.msgSuccess('新增成功')
               self.open = false
               self.getList()
+            }).catch(function() {
+              self.$modal.msgError('新增失败')
             })
           }
         }
@@ -337,8 +345,11 @@ export default {
         self.$modal.msgSuccess('模板内容已复制到剪贴板，可直接粘贴到编辑器中')
       } catch (err) {
         self.$modal.msgError('复制失败，请手动复制')
+      } finally {
+        try {
+          document.body.removeChild(textarea)
+        } catch (e) {}
       }
-      document.body.removeChild(textarea)
     }
   }
 }

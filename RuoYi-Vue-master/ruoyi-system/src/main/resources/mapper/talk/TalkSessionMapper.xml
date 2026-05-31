@@ -72,8 +72,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="talkLocation != null">talk_location = #{talkLocation},</if>
             <if test="talkPerson != null and talkPerson != ''">talk_person = #{talkPerson},</if>
             <if test="talkContent != null">talk_content = #{talkContent},</if>
-            <if test="createBy != null">create_by = #{createBy},</if>
-            <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
         </trim>
@@ -104,5 +102,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="countTalkSessionsByType" resultType="java.util.HashMap">
         select talk_type as type, count(*) as cnt
         from talk_session group by talk_type
+    </select>
+
+    <select id="selectTalkSessionBySessionIds" resultMap="TalkSessionResult">
+        <include refid="selectTalkSessionVo"/>
+        where ts.session_id in
+        <foreach item="sessionId" collection="array" open="(" separator="," close=")">
+            #{sessionId}
+        </foreach>
     </select>
 </mapper>

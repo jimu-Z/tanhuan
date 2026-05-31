@@ -40,20 +40,31 @@ public class TalkStudentRecordServiceImpl implements ITalkStudentRecordService
         {
             return;
         }
+        String username = SecurityUtils.getUsername();
+        if (username == null)
+        {
+            return;
+        }
+        if (talkStudentRecord.getParams() == null)
+        {
+            talkStudentRecord.setParams(new java.util.HashMap<>());
+        }
         if (SecurityUtils.hasRole("talk_counselor"))
         {
-            String username = SecurityUtils.getUsername().replace("'", "''");
             talkStudentRecord.getParams().put("dataScope",
                     " and tsr.session_id in (select ts.session_id from talk_session ts where ts.create_by = '"
-                    + username + "')");
+                    + username.replace("'", "''") + "')");
         }
         else if (SecurityUtils.hasRole("talk_secretary"))
         {
             Long deptId = SecurityUtils.getDeptId();
-            talkStudentRecord.getParams().put("dataScope",
-                    " and tsr.student_id in (select stu.student_id from talk_student stu" +
-                    " join sys_dept d on stu.dept_id = d.dept_id" +
-                    " where d.dept_id = " + deptId + " or find_in_set(" + deptId + ", d.ancestors))");
+            if (deptId != null)
+            {
+                talkStudentRecord.getParams().put("dataScope",
+                        " and tsr.student_id in (select stu.student_id from talk_student stu" +
+                        " join sys_dept d on stu.dept_id = d.dept_id" +
+                        " where d.dept_id = " + deptId + " or find_in_set(" + deptId + ", d.ancestors))");
+            }
         }
     }
 
@@ -67,6 +78,7 @@ public class TalkStudentRecordServiceImpl implements ITalkStudentRecordService
     @Override
     public int updateTalkStudentRecord(TalkStudentRecord talkStudentRecord)
     {
+        talkStudentRecord.setUpdateTime(DateUtils.getNowDate());
         return talkStudentRecordMapper.updateTalkStudentRecord(talkStudentRecord);
     }
 

@@ -276,7 +276,7 @@ export default {
         this.total = response.total
         this.loading = false
         this.loadTags()
-      })
+      }).catch(() => { this.loading = false })
     },
     loadTags() {
       const ids = this.talksessionList.map(s => s.sessionId)
@@ -284,7 +284,7 @@ export default {
       ids.forEach(id => {
         getSessionTags(id).then(res => {
           this.$set(this.tagMap, id, res.data || [])
-        })
+        }).catch(() => {})
       })
     },
     getTagLabel(value) {
@@ -297,8 +297,8 @@ export default {
         const records = res.rows || []
         Promise.all(records.map(r =>
           getTalk(r.studentId).then(stu => ({
-            studentName: stu.data.studentName,
-            studentCode: stu.data.studentCode,
+            studentName: stu.data ? stu.data.studentName : '-',
+            studentCode: stu.data ? stu.data.studentCode : '-',
             studentFeedback: r.studentFeedback,
             followupPlan: r.followupPlan,
             followupStatus: r.followupStatus
@@ -306,8 +306,8 @@ export default {
         )).then(students => {
           this.$set(row, '_students', students)
           this.$set(row, '_loadingStudents', false)
-        })
-      })
+        }).catch(() => { this.$set(row, '_loadingStudents', false) })
+      }).catch(() => { this.$set(row, '_loadingStudents', false) })
     },
     // 取消按钮
     cancel() {
@@ -356,12 +356,16 @@ export default {
     /** 修改按钮操作 */
     handleUpdate(row) {
       this.reset()
-      const sessionId = row.sessionId || this.ids
+      var sessionId = row.sessionId || (Array.isArray(this.ids) ? this.ids[0] : this.ids)
+      if (!sessionId) {
+        this.$modal.msgWarning('请选择一条记录进行编辑')
+        return
+      }
       getTalksession(sessionId).then(response => {
-        this.form = response.data
+        this.form = response.data || {}
         this.open = true
         this.title = "修改谈话会话管理"
-      })
+      }).catch(() => { this.$modal.msgError('获取会话详情失败') })
     },
     /** 提交按钮 */
     submitForm() {
@@ -372,13 +376,13 @@ export default {
               this.$modal.msgSuccess("修改成功")
               this.open = false
               this.getList()
-            })
+            }).catch(() => {})
           } else {
             addTalksession(this.form).then(response => {
               this.$modal.msgSuccess("新增成功")
               this.open = false
               this.getList()
-            })
+            }).catch(() => {})
           }
         }
       })
@@ -402,7 +406,7 @@ export default {
     handleBatchExport() {
       if (this.ids.length === 0) { this.$modal.msgWarning('请至少选择一条记录'); return }
       this.$modal.confirm('确认导出选中的 ' + this.ids.length + ' 条会话记录？').then(() => {
-        return request({ url: '/ruoyi-system/talksession/exportDocx/batch', method: 'post', data: this.ids, responseType: 'blob' })
+        return request({ url: '/ruoyi-system/talksession/exportDocx/batch', method: 'post', data: this.ids, responseType: 'blob' }).catch(() => { this.$modal.msgError('导出失败') })
       }).then(blob => {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a'); a.href = url; a.download = '谈话记录批量导出.zip'; a.click()
@@ -414,7 +418,7 @@ export default {
       const isGroup = row.talkType === 'group'
       const ext = isGroup ? '.zip' : '.docx'
       this.$modal.confirm('确认导出' + row.talkPerson + '的谈话记录吗？' + (isGroup ? '（集体谈话将打包为zip）' : '')).then(() => {
-        return request({ url: '/ruoyi-system/talksession/exportDocx/' + row.sessionId, method: 'get', responseType: 'blob' })
+        return request({ url: '/ruoyi-system/talksession/exportDocx/' + row.sessionId, method: 'get', responseType: 'blob' }).catch(() => { this.$modal.msgError('导出失败') })
       }).then(blob => {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')

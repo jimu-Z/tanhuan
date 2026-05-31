@@ -209,8 +209,12 @@
       </el-table-column>
       <el-table-column label="政治面貌" align="center" prop="politicalStatus" />
       <el-table-column label="民族" align="center" prop="nation" />
-      <el-table-column label="本人联系电话" align="center" prop="phone" />
-      <el-table-column label="身份证号" align="center" prop="idCard" />
+      <el-table-column label="本人联系电话" align="center" prop="phone">
+        <template slot-scope="scope">{{ maskPhone(scope.row.phone) }}</template>
+      </el-table-column>
+      <el-table-column label="身份证号" align="center" prop="idCard">
+        <template slot-scope="scope">{{ maskIdCard(scope.row.idCard) }}</template>
+      </el-table-column>
       <el-table-column label="家庭住址" align="center" prop="address" />
       <el-table-column label="父亲姓名" align="center" prop="fatherName" />
       <el-table-column label="父亲电话" align="center" prop="fatherPhone" />
@@ -509,7 +513,7 @@ export default {
     loadDeptTree() {
       listDept().then(res => {
         this.deptTree = this.buildTree(res.data || [])
-      })
+      }).catch(() => {})
     },
     buildTree(list) {
       const map = {}, tree = []
@@ -522,13 +526,21 @@ export default {
       return tree
     },
     /** 查询学生信息管理列表 */
+    maskPhone(phone) {
+      if (!phone || phone.length < 7) return phone || '-'
+      return phone.substring(0, 3) + '****' + phone.substring(phone.length - 4)
+    },
+    maskIdCard(idCard) {
+      if (!idCard || idCard.length < 8) return idCard || '-'
+      return idCard.substring(0, 3) + '***********' + idCard.substring(idCard.length - 4)
+    },
     getList() {
       this.loading = true
       listTalk(this.queryParams).then(response => {
         this.talkList = response.rows
         this.total = response.total
         this.loading = false
-      })
+      }).catch(() => { this.loading = false })
     },
     // 取消按钮
     cancel() {
@@ -598,10 +610,10 @@ export default {
       this.reset()
       const studentId = row.studentId || this.ids
       getTalk(studentId).then(response => {
-        this.form = response.data
+        this.form = response.data || {}
         this.open = true
         this.title = "修改学生信息管理"
-      })
+      }).catch(() => { this.$modal.msgError('获取学生详情失败') })
     },
     /** 提交按钮 */
     submitForm() {
@@ -612,13 +624,13 @@ export default {
               this.$modal.msgSuccess("修改成功")
               this.open = false
               this.getList()
-            })
+            }).catch(() => {})
           } else {
             addTalk(this.form).then(response => {
               this.$modal.msgSuccess("新增成功")
               this.open = false
               this.getList()
-            })
+            }).catch(() => {})
           }
         }
       })

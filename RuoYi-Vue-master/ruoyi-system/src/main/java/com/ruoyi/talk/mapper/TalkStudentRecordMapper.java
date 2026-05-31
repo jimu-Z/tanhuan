@@ -61,6 +61,8 @@ public interface TalkStudentRecordMapper
 
     public int deleteTalkStudentRecordBySessionId(Long sessionId);
 
+    public int deleteTalkStudentRecordByStudentId(Long studentId);
+
     public List<TalkStudentRecord> selectTalkStudentRecordBySessionId(Long sessionId);
 
     public List<TalkStudentRecord> selectTalkStudentRecordByStudentId(Long studentId);

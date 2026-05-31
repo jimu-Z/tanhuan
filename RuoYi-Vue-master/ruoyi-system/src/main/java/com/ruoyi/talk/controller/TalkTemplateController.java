@@ -1,6 +1,7 @@
 package com.ruoyi.talk.controller;
 
 import java.util.List;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,7 +54,7 @@ public class TalkTemplateController extends BaseController
     @PreAuthorize("@ss.hasPermi('talk:template:add')")
     @Log(title = "谈话模板管理", businessType = BusinessType.INSERT)
     @PostMapping
-    public AjaxResult add(@RequestBody TalkTemplate talkTemplate)
+    public AjaxResult add(@Valid @RequestBody TalkTemplate talkTemplate)
     {
         return toAjax(talkTemplateService.insertTalkTemplate(talkTemplate));
     }
@@ -61,7 +62,7 @@ public class TalkTemplateController extends BaseController
     @PreAuthorize("@ss.hasPermi('talk:template:edit')")
     @Log(title = "谈话模板管理", businessType = BusinessType.UPDATE)
     @PutMapping
-    public AjaxResult edit(@RequestBody TalkTemplate talkTemplate)
+    public AjaxResult edit(@Valid @RequestBody TalkTemplate talkTemplate)
     {
         return toAjax(talkTemplateService.updateTalkTemplate(talkTemplate));
     }
@@ -71,11 +72,6 @@ public class TalkTemplateController extends BaseController
     @DeleteMapping("/{templateIds}")
     public AjaxResult remove(@PathVariable Long[] templateIds)
     {
-        int result = 0;
-        for (Long templateId : templateIds)
-        {
-            result += talkTemplateService.deleteTalkTemplateById(templateId);
-        }
-        return toAjax(result);
+        return toAjax(talkTemplateService.deleteTalkTemplateByIds(templateIds));
     }
 }
