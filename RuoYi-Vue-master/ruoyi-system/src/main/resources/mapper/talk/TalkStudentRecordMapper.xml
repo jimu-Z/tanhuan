@@ -118,4 +118,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="countRecordsBySessionId" parameterType="Long" resultType="int">
         select count(*) from talk_student_record where session_id = #{sessionId}
     </select>
+
+    <select id="countRecordsFiltered" parameterType="map" resultType="int">
+        select count(*) from talk_student_record tsr
+        <where>
+            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+        </where>
+    </select>
+
+    <select id="countRecordsByFollowupStatusFiltered" parameterType="map" resultType="java.util.HashMap">
+        select tsr.followup_status as status, count(*) as cnt
+        from talk_student_record tsr
+        <where>
+            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+        </where>
+        group by tsr.followup_status
+    </select>
 </mapper>

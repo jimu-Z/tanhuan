@@ -1,6 +1,7 @@
 package com.ruoyi.talk.mapper;
 
 import java.util.List;
+import java.util.Map;
 import com.ruoyi.talk.domain.TalkStudentRecord;
 
 /**
@@ -70,4 +71,6 @@ public interface TalkStudentRecordMapper
     public int countRecords();
     public List<java.util.HashMap<String, Object>> countRecordsByFollowupStatus();
     public int countRecordsBySessionId(Long sessionId);
+    public int countRecordsFiltered(Map<String, Object> params);
+    public List<java.util.HashMap<String, Object>> countRecordsByFollowupStatusFiltered(Map<String, Object> params);
 }

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.entity.SysDept;
+import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.system.mapper.SysDeptMapper;
 import com.ruoyi.talk.constant.TalkConstants;
 import com.ruoyi.talk.mapper.TalkSessionMapper;
@@ -37,17 +38,56 @@ public class TalkStatisticsController extends BaseController {
     @Autowired
     private SysDeptMapper sysDeptMapper;
 
-    private Map<String, Object> buildOverview() {
-        Map<String, Object> data = new LinkedHashMap<>();
-        int totalStudents = talkStudentMapper.countTalkStudents();
-        int totalSessions = talkSessionMapper.countTalkSessions();
-        int totalRecords = talkStudentRecordMapper.countRecords();
+    private Map<String, Object> createQueryParams() {
+        Map<String, Object> params = new HashMap<>();
+        if (SecurityUtils.isAdmin()) {
+            params.put("dataScope", null);
+            return params;
+        }
+        String username = SecurityUtils.getUsername();
+        if (username == null) {
+            params.put("dataScope", null);
+            return params;
+        }
+        if (SecurityUtils.hasRole("talk_counselor")) {
+            String userScope = "ts.create_by = '" + username.replace("'", "''") + "'";
+            params.put("dataScope", userScope);
+            params.put("sessionScope", userScope);
+            params.put("studentScope", "s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = '" + username.replace("'", "''") + "')");
+            params.put("recordScope", "tsr.session_id in (select ts.session_id from talk_session ts where ts.create_by = '" + username.replace("'", "''") + "')");
+        } else if (SecurityUtils.hasRole("talk_secretary")) {
+            Long deptId = SecurityUtils.getDeptId();
+            if (deptId != null) {
+                String deptScope = "d.dept_id = " + deptId + " or find_in_set(" + deptId + ", d.ancestors)";
+                params.put("sessionScope", "ts.session_id in (select tsr.session_id from talk_student_record tsr join talk_student stu on tsr.student_id = stu.student_id join sys_dept d on stu.dept_id = d.dept_id where (" + deptScope + "))");
+                params.put("studentScope", "s.dept_id in (select dept_id from sys_dept d where " + deptScope + ")");
+                params.put("recordScope", "tsr.session_id in (select ts.session_id from talk_session ts where ts.session_id in (select tsr2.session_id from talk_student_record tsr2 join talk_student stu on tsr2.student_id = stu.student_id join sys_dept d on stu.dept_id = d.dept_id where (" + deptScope + ")))");
+            }
+        }
+        return params;
+    }
 
+    private Map<String, Object> buildOverview() {
+        Map<String, Object> params = createQueryParams();
+
+        Map<String, Object> studentParams = new HashMap<>();
+        studentParams.put("dataScope", params.get("studentScope"));
+        int totalStudents = talkStudentMapper.countTalkStudentsFiltered(studentParams);
+
+        Map<String, Object> sessionParams = new HashMap<>();
+        sessionParams.put("dataScope", params.get("sessionScope"));
+        int totalSessions = talkSessionMapper.countTalkSessionsFiltered(sessionParams);
+
+        Map<String, Object> recordParams = new HashMap<>();
+        recordParams.put("dataScope", params.get("recordScope"));
+        int totalRecords = talkStudentRecordMapper.countRecordsFiltered(recordParams);
+
+        Map<String, Object> data = new LinkedHashMap<>();
         data.put("totalStudents", totalStudents);
         data.put("totalSessions", totalSessions);
         data.put("totalRecords", totalRecords);
 
-        List<HashMap<String, Object>> typeStats = talkSessionMapper.countTalkSessionsByType();
+        List<HashMap<String, Object>> typeStats = talkSessionMapper.countTalkSessionsByTypeFiltered(sessionParams);
         long individualCount = 0, groupCount = 0;
         for (HashMap<String, Object> row : typeStats) {
             if ("individual".equals(row.get("type")))
@@ -62,7 +102,10 @@ public class TalkStatisticsController extends BaseController {
     }
 
     private List<Map<String, Object>> buildTagChart() {
-        List<HashMap<String, Object>> tagStats = talkSessionTagMapper.countTagsByValue();
+        Map<String, Object> params = createQueryParams();
+        Map<String, Object> tagParams = new HashMap<>();
+        tagParams.put("dataScope", params.get("sessionScope"));
+        List<HashMap<String, Object>> tagStats = talkSessionTagMapper.countTagsByValueFiltered(tagParams);
         List<Map<String, Object>> tagChart = new ArrayList<>();
         for (String key : TalkConstants.TAG_LABELS.keySet()) {
             Map<String, Object> item = new LinkedHashMap<>();
@@ -81,7 +124,10 @@ public class TalkStatisticsController extends BaseController {
     }
 
     private List<Map<String, Object>> buildMonthlyChart() {
-        List<HashMap<String, Object>> monthlyStats = talkSessionMapper.countTalkSessionsByMonth();
+        Map<String, Object> params = createQueryParams();
+        Map<String, Object> sessionParams = new HashMap<>();
+        sessionParams.put("dataScope", params.get("sessionScope"));
+        List<HashMap<String, Object>> monthlyStats = talkSessionMapper.countTalkSessionsByMonthFiltered(sessionParams);
         List<Map<String, Object>> monthlyChart = new ArrayList<>();
         for (HashMap<String, Object> row : monthlyStats) {
             Map<String, Object> item = new LinkedHashMap<>();
@@ -118,8 +164,11 @@ public class TalkStatisticsController extends BaseController {
     @GetMapping("/alerts")
     public AjaxResult alerts() {
         Map<String, Object> data = new LinkedHashMap<>();
+        Map<String, Object> scopeParams = createQueryParams();
 
-        List<HashMap<String, Object>> followupStats = talkStudentRecordMapper.countRecordsByFollowupStatus();
+        Map<String, Object> recordParams = new HashMap<>();
+        recordParams.put("dataScope", scopeParams.get("recordScope"));
+        List<HashMap<String, Object>> followupStats = talkStudentRecordMapper.countRecordsByFollowupStatusFiltered(recordParams);
         long pending = 0, inProgress = 0, completed = 0, none = 0;
         for (HashMap<String, Object> row : followupStats) {
             String status = (String) row.get("status");
@@ -141,7 +190,9 @@ public class TalkStatisticsController extends BaseController {
 
         List<SysDept> depts = sysDeptMapper.selectDeptList(new SysDept());
         List<Map<String, Object>> deptCoverage = new ArrayList<>();
-        int totalStudents = talkStudentMapper.countTalkStudents();
+        Map<String, Object> studentParams = new HashMap<>();
+        studentParams.put("dataScope", scopeParams.get("studentScope"));
+        int totalStudents = talkStudentMapper.countTalkStudentsFiltered(studentParams);
         for (SysDept d : depts) {
             if (!"college".equals(d.getDeptType()) && !"class".equals(d.getDeptType()))
                 continue;

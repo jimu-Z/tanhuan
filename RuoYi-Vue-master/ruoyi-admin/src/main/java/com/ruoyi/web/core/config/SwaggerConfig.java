@@ -12,25 +12,25 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 
 /**
- * Swagger2的接口配置
+ * Swagger2�Ľӿ�����
  * 
  * @author ruoyi
  */
 @Configuration
 public class SwaggerConfig
 {
-    /** 系统基础配置 */
+    /** ϵͳ�������� */
     @Autowired
     private RuoYiConfig ruoyiConfig;
     
     /**
-     * 自定义的 OpenAPI 对象
+     * �Զ���� OpenAPI ����
      */
     @Bean
     public OpenAPI customOpenApi()
     {
         return new OpenAPI().components(new Components()
-            // 设置认证的请求头
+            // ������֤������ͷ
             .addSecuritySchemes("apikey", securityScheme()))
             .addSecurityItem(new SecurityRequirement().addList("apikey"))
             .info(getApiInfo());
@@ -47,18 +47,18 @@ public class SwaggerConfig
     }
     
     /**
-     * 添加摘要信息
+     * ����ժҪ��Ϣ
      */
     public Info getApiInfo()
     {
         return new Info()
-            // 设置标题
-            .title("标题：若依管理系统_接口文档")
-            // 描述
-            .description("描述：用于管理集团旗下公司的人员信息,具体包括XXX,XXX模块...")
-            // 作者信息
+            // ���ñ���
+            .title("���⣺ѧ��̸��̸��ϵͳ_�ӿ��ĵ�")
+            // ����
+            .description("���������ڹ����������¹�˾����Ա��Ϣ,�������XXX,XXXģ��...")
+            // ������Ϣ
             .contact(new Contact().name(ruoyiConfig.getName()))
-            // 版本
-            .version("版本号:" + ruoyiConfig.getVersion());
+            // �汾
+            .version("�汾��:" + ruoyiConfig.getVersion());
     }
 }

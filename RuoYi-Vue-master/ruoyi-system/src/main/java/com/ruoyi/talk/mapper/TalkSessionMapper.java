@@ -2,6 +2,7 @@ package com.ruoyi.talk.mapper;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import com.ruoyi.talk.domain.TalkSession;
 
 /**
@@ -63,6 +64,10 @@ public interface TalkSessionMapper
     public int countTalkSessions();
     public List<HashMap<String, Object>> countTalkSessionsByMonth();
     public List<HashMap<String, Object>> countTalkSessionsByType();
+
+    public int countTalkSessionsFiltered(Map<String, Object> params);
+    public List<HashMap<String, Object>> countTalkSessionsByMonthFiltered(Map<String, Object> params);
+    public List<HashMap<String, Object>> countTalkSessionsByTypeFiltered(Map<String, Object> params);
 
     public List<TalkSession> selectTalkSessionBySessionIds(Long[] sessionIds);
 }

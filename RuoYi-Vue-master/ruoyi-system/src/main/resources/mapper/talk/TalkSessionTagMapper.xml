@@ -30,4 +30,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select tag_value as tag, count(*) as cnt
         from talk_session_tag group by tag_value
     </select>
+
+    <select id="countTagsByValueFiltered" parameterType="map" resultType="java.util.HashMap">
+        select tst.tag_value as tag, count(*) as cnt
+        from talk_session_tag tst
+        join talk_session ts on tst.session_id = ts.session_id
+        <where>
+            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+        </where>
+        group by tst.tag_value
+    </select>
 </mapper>

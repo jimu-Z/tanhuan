@@ -9,7 +9,7 @@
       <el-scrollbar class="left-scrollbar">
         <div class="components-list">
           <div class="components-title">
-            <svg-icon icon-class="component" />输入型组件
+            <svg-icon icon-class="component" />���������
           </div>
           <draggable
             class="components-draggable"
@@ -31,7 +31,7 @@
             </div>
           </draggable>
           <div class="components-title">
-            <svg-icon icon-class="component" />选择型组件
+            <svg-icon icon-class="component" />ѡ�������
           </div>
           <draggable
             class="components-draggable"
@@ -55,7 +55,7 @@
             </div>
           </draggable>
           <div class="components-title">
-            <svg-icon icon-class="component" /> 布局型组件
+            <svg-icon icon-class="component" /> ���������
           </div>
           <draggable
             class="components-draggable" :list="layoutComponents"
@@ -79,13 +79,13 @@
     <div class="center-board">
       <div class="action-bar">
         <el-button icon="el-icon-download" type="text" @click="download">
-          导出vue文件
+          ����vue�ļ�
         </el-button>
         <el-button class="copy-btn-main" icon="el-icon-document-copy" type="text" @click="copy">
-          复制代码
+          ���ƴ���
         </el-button>
         <el-button class="delete-btn" icon="el-icon-delete" type="text" @click="empty">
-          清空
+          ���
         </el-button>
       </div>
       <el-scrollbar class="center-scrollbar">
@@ -111,7 +111,7 @@
               />
             </draggable>
             <div v-show="!drawingList.length" class="empty-info">
-              从左侧拖入或点选组件进行表单设计
+              �����������ѡ������б������
             </div>
           </el-form>
         </el-row>
@@ -127,7 +127,7 @@
 
     <code-type-dialog
       :visible.sync="dialogVisible"
-      title="选择生成类型"
+      title="ѡ����������"
       :show-file-name="showFileName"
       @confirm="generate"
     />
@@ -147,7 +147,7 @@ import { makeUpHtml, vueTemplate, vueScript, cssStyle } from '@/utils/generator/
 import { makeUpJs } from '@/utils/generator/js'
 import { makeUpCss } from '@/utils/generator/css'
 import { drawingDefaultValue, initDrawingDefaultValue, cleanDrawingDefaultValue } from '@/utils/generator/drawingDefault'
-import logo from '@/assets/logo/logo.png'
+import logo from '@/assets/logo/logo.svg'
 import CodeTypeDialog from './CodeTypeDialog'
 import DraggableItem from './DraggableItem'
 
@@ -187,7 +187,7 @@ export default {
     initDrawingDefaultValue()
   },
   created() {
-    // 防止 firefox 下 拖拽 会新打卡一个选项卡
+    // ��ֹ firefox �� ��ק ���´�һ��ѡ�
     document.body.ondrop = event => {
       event.preventDefault()
       event.stopPropagation()
@@ -216,15 +216,15 @@ export default {
       text: trigger => {
         const codeStr = this.generateCode()
         this.$notify({
-          title: '成功',
-          message: '代码已复制到剪切板，可粘贴。',
+          title: '�ɹ�',
+          message: '�����Ѹ��Ƶ����а壬��ճ����',
           type: 'success'
         })
         return codeStr
       }
     })
     clipboard.on('error', e => {
-      this.$message.error('代码复制失败')
+      this.$message.error('���븴��ʧ��')
     })
   },
   beforeDestroy() {
@@ -250,7 +250,7 @@ export default {
       const clone = JSON.parse(JSON.stringify(origin))
       clone.formId = ++this.idGlobal
       clone.span = formConf.span
-      clone.renderKey = +new Date() // 改变renderKey后可以实现强制更新组件
+      clone.renderKey = +new Date() // �ı�renderKey�����ʵ��ǿ�Ƹ������
       if (!clone.layout) clone.layout = 'colFormItem'
       if (clone.layout === 'colFormItem') {
         clone.vModel = `field${this.idGlobal}`
@@ -288,7 +288,7 @@ export default {
       document.getElementById('copyNode').click()
     },
     empty() {
-      this.$confirm('确定要清空所有组件吗？', '提示', { type: 'warning' }).then(
+      this.$confirm('ȷ��Ҫ������������', '��ʾ', { type: 'warning' }).then(
         () => {
           this.drawingList = []
           cleanDrawingDefaultValue()

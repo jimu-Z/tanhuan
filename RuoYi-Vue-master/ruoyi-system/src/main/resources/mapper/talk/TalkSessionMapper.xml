@@ -111,4 +111,30 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{sessionId}
         </foreach>
     </select>
+
+    <select id="countTalkSessionsFiltered" parameterType="map" resultType="int">
+        select count(*) from talk_session ts
+        <where>
+            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+        </where>
+    </select>
+
+    <select id="countTalkSessionsByMonthFiltered" parameterType="map" resultType="java.util.HashMap">
+        select DATE_FORMAT(ts.talk_time, '%Y-%m') as month, count(*) as cnt
+        from talk_session ts
+        <where>
+            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+        </where>
+        group by DATE_FORMAT(ts.talk_time, '%Y-%m')
+        order by month asc limit 12
+    </select>
+
+    <select id="countTalkSessionsByTypeFiltered" parameterType="map" resultType="java.util.HashMap">
+        select ts.talk_type as type, count(*) as cnt
+        from talk_session ts
+        <where>
+            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+        </where>
+        group by ts.talk_type
+    </select>
 </mapper>

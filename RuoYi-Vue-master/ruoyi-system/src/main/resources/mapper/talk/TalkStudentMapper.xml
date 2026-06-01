@@ -181,4 +181,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="countStudentsByDeptId" parameterType="Long" resultType="int">
         select count(*) from talk_student where dept_id = #{deptId}
     </select>
+
+    <select id="countTalkStudentsFiltered" parameterType="map" resultType="int">
+        select count(*) from talk_student s
+        <where>
+            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+        </where>
+    </select>
 </mapper>

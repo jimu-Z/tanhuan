@@ -1,6 +1,7 @@
 package com.ruoyi.talk.mapper;
 
 import java.util.List;
+import java.util.Map;
 import com.ruoyi.talk.domain.TalkStudent;
 
 /**
@@ -61,4 +62,5 @@ public interface TalkStudentMapper
 
     public int countTalkStudents();
     public int countStudentsByDeptId(Long deptId);
+    public int countTalkStudentsFiltered(Map<String, Object> params);
 }
