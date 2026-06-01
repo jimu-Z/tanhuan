@@ -21,8 +21,8 @@
       </div>
       <div class="banner-wave">
         <svg viewBox="0 0 1200 80" preserveAspectRatio="none">
-          <path d="M0,40 C200,80 400,0 600,40 C800,80 1000,0 1200,40 L1200,80 L0,80 Z" fill="#fffcf7" opacity="0.6"/>
-          <path d="M0,50 C200,70 400,20 600,50 C800,80 1000,20 1200,50 L1200,80 L0,80 Z" fill="#fffcf7" opacity="0.3"/>
+          <path d="M0,40 C200,80 400,0 600,40 C800,80 1000,0 1200,40 L1200,80 L0,80 Z" opacity="0.6"/>
+          <path d="M0,50 C200,70 400,20 600,50 C800,80 1000,20 1200,50 L1200,80 L0,80 Z" opacity="0.3"/>
         </svg>
       </div>
     </div>
@@ -84,7 +84,7 @@
     <div class="func-section">
       <div class="section-header">
         <h3 class="section-title">
-          <i class="el-icon-s-grid" style="color: #7b9e87; margin-right: 8px;"></i>功能入口
+          <i class="el-icon-s-grid" style="color: #4facfe; margin-right: 8px;"></i>功能入口
         </h3>
       </div>
       <div class="func-grid">
@@ -109,12 +109,12 @@ import auth from '@/plugins/auth'
 import { getDashboard, getAlerts } from '@/api/talk/talkStatistics'
 
 const KPI_CONFIG = [
-  { key: 'totalStudents', label: '学生总数', unit: '人', icon: 'el-icon-user', iconBg: 'rgba(200,150,102,0.15)', iconColor: '#c89666' },
-  { key: 'totalSessions', label: '谈话场次', unit: '场', icon: 'el-icon-s-order', iconBg: 'rgba(123,158,135,0.15)', iconColor: '#7b9e87' },
-  { key: 'totalRecords', label: '记录总数', unit: '条', icon: 'el-icon-document', iconBg: 'rgba(143,121,100,0.15)', iconColor: '#8f7964' },
-  { key: 'avgRecordsPerStudent', label: '人均记录', unit: '条/人', icon: 'el-icon-data-analysis', iconBg: 'rgba(230,162,60,0.15)', iconColor: '#e6a23c' },
-  { key: 'individualCount', label: '个人谈话', unit: '场', icon: 'el-icon-user-solid', iconBg: 'rgba(164,133,109,0.15)', iconColor: '#a4856d' },
-  { key: 'groupCount', label: '集体谈话', unit: '场', icon: 'el-icon-s-grid', iconBg: 'rgba(64,158,255,0.15)', iconColor: '#409eff' }
+  { key: 'totalStudents', label: '学生总数', unit: '人', icon: 'el-icon-user', iconBg: 'rgba(79,172,254,0.12)', iconColor: '#4facfe' },
+  { key: 'totalSessions', label: '谈话场次', unit: '场', icon: 'el-icon-s-order', iconBg: 'rgba(0,242,254,0.12)', iconColor: '#00f2fe' },
+  { key: 'totalRecords', label: '记录总数', unit: '条', icon: 'el-icon-document', iconBg: 'rgba(42,111,168,0.12)', iconColor: '#2a6fa8' },
+  { key: 'avgRecordsPerStudent', label: '人均记录', unit: '条/人', icon: 'el-icon-data-analysis', iconBg: 'rgba(79,172,254,0.12)', iconColor: '#4facfe' },
+  { key: 'individualCount', label: '个人谈话', unit: '场', icon: 'el-icon-user-solid', iconBg: 'rgba(26,82,118,0.12)', iconColor: '#1a5276' },
+  { key: 'groupCount', label: '集体谈话', unit: '场', icon: 'el-icon-s-grid', iconBg: 'rgba(0,242,254,0.12)', iconColor: '#00f2fe' }
 ]
 
 export default {
@@ -124,21 +124,21 @@ export default {
     const roleLabel = isSecretary ? '书记工作台' : '辅导员工作台'
 
     const secretaryCards = [
-      { title: '学生信息管理', desc: '导入台账、查看学生信息、管理学生数据', path: '/talk/talkStudent/index', accent: '#c89666', gradient: 'linear-gradient(135deg, #c89666, #e0b88a)' },
-      { title: '发起谈话', desc: '创建个别/集体谈话，选择谈话类型和内容标签', path: '/talk/talkInitiate/index', accent: '#7b9e87', gradient: 'linear-gradient(135deg, #7b9e87, #a3c4a9)' },
-      { title: '统计分析', desc: '仪表盘视图，查看谈话数据分布与趋势', path: '/talk/dashboardV2/index', accent: '#5a7d6c', gradient: 'linear-gradient(135deg, #5a7d6c, #7b9e87)' },
-      { title: '预警提醒', desc: '超期未谈话、心理健康跟踪等自动告警', path: '/talk/alertsV2/index', accent: '#e6a23c', gradient: 'linear-gradient(135deg, #f0b44d, #f08080)' },
-      { title: '数据大屏', desc: '全屏数据可视化，适用于大屏幕投放', path: '/talk/bigscreenV2/index', accent: '#667eea', gradient: 'linear-gradient(135deg, #667eea, #8b7fcf)' },
-      { title: '统一查询', desc: '合并会话/记录的多维度条件查询', path: '/talk/unifiedQuery/index', accent: '#8f7964', gradient: 'linear-gradient(135deg, #8f7964, #a4856d)' }
+      { title: '学生信息管理', desc: '导入台账、查看学生信息、管理学生数据', path: '/talk/student', accent: '#4facfe', gradient: 'linear-gradient(135deg, #1a5276, #2a6fa8)' },
+      { title: '发起谈话', desc: '创建个别/集体谈话，选择谈话类型和内容标签', path: '/talk/initiate', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #0f3b5c, #1a5276)' },
+      { title: '统计分析', desc: '仪表盘视图，查看谈话数据分布与趋势', path: '/talk/dashboard', accent: '#4facfe', gradient: 'linear-gradient(135deg, #2a6fa8, #4facfe)' },
+      { title: '预警提醒', desc: '超期未谈话、心理健康跟踪等自动告警', path: '/talk/alert', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #0a2540, #1a5276)' },
+      { title: '数据大屏', desc: '全屏数据可视化，适用于大屏幕投放', path: '/talk/bigscreen', accent: '#4facfe', gradient: 'linear-gradient(135deg, #667eea, #4facfe)' },
+      { title: '统一查询', desc: '合并会话/记录的多维度条件查询', path: '/talk/query', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)' }
     ]
 
     const counselorCards = [
-      { title: '发起谈话', desc: '创建个别/集体谈话，选择谈话类型和内容标签', path: '/talk/talkInitiate/index', accent: '#7b9e87', gradient: 'linear-gradient(135deg, #7b9e87, #a3c4a9)' },
-      { title: '我的记录', desc: '快速查看自己创建的谈话历史与状态', path: '/talk/my-records', accent: '#5a7d6c', gradient: 'linear-gradient(135deg, #5a7d6c, #7b9e87)' },
-      { title: '学生管理', desc: '查看管辖范围内的学生基本信息', path: '/talk/talkStudent/index', accent: '#c89666', gradient: 'linear-gradient(135deg, #c89666, #e0b88a)' },
-      { title: '预警提醒', desc: '待跟进谈话、异常情况的自动提醒', path: '/talk/alertsV2/index', accent: '#e6a23c', gradient: 'linear-gradient(135deg, #f0b44d, #f08080)' },
-      { title: '谈话模板库', desc: '使用系统模板快速填充谈话内容', path: '/talk/templatesV2/index', accent: '#667eea', gradient: 'linear-gradient(135deg, #667eea, #8b7fcf)' },
-      { title: '会话管理', desc: '查看、编辑、导出历史谈话会话', path: '/talk/talkSession/index', accent: '#8f7964', gradient: 'linear-gradient(135deg, #8f7964, #a4856d)' }
+      { title: '发起谈话', desc: '创建个别/集体谈话，选择谈话类型和内容标签', path: '/talk/initiate', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #0f3b5c, #1a5276)' },
+      { title: '我的谈话记录', desc: '快速查看自己创建的谈话历史与状态', path: '/talk/myrecords', accent: '#4facfe', gradient: 'linear-gradient(135deg, #1a5276, #2a6fa8)' },
+      { title: '学生信息管理', desc: '查看管辖范围内的学生基本信息', path: '/talk/student', accent: '#4facfe', gradient: 'linear-gradient(135deg, #2a6fa8, #4facfe)' },
+      { title: '预警提醒', desc: '待跟进谈话、异常情况的自动提醒', path: '/talk/alert', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #0a2540, #1a5276)' },
+      { title: '谈话模板库', desc: '使用系统模板快速填充谈话内容', path: '/talk/template', accent: '#4facfe', gradient: 'linear-gradient(135deg, #667eea, #4facfe)' },
+      { title: '谈话跟进', desc: '查看和跟进待处理的谈话记录', path: '/talk/followup', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)' }
     ]
 
     return {
@@ -204,19 +204,19 @@ export default {
 .home-wrapper {
   min-height: calc(100vh - 100px);
   padding: 0 24px 40px;
-  background: linear-gradient(180deg, #fef8f0 0%, #fffcf7 100%);
+  background: linear-gradient(180deg, #f0f5fa 0%, #f5f8fc 100%);
   font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
   box-sizing: border-box;
 }
 
 /* ==================== 1. 欢迎横幅 ==================== */
 .banner {
-  background: linear-gradient(135deg, #fef8f0 0%, #fdf2e4 40%, #faf0e0 100%);
+  background: linear-gradient(160deg, #0a2540 0%, #0f3b5c 40%, #1a5276 100%);
   border-radius: 20px;
   margin: 20px 0 24px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 4px 24px rgba(139, 109, 82, 0.08);
+  box-shadow: 0 4px 24px rgba(26, 82, 118, 0.12);
 }
 .banner-inner {
   display: flex;
@@ -235,11 +235,11 @@ export default {
   width: 64px;
   height: 64px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #c89666, #d4a574);
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 24px rgba(200, 150, 102, 0.25);
+  box-shadow: 0 8px 24px rgba(79, 172, 254, 0.3);
   flex-shrink: 0;
 }
 .banner-avatar-text {
@@ -250,13 +250,13 @@ export default {
 .banner-hi {
   font-size: 26px;
   font-weight: 700;
-  color: #3d3027;
+  color: #ffffff;
   margin: 0 0 6px;
   letter-spacing: 1px;
 }
 .banner-sub {
   font-size: 13px;
-  color: #8c7b6b;
+  color: rgba(255, 255, 255, 0.75);
   margin: 0;
   letter-spacing: 1px;
 }
@@ -264,12 +264,12 @@ export default {
   text-align: right;
 }
 .banner-motto {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 12px;
   padding: 12px 20px;
   font-size: 14px;
-  color: #8c7b6b;
-  border: 1px solid rgba(200, 150, 102, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(79, 172, 254, 0.2);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -285,6 +285,14 @@ export default {
   width: 100%;
   height: 100%;
 }
+.banner-wave svg path:first-child {
+  fill: #f0f5fa;
+  opacity: 0.6;
+}
+.banner-wave svg path:last-child {
+  fill: #f5f8fc;
+  opacity: 0.3;
+}
 
 /* ==================== 2. KPI 数据胶囊 ==================== */
 .kpi-strip {
@@ -294,12 +302,12 @@ export default {
   margin-bottom: 24px;
 }
 .kpi-capsule {
-  background: #fffdf9;
+  background: #ffffff;
   border-radius: 16px;
   padding: 18px 16px;
   text-align: center;
-  border: 1px solid #efe4d6;
-  box-shadow: 0 2px 12px rgba(139, 109, 82, 0.05);
+  border: 1px solid #e4e7ed;
+  box-shadow: 0 2px 12px rgba(26, 82, 118, 0.05);
   transition: all 0.3s ease;
   animation: fadeUp 0.5s ease both;
   position: relative;
@@ -307,7 +315,7 @@ export default {
 }
 .kpi-capsule:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 28px rgba(139, 109, 82, 0.1);
+  box-shadow: 0 8px 28px rgba(26, 82, 118, 0.1);
 }
 .kpi-capsule-icon {
   width: 36px;
@@ -328,17 +336,17 @@ export default {
 .kpi-capsule-val {
   font-size: 26px;
   font-weight: 700;
-  color: #3d3027;
+  color: #1a2a3a;
   line-height: 1;
 }
 .kpi-capsule-unit {
   font-size: 11px;
-  color: #8c7b6b;
+  color: #6b7c8e;
 }
 .kpi-capsule-label {
   display: block;
   font-size: 11px;
-  color: #8c7b6b;
+  color: #6b7c8e;
   margin-top: 4px;
 }
 @keyframes fadeUp {
@@ -359,7 +367,7 @@ export default {
 .section-title {
   font-size: 16px;
   font-weight: 600;
-  color: #3d3027;
+  color: #1a2a3a;
   margin: 0;
   display: flex;
   align-items: center;
@@ -370,21 +378,21 @@ export default {
   gap: 14px;
 }
 .alert-card {
-  background: #fffdf9;
+  background: #ffffff;
   border-radius: 16px;
   padding: 20px;
-  border: 1px solid #efe4d6;
+  border: 1px solid #e4e7ed;
   display: flex;
   align-items: center;
   gap: 16px;
   position: relative;
   overflow: hidden;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 12px rgba(139, 109, 82, 0.05);
+  box-shadow: 0 2px 12px rgba(26, 82, 118, 0.05);
 }
 .alert-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(139, 109, 82, 0.1);
+  box-shadow: 0 6px 20px rgba(26, 82, 118, 0.1);
 }
 .alert-card-dot {
   position: absolute;
@@ -398,7 +406,7 @@ export default {
 .alert-card-num {
   font-size: 36px;
   font-weight: 800;
-  color: #3d3027;
+  color: #1a2a3a;
   line-height: 1;
   min-width: 50px;
 }
@@ -416,11 +424,11 @@ export default {
 .alert-card-title {
   font-size: 14px;
   font-weight: 600;
-  color: #3d3027;
+  color: #1a2a3a;
 }
 .alert-card-desc {
   font-size: 12px;
-  color: #8c7b6b;
+  color: #6b7c8e;
 }
 
 /* ==================== 5. 功能快捷入口 ==================== */
@@ -433,21 +441,21 @@ export default {
   gap: 14px;
 }
 .func-card {
-  background: #fffdf9;
+  background: #ffffff;
   border-radius: 16px;
   padding: 20px;
   display: flex;
   align-items: center;
   gap: 14px;
   cursor: pointer;
-  border: 1px solid #efe4d6;
-  box-shadow: 0 2px 12px rgba(139, 109, 82, 0.05);
+  border: 1px solid #e4e7ed;
+  box-shadow: 0 2px 12px rgba(26, 82, 118, 0.05);
   transition: all 0.3s ease;
   position: relative;
 }
 .func-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 28px rgba(139, 109, 82, 0.1);
+  box-shadow: 0 8px 28px rgba(26, 82, 118, 0.1);
 }
 .func-card-icon {
   width: 44px;
@@ -470,17 +478,17 @@ export default {
 .func-card-title {
   font-size: 15px;
   font-weight: 600;
-  color: #3d3027;
+  color: #1a2a3a;
   margin: 0 0 4px;
 }
 .func-card-desc {
   font-size: 12px;
-  color: #8c7b6b;
+  color: #6b7c8e;
   margin: 0;
   line-height: 1.5;
 }
 .func-card-arrow {
-  color: #c0b5a8;
+  color: #a0b4c8;
   font-size: 14px;
   flex-shrink: 0;
 }
