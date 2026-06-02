@@ -26,6 +26,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="enrollmentStatus"    column="enrollment_status"    />
         <result property="mentalHealthStatus"    column="mental_health_status"    />
         <result property="povertyLevel"    column="poverty_level"    />
+        <result property="deptName"    column="dept_name"    />
         <result property="remark"    column="remark"    />
         <result property="createBy"    column="create_by"    />
         <result property="createTime"    column="create_time"    />
@@ -191,7 +192,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <select id="selectUntalkedStudents" parameterType="map" resultMap="TalkStudentResult">
-        select s.* from talk_student s
+        select s.*, d.dept_name from talk_student s
+        left join sys_dept d on s.dept_id = d.dept_id
         <where>
             <if test="deptId != null">
                 and s.dept_id in (select d2.dept_id from sys_dept d2 where d2.dept_id = #{deptId}

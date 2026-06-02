@@ -270,6 +270,10 @@ export default {
       }
 
       listUntalked(params).then(response => {
+        console.log('[DEBUG-c1] loadUntalkedList response: rows.length=', (response.rows || []).length, 'total=', response.total)
+        if (response.rows && response.rows.length > 0) {
+          console.log('[DEBUG-c1] first row:', JSON.stringify(response.rows[0]))
+        }
         this.displayList = response.rows || []
         this.total = response.total || 0
         this.loading = false
@@ -292,22 +296,24 @@ export default {
       delete params.keyword
       delete params.tags
 
-      const hasFrontendFilters = this.queryParams.keyword || this.queryParams.talkType ||
+      const hasFrontendFilters = this.queryParams.keyword || this.queryParams.talkType || this.talkTypeFilter ||
         (this.queryParams.tags && this.queryParams.tags.length > 0) ||
         (this.queryParams.dateRange && this.queryParams.dateRange.length === 2)
 
       if (this.talkTypeFilter) {
         params.talkType = this.talkTypeFilter
+      } else {
+        delete params.talkType
       }
 
       if (hasFrontendFilters) {
         params.pageNum = 1
         params.pageSize = 9999
       }
-
-      listTalksession(params).then(response => {
-        const sessions = response.rows || []
-        if (sessions.length === 0) {
+ 
+        listTalksession(params).then(response => {
+          const sessions = response.rows || []
+          if (sessions.length === 0) {
           this.allData = []
           this.tagDataMap = {}
           this.applyFilters()
@@ -416,7 +422,9 @@ export default {
         )
       }
 
-      if (this.queryParams.talkType) {
+      if (this.talkTypeFilter) {
+        data = data.filter(row => row.talkType === this.talkTypeFilter)
+      } else if (this.queryParams.talkType) {
         data = data.filter(row => row.talkType === this.queryParams.talkType)
       }
 
@@ -474,9 +482,9 @@ export default {
       this.handleQuery()
     },
 
-    handleTabClick() {
+    handleTabClick(tab) {
+      this.talkTypeFilter = tab.name
       this.queryParams.pageNum = 1
-      this.queryParams.talkType = ''
       this.getList()
     },
 

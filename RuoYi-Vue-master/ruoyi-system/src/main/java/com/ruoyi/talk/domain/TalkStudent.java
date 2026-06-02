@@ -98,6 +98,9 @@ public class TalkStudent extends BaseEntity
     @Excel(name = "贫困等级认定")
     private String povertyLevel;
 
+    /** 班级名称（非数据库字段，仅用于查询展示） */
+    private String deptName;
+
     public void setStudentId(Long studentId) 
     {
         this.studentId = studentId;
@@ -308,6 +311,16 @@ public class TalkStudent extends BaseEntity
         return povertyLevel;
     }
 
+    public void setDeptName(String deptName) 
+    {
+        this.deptName = deptName;
+    }
+
+    public String getDeptName() 
+    {
+        return deptName;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -332,6 +345,7 @@ public class TalkStudent extends BaseEntity
             .append("enrollmentStatus", getEnrollmentStatus())
             .append("mentalHealthStatus", getMentalHealthStatus())
             .append("povertyLevel", getPovertyLevel())
+            .append("deptName", getDeptName())
             .append("remark", getRemark())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())
