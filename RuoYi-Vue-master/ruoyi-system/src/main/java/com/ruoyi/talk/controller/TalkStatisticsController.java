@@ -128,10 +128,30 @@ public class TalkStatisticsController extends BaseController {
         int totalRecords = (int) data.get("totalRecords");
         data.put("avgRecordsPerStudent", totalStudents > 0
                 ? String.format("%.1f", (double) totalRecords / totalStudents) : "0");
+        data.put("coverageRate", totalStudents > 0
+                ? String.format("%.1f", Math.min(100.0, 100.0 * totalRecords / Math.max(1, totalStudents))) : "0");
 
         Map<String, Object> scopeParams = createQueryParams();
         int pendingFeedback = talkStudentRecordMapper.countPendingFeedback(scopeParams);
         data.put("pendingFeedback", pendingFeedback);
+
+        data.put("tagDistribution", buildTagChart());
+        data.put("monthlyTrend", buildMonthlyChart());
+
+        List<SysDept> depts = sysDeptMapper.selectDeptList(new SysDept());
+        List<Map<String, Object>> collegeRanking = new ArrayList<>();
+        for (SysDept d : depts) {
+            if (!"college".equals(d.getDeptType()))
+                continue;
+            int count = talkStudentMapper.countStudentsByDeptId(d.getDeptId());
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("name", d.getDeptName());
+            item.put("count", count);
+            collegeRanking.add(item);
+        }
+        collegeRanking.sort((a, b) -> Integer.compare(
+                ((Number) b.get("count")).intValue(), ((Number) a.get("count")).intValue()));
+        data.put("collegeRanking", collegeRanking);
 
         return success(data);
     }
@@ -139,10 +159,7 @@ public class TalkStatisticsController extends BaseController {
     @PreAuthorize("@ss.hasPermi('talk:dashboard:view')")
     @GetMapping("/charts")
     public AjaxResult charts() {
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("tagDistribution", buildTagChart());
-        data.put("monthlyTrend", buildMonthlyChart());
-        return success(data);
+        return dashboard();
     }
 
     @PreAuthorize("@ss.hasPermi('talk:alert:view')")
@@ -195,31 +212,6 @@ public class TalkStatisticsController extends BaseController {
     @PreAuthorize("@ss.hasPermi('talk:bigscreen:view')")
     @GetMapping("/bigscreen")
     public AjaxResult bigscreen() {
-        Map<String, Object> data = buildOverview();
-
-        int totalStudents = (int) data.get("totalStudents");
-        int totalRecords = (int) data.get("totalRecords");
-        data.put("coverageRate", totalStudents > 0
-                ? String.format("%.1f", Math.min(100.0, 100.0 * totalRecords / Math.max(1, totalStudents))) : "0");
-
-        data.put("monthlyTrend", buildMonthlyChart());
-        data.put("tagDistribution", buildTagChart());
-
-        List<SysDept> depts = sysDeptMapper.selectDeptList(new SysDept());
-        List<Map<String, Object>> collegeRanking = new ArrayList<>();
-        for (SysDept d : depts) {
-            if (!"college".equals(d.getDeptType()))
-                continue;
-            int count = talkStudentMapper.countStudentsByDeptId(d.getDeptId());
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("name", d.getDeptName());
-            item.put("count", count);
-            collegeRanking.add(item);
-        }
-        collegeRanking.sort((a, b) -> Integer.compare(
-                ((Number) b.get("count")).intValue(), ((Number) a.get("count")).intValue()));
-        data.put("collegeRanking", collegeRanking);
-
-        return success(data);
+        return dashboard();
     }
 }

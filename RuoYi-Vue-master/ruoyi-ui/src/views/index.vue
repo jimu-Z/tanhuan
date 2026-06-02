@@ -134,9 +134,8 @@ export default {
     const secretaryCards = [
       { title: '学生信息管理', desc: '导入台账、查看学生信息、管理学生数据', path: '/talk/student', accent: '#4facfe', gradient: 'linear-gradient(135deg, #1a5276, #2a6fa8)' },
       { title: '发起谈话', desc: '创建个别/集体谈话，选择谈话类型和内容标签', path: '/talk/initiate', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #0f3b5c, #1a5276)' },
-      { title: '统计分析', desc: '仪表盘视图，查看谈话数据分布与趋势', path: '/talk/dashboard', accent: '#4facfe', gradient: 'linear-gradient(135deg, #2a6fa8, #4facfe)' },
+      { title: '数据总览', desc: '一站式查看谈话数据分布、趋势与排名', path: '/talk/dashboard', accent: '#4facfe', gradient: 'linear-gradient(135deg, #2a6fa8, #4facfe)' },
       { title: '预警提醒', desc: '超期未谈话、心理健康跟踪等自动告警', path: '/talk/alert', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #0a2540, #1a5276)' },
-      { title: '数据大屏', desc: '全屏数据可视化，适用于大屏幕投放', path: '/talk/bigscreen', accent: '#4facfe', gradient: 'linear-gradient(135deg, #667eea, #4facfe)' },
       { title: '统一查询', desc: '合并会话/记录的多维度条件查询', path: '/talk/query', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)' }
     ]
 
