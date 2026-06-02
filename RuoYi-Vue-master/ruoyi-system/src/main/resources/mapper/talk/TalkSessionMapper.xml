@@ -29,7 +29,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="talkLocation != null  and talkLocation != ''"> and ts.talk_location = #{talkLocation}</if>
             <if test="talkPerson != null  and talkPerson != ''"> and ts.talk_person = #{talkPerson}</if>
             <if test="talkContent != null  and talkContent != ''"> and ts.talk_content = #{talkContent}</if>
-            ${params.dataScope}
+            <if test="params.counselorUsername != null and params.counselorUsername != ''"> and ts.create_by = #{params.counselorUsername}</if>
+            <if test="params.secretaryDeptId != null"> and ts.session_id in (select tsr.session_id from talk_student_record tsr join talk_student stu on tsr.student_id = stu.student_id join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{params.secretaryDeptId} or find_in_set(#{params.secretaryDeptId}, d.ancestors)))</if>
         </where>
     </select>
     
@@ -115,7 +116,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="countTalkSessionsFiltered" parameterType="map" resultType="int">
         select count(*) from talk_session ts
         <where>
-            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+            <if test="counselorUsername != null and counselorUsername != ''"> and ts.create_by = #{counselorUsername}</if>
+            <if test="secretaryDeptId != null"> and ts.session_id in (select tsr.session_id from talk_student_record tsr join talk_student stu on tsr.student_id = stu.student_id join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
         </where>
     </select>
 
@@ -123,7 +125,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select DATE_FORMAT(ts.talk_time, '%Y-%m') as month, count(*) as cnt
         from talk_session ts
         <where>
-            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+            <if test="counselorUsername != null and counselorUsername != ''"> and ts.create_by = #{counselorUsername}</if>
+            <if test="secretaryDeptId != null"> and ts.session_id in (select tsr.session_id from talk_student_record tsr join talk_student stu on tsr.student_id = stu.student_id join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
         </where>
         group by DATE_FORMAT(ts.talk_time, '%Y-%m')
         order by month asc limit 12
@@ -133,7 +136,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select ts.talk_type as type, count(*) as cnt
         from talk_session ts
         <where>
-            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+            <if test="counselorUsername != null and counselorUsername != ''"> and ts.create_by = #{counselorUsername}</if>
+            <if test="secretaryDeptId != null"> and ts.session_id in (select tsr.session_id from talk_student_record tsr join talk_student stu on tsr.student_id = stu.student_id join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
         </where>
         group by ts.talk_type
     </select>

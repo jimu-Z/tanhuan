@@ -26,6 +26,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where session_id = #{sessionId}
     </select>
 
+    <select id="selectTagsBySessionIds" resultMap="TalkSessionTagResult">
+        select session_id, tag_value
+        from talk_session_tag
+        where session_id in
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <select id="countTagsByValue" resultType="java.util.HashMap">
         select tag_value as tag, count(*) as cnt
         from talk_session_tag group by tag_value
@@ -36,7 +45,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         from talk_session_tag tst
         join talk_session ts on tst.session_id = ts.session_id
         <where>
-            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+            <if test="counselorUsername != null and counselorUsername != ''"> and ts.create_by = #{counselorUsername}</if>
+            <if test="secretaryDeptId != null"> and ts.session_id in (select tsr.session_id from talk_student_record tsr join talk_student stu on tsr.student_id = stu.student_id join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
         </where>
         group by tst.tag_value
     </select>

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -20,6 +21,9 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.talk.domain.TalkSession;
 import com.ruoyi.talk.domain.TalkSessionCreateRequest;
+import com.ruoyi.talk.domain.TalkSessionTag;
+import com.ruoyi.talk.domain.TalkStudentRecord;
+import com.ruoyi.talk.mapper.TalkStudentRecordMapper;
 import com.ruoyi.talk.service.ITalkSessionService;
 import com.ruoyi.talk.service.TalkDocxService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
@@ -28,6 +32,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Comparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +52,9 @@ public class TalkSessionController extends BaseController {
 
     @Autowired
     private TalkDocxService talkDocxService;
+
+    @Autowired
+    private TalkStudentRecordMapper talkStudentRecordMapper;
 
     /**
      * 查询谈话会话管理列表
@@ -145,6 +153,19 @@ public class TalkSessionController extends BaseController {
         }
     }
 
+    /**
+     * 导出集体谈话汇总表 (.docx)
+     */
+    @PreAuthorize("@ss.hasPermi('talk:session:export')")
+    @Log(title = "谈话会话管理", businessType = BusinessType.EXPORT)
+    @GetMapping("/exportGroupSummary/{sessionId}")
+    public void exportGroupSummary(@PathVariable Long sessionId, HttpServletResponse response) throws Exception {
+        byte[] docxBytes = talkDocxService.generateGroupSummaryDocx(sessionId);
+        TalkSession session = talkSessionService.selectTalkSessionBySessionId(sessionId);
+        String fileName = "集体谈话汇总表_" + (session != null ? session.getTalkPerson() : sessionId) + ".docx";
+        writeFileDownload(response, docxBytes, fileName, false);
+    }
+
     private void writeFileDownload(HttpServletResponse response, byte[] data, String fileName, boolean isZip)
             throws Exception {
         String contentType = isZip ? "application/zip"
@@ -165,7 +186,7 @@ public class TalkSessionController extends BaseController {
     }
 
     @PreAuthorize("@ss.hasPermi('talk:session:query')")
-    @GetMapping(value = "/{sessionId}")
+    @GetMapping("/detail/{sessionId}")
     public AjaxResult getInfo(@PathVariable("sessionId") Long sessionId) {
         return success(talkSessionService.selectTalkSessionBySessionId(sessionId));
     }
@@ -174,6 +195,23 @@ public class TalkSessionController extends BaseController {
     @GetMapping("/tags/{sessionId}")
     public AjaxResult getTags(@PathVariable("sessionId") Long sessionId) {
         return success(talkSessionService.selectTalkSessionTags(sessionId));
+    }
+
+    /**
+     * 批量获取多个会话的标签（解决N+1查询问题）
+     */
+    @PreAuthorize("@ss.hasPermi('talk:session:query')")
+    @GetMapping("/tags/batch")
+    public AjaxResult getTagsBatch(@RequestParam String sessionIds) {
+        return success(talkSessionService.selectTalkSessionTagsBatch(sessionIds));
+    }
+
+    @PreAuthorize("@ss.hasPermi('talk:session:query')")
+    @GetMapping("/participants/{sessionId}")
+    public AjaxResult getParticipants(@PathVariable("sessionId") Long sessionId) {
+        List<TalkStudentRecord> records = talkStudentRecordMapper.selectTalkStudentRecordBySessionId(sessionId);
+        records.sort(Comparator.comparing(TalkStudentRecord::getStudentCode, Comparator.nullsLast(String::compareTo)));
+        return success(records);
     }
 
     /**
@@ -201,7 +239,7 @@ public class TalkSessionController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('talk:session:remove')")
     @Log(title = "谈话会话管理", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{sessionIds}")
+    @DeleteMapping("/{sessionIds:[\\d,]+}")
     public AjaxResult remove(@PathVariable Long[] sessionIds) {
         return toAjax(talkSessionService.deleteTalkSessionBySessionIds(sessionIds));
     }

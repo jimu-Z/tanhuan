@@ -12,7 +12,7 @@ export function listTalksession(query) {
 // 查询谈话会话管理详细
 export function getTalksession(sessionId) {
   return request({
-    url: '/ruoyi-system/talksession/' + sessionId,
+    url: '/ruoyi-system/talksession/detail/' + sessionId,
     method: 'get'
   })
 }
@@ -51,7 +51,33 @@ export function getSessionTags(sessionId) {
   })
 }
 
-// 标签字典映射
+// 获取集体谈话参与人
+export function getParticipants(sessionId) {
+  return request({
+    url: '/ruoyi-system/talksession/participants/' + sessionId,
+    method: 'get'
+  })
+}
+
+// 批量获取会话标签
+export function getBatchTags(sessionIds) {
+  return request({
+    url: '/ruoyi-system/talksession/tags/batch',
+    method: 'get',
+    params: { sessionIds: sessionIds.join(',') }
+  })
+}
+
+// 导出集体谈话汇总表
+export function exportGroupSummary(sessionId) {
+  return request({
+    url: '/ruoyi-system/talksession/exportGroupSummary/' + sessionId,
+    method: 'get',
+    responseType: 'blob'
+  })
+}
+
+// 标签字典映射（作为兜底，优先从数据库读取getLabels()）
 export const TAG_LABELS = {
   thought_education: '思想理论教育和价值引领',
   party_class: '党团和班级建设',

@@ -14,4 +14,6 @@ public interface TalkSessionTagMapper {
 
     public List<java.util.HashMap<String, Object>> countTagsByValue();
     public List<java.util.HashMap<String, Object>> countTagsByValueFiltered(Map<String, Object> params);
+
+    public List<TalkSessionTag> selectTagsBySessionIds(List<Long> sessionIds);
 }

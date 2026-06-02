@@ -22,10 +22,12 @@ import com.ruoyi.talk.domain.TalkSession;
 import com.ruoyi.talk.domain.TalkSessionTag;
 import com.ruoyi.talk.domain.TalkStudent;
 import com.ruoyi.talk.domain.TalkStudentRecord;
+import com.ruoyi.talk.domain.TalkTag;
 import com.ruoyi.talk.mapper.TalkSessionMapper;
 import com.ruoyi.talk.mapper.TalkSessionTagMapper;
 import com.ruoyi.talk.mapper.TalkStudentMapper;
 import com.ruoyi.talk.mapper.TalkStudentRecordMapper;
+import com.ruoyi.talk.mapper.TalkTagMapper;
 
 @Service
 public class TalkDocxService {
@@ -45,6 +47,8 @@ public class TalkDocxService {
     private TalkStudentRecordMapper talkStudentRecordMapper;
     @Autowired
     private TalkSessionTagMapper talkSessionTagMapper;
+    @Autowired
+    private TalkTagMapper talkTagMapper;
     @Autowired
     private SysDeptMapper sysDeptMapper;
 
@@ -76,7 +80,7 @@ public class TalkDocxService {
         if (!templateOk())
             return fallback(session, records, tags);
 
-        if ("individual".equals(session.getTalkType()) || records.size() <= 1) {
+        if ("individual".equals(session.getTalkType())) {
             TalkStudentRecord rec = records.isEmpty() ? null : records.get(0);
             TalkStudent stu = rec != null ? talkStudentMapper.selectTalkStudentByStudentId(rec.getStudentId()) : null;
             return fill(session, stu, rec, tags);
@@ -228,11 +232,12 @@ public class TalkDocxService {
         m.put("${talk_person}", s(session.getTalkPerson()));
         m.put("${talk_content}", stripTalkRecord(s(session.getTalkContent())));
 
-        // 标签：列出全部7项，勾选已选
+        // 标签：使用数据库驱动，hardcoded常量作为兜底
+        Map<String, String> tagLabelMap = getTagLabelMap();
         Set<String> sel = tags != null ? tags.stream().map(TalkSessionTag::getTagValue).collect(Collectors.toSet())
                 : Collections.emptySet();
         StringBuilder tb = new StringBuilder();
-        for (Map.Entry<String, String> e : TalkConstants.TAG_LABELS.entrySet()) {
+        for (Map.Entry<String, String> e : tagLabelMap.entrySet()) {
             if (tb.length() > 0)
                 tb.append("\n");
             tb.append(sel.contains(e.getKey()) ? "☑ " : "☐ ").append(e.getValue());
@@ -279,6 +284,64 @@ public class TalkDocxService {
         return m;
     }
 
+    private Map<String, String> getTagLabelMap() {
+        try {
+            List<TalkTag> tags = talkTagMapper.selectActiveTags();
+            if (tags != null && !tags.isEmpty()) {
+                Map<String, String> m = new LinkedHashMap<>();
+                for (TalkTag t : tags) {
+                    m.put(t.getTagKey(), t.getTagName());
+                }
+                return m;
+            }
+        } catch (Exception e) {
+            log.warn("从数据库读取标签失败，使用硬编码兜底: {}", e.getMessage());
+        }
+        return TalkConstants.TAG_LABELS;
+    }
+
+    public byte[] generateGroupSummaryDocx(Long sessionId) throws Exception {
+        TalkSession session = talkSessionMapper.selectTalkSessionBySessionId(sessionId);
+        if (session == null)
+            throw new IllegalArgumentException("会话不存在");
+        List<TalkStudentRecord> records = talkStudentRecordMapper.selectTalkStudentRecordBySessionId(sessionId);
+        try (XWPFDocument d = new XWPFDocument(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            t(d, "集体谈话汇总表");
+            bl(d);
+            f(d, "谈话类型", s(session.getTalkType()));
+            f(d, "谈话时间", session.getTalkTime() != null ? FMT.get().format(session.getTalkTime()) : "");
+            f(d, "谈话人", s(session.getTalkPerson()));
+            f(d, "谈话地点", s(session.getTalkLocation()));
+            bl(d);
+
+            XWPFTable table = d.createTable(records.size() + 1, 7);
+            String[] headers = { "序号", "姓名", "学号", "班级", "反馈", "跟进计划", "跟进状态" };
+            for (int i = 0; i < headers.length; i++) {
+                table.getRow(0).getCell(i).setText(headers[i]);
+            }
+            int idx = 1;
+            for (TalkStudentRecord rec : records) {
+                TalkStudent stu = talkStudentMapper.selectTalkStudentByStudentId(rec.getStudentId());
+                XWPFTableRow row = table.getRow(idx);
+                row.getCell(0).setText(String.valueOf(idx));
+                row.getCell(1).setText(stu != null ? s(stu.getStudentName()) : "-");
+                row.getCell(2).setText(stu != null ? s(stu.getStudentCode()) : "-");
+                row.getCell(3).setText(stu != null && stu.getDeptId() != null
+                        ? s(sysDeptMapper.selectDeptById(stu.getDeptId()).getDeptName())
+                        : "-");
+                row.getCell(4).setText(s(rec.getStudentFeedback()));
+                row.getCell(5).setText(s(rec.getFollowupPlan()));
+                row.getCell(6).setText(TalkConstants.FOLLOWUP_STATUS_LABELS.getOrDefault(rec.getFollowupStatus(), ""));
+                idx++;
+            }
+            bl(d);
+            h(d, "谈话内容");
+            c(d, stripTalkRecord(s(session.getTalkContent())));
+            d.write(bos);
+            return bos.toByteArray();
+        }
+    }
+
     private String s(String v) {
         return v == null ? "" : v;
     }
@@ -307,7 +370,7 @@ public class TalkDocxService {
             f(d, "标签",
                     tags != null
                             ? tags.stream()
-                                    .map(t -> TalkConstants.TAG_LABELS.getOrDefault(t.getTagValue(), t.getTagValue()))
+                                    .map(t -> getTagLabelMap().getOrDefault(t.getTagValue(), t.getTagValue()))
                                     .collect(Collectors.joining("、"))
                             : "");
             h(d, "谈话内容");

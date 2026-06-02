@@ -185,7 +185,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="countTalkStudentsFiltered" parameterType="map" resultType="int">
         select count(*) from talk_student s
         <where>
-            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
+            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
         </where>
+    </select>
+
+    <select id="selectUntalkedStudents" parameterType="map" resultMap="TalkStudentResult">
+        select s.* from talk_student s
+        <where>
+            <if test="deptId != null">
+                and s.dept_id in (select d2.dept_id from sys_dept d2 where d2.dept_id = #{deptId}
+                    or find_in_set(#{deptId}, d2.ancestors))
+            </if>
+            <if test="beginDate != null and endDate != null">
+                and s.student_id not in (
+                    select tsr.student_id from talk_student_record tsr
+                    join talk_session ts on tsr.session_id = ts.session_id
+                    where ts.talk_time between #{beginDate} and #{endDate}
+                )
+            </if>
+            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
+            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+        </where>
+        order by s.student_code asc
     </select>
 </mapper>

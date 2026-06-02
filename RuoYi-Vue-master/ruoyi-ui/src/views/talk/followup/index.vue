@@ -140,7 +140,7 @@ export default {
           completed: data.completedFollowups || 0,
           none: data.noneFollowups || 0,
         }
-      }).catch(() => {})
+      }).catch(() => { this.$modal.msgError('操作失败') })
     },
     fetchRecords() {
       this.loading = true

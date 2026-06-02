@@ -87,7 +87,7 @@
       <el-tab-pane label="集体谈话" name="group" />
     </el-tabs>
 
-    <el-table v-loading="loading" :data="talksessionList" @selection-change="handleSelectionChange" row-key="sessionId" @expand-change="handleExpand">
+    <el-table v-loading="loading" :data="talksessionList" @selection-change="handleSelectionChange" row-key="sessionId" @expand-change="handleExpand" ref="sessionTable">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column type="index" label="序号" width="60" align="center" />
       <el-table-column type="expand" v-if="talkTypeFilter==='group'">
@@ -120,6 +120,15 @@
       <el-table-column label="谈话时间" align="center" prop="talkTime" width="180">
         <template slot-scope="scope">
           <span>{{ parseTime(scope.row.talkTime, '{y}-{m}-{d}') }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="参与学生" align="center" width="120">
+        <template slot-scope="scope">
+          <el-button v-if="scope.row.talkType==='group'" type="text" size="mini"
+            @click="scope.row._expanded ? $refs.sessionTable.toggleRowExpansion(scope.row, false) : $refs.sessionTable.toggleRowExpansion(scope.row, true); scope.row._expanded = !scope.row._expanded">
+            {{ (scope.row._students||[]).length > 0 ? scope.row._students.length + '人 ▼' : '加载...' }}
+          </el-button>
+          <span v-else style="color:#909399">1人</span>
         </template>
       </el-table-column>
       <el-table-column label="谈话地点" align="center" prop="talkLocation" />
@@ -171,6 +180,14 @@
     <el-dialog :title="title" :visible.sync="open" width="500px" append-to-body>
       <el-form ref="form" :model="form" :rules="rules" label-width="100px">
         <el-row>
+          <el-col :span="24">
+            <el-form-item label="谈话类型" prop="talkType">
+              <el-select v-model="form.talkType" placeholder="请选择谈话类型" style="width:100%">
+                <el-option label="个别谈话" value="individual"></el-option>
+                <el-option label="集体谈话" value="group"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
           <el-col :span="24">
             <el-form-item label="谈话时间" prop="talkTime">
               <el-date-picker clearable
@@ -276,7 +293,7 @@ export default {
         this.total = response.total
         this.loading = false
         this.loadTags()
-      }).catch(() => { this.loading = false })
+      }).catch(() => { this.loading = false; this.$modal.msgError('加载标签失败') })
     },
     loadTags() {
       const ids = this.talksessionList.map(s => s.sessionId)
@@ -284,7 +301,7 @@ export default {
       ids.forEach(id => {
         getSessionTags(id).then(res => {
           this.$set(this.tagMap, id, res.data || [])
-        }).catch(() => {})
+        }).catch(() => { this.$modal.msgError('操作失败') })
       })
     },
     getTagLabel(value) {
@@ -306,8 +323,8 @@ export default {
         )).then(students => {
           this.$set(row, '_students', students)
           this.$set(row, '_loadingStudents', false)
-        }).catch(() => { this.$set(row, '_loadingStudents', false) })
-      }).catch(() => { this.$set(row, '_loadingStudents', false) })
+        }).catch(() => { this.$set(row, '_loadingStudents', false); this.$modal.msgError('加载学生信息失败') })
+      }).catch(() => { this.$set(row, '_loadingStudents', false); this.$modal.msgError('加载学生信息失败') })
     },
     // 取消按钮
     cancel() {
@@ -376,13 +393,13 @@ export default {
               this.$modal.msgSuccess("修改成功")
               this.open = false
               this.getList()
-            }).catch(() => {})
+            }).catch(() => { this.$modal.msgError('修改失败') })
           } else {
             addTalksession(this.form).then(response => {
               this.$modal.msgSuccess("新增成功")
               this.open = false
               this.getList()
-            }).catch(() => {})
+            }).catch(() => { this.$modal.msgError('新增失败') })
           }
         }
       })
@@ -395,7 +412,7 @@ export default {
       }).then(() => {
         this.getList()
         this.$modal.msgSuccess("删除成功")
-      }).catch(() => {})
+      }).catch(() => { this.$modal.msgError('删除失败') })
     },
     /** 导出按钮操作 */
     handleExport() {
@@ -412,7 +429,7 @@ export default {
         const a = document.createElement('a'); a.href = url; a.download = '谈话记录批量导出.zip'; a.click()
         window.URL.revokeObjectURL(url)
         this.$modal.msgSuccess('导出成功')
-      }).catch(() => {})
+      }).catch(() => { this.$modal.msgError('导出失败') })
     },
     handleExportDocx(row) {
       const isGroup = row.talkType === 'group'
@@ -427,7 +444,7 @@ export default {
         a.click()
         window.URL.revokeObjectURL(url)
         this.$modal.msgSuccess('导出成功')
-      }).catch(() => {})
+      }).catch(() => { this.$modal.msgError('导出失败') })
     }
   }
 }

@@ -202,11 +202,24 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
             Sheet sheet = workbook.getSheetAt(0);
             log.debug("[IMPORT-DEBUG] Sheet: lastRowNum={}, physicalRows={}", sheet.getLastRowNum(),
                     sheet.getPhysicalNumberOfRows());
-            if (sheet.getLastRowNum() < 2) {
-                throw new RuntimeException("Excel文件至少需要标题行和列头行");
+            if (sheet.getLastRowNum() < 1) {
+                throw new RuntimeException("Excel文件至少需要表头行和一行数据");
             }
 
-            Row headerRow = sheet.getRow(1);
+            int headerRowIdx = 0;
+            int dataStartRow = 1;
+            Row row0 = sheet.getRow(0);
+            List<String> row0Cells = readRowCells(row0);
+            Map<String, Integer> mapping0 = buildFieldMapping(row0Cells);
+            long recognized0 = mapping0.values().stream().filter(c -> c > 0).count();
+            if (recognized0 < 2 && sheet.getLastRowNum() >= 2) {
+                headerRowIdx = 1;
+                dataStartRow = 2;
+            }
+            log.debug("[IMPORT-DEBUG] headerRowIdx={}, dataStartRow={}, recognized0={}",
+                    headerRowIdx, dataStartRow, recognized0);
+
+            Row headerRow = sheet.getRow(headerRowIdx);
             List<String> headers = readRowCells(headerRow);
             log.debug("[IMPORT-DEBUG] Headers count={}, first5={}", headers.size(),
                     headers.subList(0, Math.min(5, headers.size())));
@@ -216,21 +229,21 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
             result.put("headers", headers);
             result.put("fieldMapping", convertFieldMappingForDisplay(fieldMapping));
 
-            int totalRows = Math.max(0, sheet.getLastRowNum() - 1);
+            int totalRows = Math.max(0, sheet.getLastRowNum() - headerRowIdx);
             log.debug("[IMPORT-DEBUG] totalRows={}", totalRows);
             int errorCount = 0;
             int warnCount = 0;
-            int previewLimit = Math.min(10, totalRows);
+            int previewLimit = totalRows;
             List<Map<String, Object>> previewRows = new ArrayList<>();
             Set<String> seenCodesInExcel = new HashSet<>();
 
-            for (int i = 2; i <= sheet.getLastRowNum(); i++) {
+            for (int i = dataStartRow; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null)
                     continue;
 
                 Map<String, String> rowData = parseRowData(row, headers, fieldMapping);
-                if (i == 2) {
+                if (i == dataStartRow) {
                     log.debug("[IMPORT-DEBUG] First data row: student_code={}, student_name={}, college={}",
                             rowData.get("student_code"), rowData.get("student_name"), rowData.get("college"));
                 }
@@ -278,7 +291,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                     seenCodesInExcel.add(studentCode);
                 }
 
-                if (i - 2 < previewLimit) {
+                if (i - dataStartRow < previewLimit) {
                     Map<String, Object> preview = new LinkedHashMap<>();
                     preview.put("rowNum", i + 1);
                     preview.put("data", rowData);
@@ -306,7 +319,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
      * 注意：每行独立处理，不使用全局事务，部分行失败不影响其他行
      */
     @Override
-    public Map<String, Object> importExecute(List<Map<String, Object>> confirmedRows) {
+    public Map<String, Object> importExecute(List<Map<String, Object>> confirmedRows, String importMode) {
         Map<String, Object> result = new LinkedHashMap<>();
         int successCount = 0;
         int skipCount = 0;
@@ -361,12 +374,6 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                     continue;
                 }
 
-                if (isStudentCodeExists(studentCode)) {
-                    skipCount++;
-                    errors.add("第" + rowNum + "行: 学号" + studentCode + " 已存在，已跳过");
-                    continue;
-                }
-
                 Long collegeDeptId = findOrCreateDept(college, TOP_DEPT_ID, "college");
                 Long gradeDeptId = findOrCreateDept(grade, collegeDeptId, "grade");
                 Long classDeptId = findOrCreateDept(className, gradeDeptId, "class");
@@ -393,6 +400,30 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 student.setPovertyLevel(getString(rowData, "poverty_level"));
                 student.setPoliticalStatus(getString(rowData, "political_status"));
                 student.setRemark(getString(rowData, "remark"));
+
+                if (isStudentCodeExists(studentCode)) {
+                    if ("update".equals(importMode)) {
+                        TalkStudent eq = new TalkStudent();
+                        eq.setStudentCode(studentCode);
+                        List<TalkStudent> existingList = talkStudentMapper.selectTalkStudentList(eq);
+                        TalkStudent existing = existingList != null && !existingList.isEmpty() ? existingList.get(0)
+                                : null;
+                        if (existing != null) {
+                            student.setStudentId(existing.getStudentId());
+                            student.setCreateBy(existing.getCreateBy());
+                            student.setCreateTime(existing.getCreateTime());
+                            student.setUpdateTime(DateUtils.getNowDate());
+                            talkStudentMapper.updateTalkStudent(student);
+                            successCount++;
+                            errors.add("第" + rowNum + "行: 学号" + studentCode + " 已存在，已更新");
+                            continue;
+                        }
+                    }
+                    skipCount++;
+                    errors.add("第" + rowNum + "行: 学号" + studentCode + " 已存在，已跳过");
+                    continue;
+                }
+
                 student.setCreateTime(DateUtils.getNowDate());
                 talkStudentMapper.insertTalkStudent(student);
                 successCount++;
@@ -759,6 +790,16 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     private String getString(Map<String, String> map, String key, String defaultValue) {
         String val = map.get(key);
         return (val != null && !val.isEmpty()) ? val : defaultValue;
+    }
+
+    @Override
+    public int countStudentsByDeptId(Long deptId) {
+        return talkStudentMapper.countStudentsByDeptId(deptId);
+    }
+
+    @Override
+    public List<TalkStudent> selectUntalkedStudents(Map<String, Object> params) {
+        return talkStudentMapper.selectUntalkedStudents(params);
     }
 
 }

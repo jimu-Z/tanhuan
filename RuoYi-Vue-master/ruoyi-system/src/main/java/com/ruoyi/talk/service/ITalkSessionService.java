@@ -1,6 +1,7 @@
 package com.ruoyi.talk.service;
 
 import java.util.List;
+import java.util.Map;
 import com.ruoyi.talk.domain.TalkSession;
 import com.ruoyi.talk.domain.TalkSessionCreateRequest;
 import com.ruoyi.talk.domain.TalkSessionTag;
@@ -32,4 +33,5 @@ public interface ITalkSessionService
      */
     public TalkSession createTalkWithRecords(TalkSessionCreateRequest request);
     public List<TalkSessionTag> selectTalkSessionTags(Long sessionId);
+    public Map<Long, List<TalkSessionTag>> selectTalkSessionTagsBatch(String sessionIds);
 }

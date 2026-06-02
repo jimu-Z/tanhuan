@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.talk.mapper.TalkTagMapper">
+
+    <resultMap type="TalkTag" id="TalkTagResult">
+        <result property="tagId"      column="tag_id"      />
+        <result property="tagKey"     column="tag_key"     />
+        <result property="tagName"    column="tag_name"    />
+        <result property="sortOrder"  column="sort_order"  />
+        <result property="status"     column="status"      />
+        <result property="delFlag"    column="del_flag"    />
+        <result property="createBy"   column="create_by"   />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy"   column="update_by"   />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="selectTalkTagVo">
+        select tag_id, tag_key, tag_name, sort_order, status, del_flag,
+               create_by, create_time, update_by, update_time
+        from talk_tag
+    </sql>
+
+    <select id="selectTalkTagList" parameterType="TalkTag" resultMap="TalkTagResult">
+        <include refid="selectTalkTagVo"/>
+        <where>
+            <if test="tagKey != null and tagKey != ''"> and tag_key like concat('%', #{tagKey}, '%')</if>
+            <if test="tagName != null and tagName != ''"> and tag_name like concat('%', #{tagName}, '%')</if>
+            <if test="status != null and status != ''"> and status = #{status}</if>
+            and del_flag = '0'
+        </where>
+        order by sort_order asc
+    </select>
+
+    <select id="selectTalkTagById" parameterType="Long" resultMap="TalkTagResult">
+        <include refid="selectTalkTagVo"/>
+        where tag_id = #{tagId} and del_flag = '0'
+    </select>
+
+    <select id="selectActiveTags" resultMap="TalkTagResult">
+        <include refid="selectTalkTagVo"/>
+        where status = '0' and del_flag = '0'
+        order by sort_order asc
+    </select>
+
+    <insert id="insertTalkTag" parameterType="TalkTag" useGeneratedKeys="true" keyProperty="tagId">
+        insert into talk_tag
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="tagKey != null and tagKey != ''">tag_key,</if>
+            <if test="tagName != null and tagName != ''">tag_name,</if>
+            <if test="sortOrder != null">sort_order,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="tagKey != null and tagKey != ''">#{tagKey},</if>
+            <if test="tagName != null and tagName != ''">#{tagName},</if>
+            <if test="sortOrder != null">#{sortOrder},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+        </trim>
+    </insert>
+
+    <update id="updateTalkTag" parameterType="TalkTag">
+        update talk_tag
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="tagKey != null and tagKey != ''">tag_key = #{tagKey},</if>
+            <if test="tagName != null and tagName != ''">tag_name = #{tagName},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="delFlag != null">del_flag = #{delFlag},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where tag_id = #{tagId}
+    </update>
+
+    <update id="deleteTalkTagById" parameterType="Long">
+        update talk_tag set del_flag = '2' where tag_id = #{tagId}
+    </update>
+
+</mapper>

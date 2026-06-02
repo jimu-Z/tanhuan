@@ -42,6 +42,10 @@ public class TalkStudentRecord extends BaseEntity
     @Excel(name = "跟进状态")
     private String followupStatus;
 
+    private Integer notified;
+
+    private Integer teacherNotified;
+
     public void setRecordId(Long recordId) 
     {
         this.recordId = recordId;
@@ -122,6 +126,12 @@ public class TalkStudentRecord extends BaseEntity
         return followupStatus;
     }
 
+    public Integer getNotified() { return notified; }
+    public void setNotified(Integer notified) { this.notified = notified; }
+
+    public Integer getTeacherNotified() { return teacherNotified; }
+    public void setTeacherNotified(Integer teacherNotified) { this.teacherNotified = teacherNotified; }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -133,6 +143,8 @@ public class TalkStudentRecord extends BaseEntity
             .append("studentFeedback", getStudentFeedback())
             .append("followupPlan", getFollowupPlan())
             .append("followupStatus", getFollowupStatus())
+            .append("notified", getNotified())
+            .append("teacherNotified", getTeacherNotified())
             .append("createTime", getCreateTime())
             .append("updateTime", getUpdateTime())
             .toString();

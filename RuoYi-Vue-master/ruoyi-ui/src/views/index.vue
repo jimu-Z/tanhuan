@@ -67,6 +67,14 @@
           </div>
           <div class="alert-card-dot" style="background: #409eff;"></div>
         </div>
+        <div class="alert-card alert-feedback" v-if="dashboardData.pendingFeedback > 0">
+          <div class="alert-card-num">{{ dashboardData.pendingFeedback || 0 }}</div>
+          <div class="alert-card-text">
+            <span class="alert-card-title">待查看反馈</span>
+            <span class="alert-card-desc">学生已提交反馈，待教师查看</span>
+          </div>
+          <div class="alert-card-dot" style="background: #67c23a;"></div>
+        </div>
         <div class="alert-card alert-urgent" v-if="alertsData.pendingFollowups > 0">
           <div class="alert-card-icon-wrap">
             <i class="el-icon-warning-outline"></i>

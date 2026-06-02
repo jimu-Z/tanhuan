@@ -75,11 +75,11 @@ export default {
         this.total = res.total
         this.loadTags()
         this.loadStudents()
-      }).catch(() => { this.loading = false }).finally(() => { this.loading = false })
+      }).catch(() => { this.loading = false; this.$modal.msgError('加载失败') }).finally(() => { this.loading = false })
     },
     loadTags() {
       this.talksessionList.forEach(s => {
-        getSessionTags(s.sessionId).then(r => this.$set(this.tagMap, s.sessionId, r.data || [])).catch(() => {})
+        getSessionTags(s.sessionId).then(r => this.$set(this.tagMap, s.sessionId, r.data || [])).catch(() => { this.$modal.msgError('加载标签失败') })
       })
     },
     loadStudents() {
@@ -88,8 +88,8 @@ export default {
           const ids = (r.rows || []).map(rec => rec.studentId)
           Promise.all(ids.map(id => getTalk(id))).then(students => {
             this.$set(this.studentMap, s.sessionId, students.map(st => st.data ? st.data.studentName : '-'))
-          }).catch(() => {})
-        }).catch(() => {})
+          }).catch(() => { this.$modal.msgError('操作失败') })
+        }).catch(() => { this.$modal.msgError('操作失败') })
       })
     },
     getTagLabel(v) { return TAG_LABELS[v] || v },
@@ -105,7 +105,7 @@ export default {
         a.download = '谈话记录_' + (row.talkPerson || row.sessionId) + actualExt
         a.click(); window.URL.revokeObjectURL(blobUrl)
         this.$modal.msgSuccess('导出成功')
-      }).catch(() => {})
+      }).catch(() => { this.$modal.msgError('导出失败') })
     }
   }
 }

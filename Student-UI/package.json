@@ -1,0 +1,29 @@
+{
+  "name": "student-ui",
+  "version": "1.0.0",
+  "description": "学生谈心谈话系统 - 学生端",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vue-cli-service serve",
+    "build:prod": "vue-cli-service build"
+  },
+  "dependencies": {
+    "axios": "0.30.3",
+    "element-ui": "2.15.14",
+    "js-cookie": "2.2.1",
+    "vue": "2.6.12",
+    "vue-router": "3.4.9",
+    "vuex": "3.6.0"
+  },
+  "devDependencies": {
+    "@vue/cli-service": "4.5.0",
+    "sass": "1.32.13",
+    "sass-loader": "10.1.1",
+    "vue-template-compiler": "2.6.12"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions"
+  ]
+}

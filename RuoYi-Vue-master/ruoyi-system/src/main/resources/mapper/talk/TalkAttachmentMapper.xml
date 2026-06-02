@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.talk.mapper.TalkAttachmentMapper">
+
+    <resultMap type="TalkAttachment" id="TalkAttachmentResult">
+        <result property="attachmentId" column="attachment_id" />
+        <result property="sessionId"    column="session_id"    />
+        <result property="fileName"     column="file_name"     />
+        <result property="filePath"     column="file_path"     />
+        <result property="fileSize"     column="file_size"     />
+        <result property="fileType"     column="file_type"     />
+        <result property="sortOrder"    column="sort_order"    />
+        <result property="createBy"     column="create_by"     />
+        <result property="createTime"   column="create_time"   />
+    </resultMap>
+
+    <sql id="selectTalkAttachmentVo">
+        select attachment_id, session_id, file_name, file_path, file_size, file_type, sort_order,
+               create_by, create_time
+        from talk_attachment
+    </sql>
+
+    <select id="selectTalkAttachmentList" parameterType="TalkAttachment" resultMap="TalkAttachmentResult">
+        <include refid="selectTalkAttachmentVo"/>
+        <where>
+            <if test="sessionId != null"> and session_id = #{sessionId}</if>
+        </where>
+        order by sort_order asc
+    </select>
+
+    <select id="selectTalkAttachmentBySessionId" parameterType="Long" resultMap="TalkAttachmentResult">
+        <include refid="selectTalkAttachmentVo"/>
+        where session_id = #{sessionId}
+        order by sort_order asc
+    </select>
+
+    <select id="selectTalkAttachmentById" parameterType="Long" resultMap="TalkAttachmentResult">
+        <include refid="selectTalkAttachmentVo"/>
+        where attachment_id = #{attachmentId}
+    </select>
+
+    <insert id="insertTalkAttachment" parameterType="TalkAttachment" useGeneratedKeys="true" keyProperty="attachmentId">
+        insert into talk_attachment
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="sessionId != null">session_id,</if>
+            <if test="fileName != null">file_name,</if>
+            <if test="filePath != null">file_path,</if>
+            <if test="fileSize != null">file_size,</if>
+            <if test="fileType != null">file_type,</if>
+            <if test="sortOrder != null">sort_order,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="sessionId != null">#{sessionId},</if>
+            <if test="fileName != null">#{fileName},</if>
+            <if test="filePath != null">#{filePath},</if>
+            <if test="fileSize != null">#{fileSize},</if>
+            <if test="fileType != null">#{fileType},</if>
+            <if test="sortOrder != null">#{sortOrder},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+        </trim>
+    </insert>
+
+    <delete id="deleteTalkAttachmentById" parameterType="Long">
+        delete from talk_attachment where attachment_id = #{attachmentId}
+    </delete>
+
+    <delete id="deleteTalkAttachmentBySessionId" parameterType="Long">
+        delete from talk_attachment where session_id = #{sessionId}
+    </delete>
+
+</mapper>

@@ -20,7 +20,7 @@ CREATE TABLE talk_student (
   political_status     VARCHAR(20)     DEFAULT NULL               COMMENT '政治面貌',
   nation               VARCHAR(20)     DEFAULT NULL               COMMENT '民族',
   phone                VARCHAR(20)     DEFAULT NULL               COMMENT '本人联系电话',
-  id_card              VARCHAR(18)     DEFAULT NULL               COMMENT '身份证号',
+  id_card              VARCHAR(20)     DEFAULT NULL               COMMENT '身份证号',
   address              VARCHAR(200)    DEFAULT NULL               COMMENT '家庭住址',
   father_name          VARCHAR(50)     DEFAULT NULL               COMMENT '父亲姓名',
   father_phone         VARCHAR(20)     DEFAULT NULL               COMMENT '父亲电话',
@@ -178,6 +178,6 @@ INSERT INTO sys_role VALUES(4, '书记/副书记', 'talk_secretary',  2, 2, 1, 1
 INSERT INTO sys_role VALUES(5, '辅导员/班主任', 'talk_counselor', 3, 5, 1, 1, '0', '0', 'admin', sysdate(), '', null, '仅查看自己负责谈话的学生记录');
 
 -- ========== 数据备份定时任务 ==========
-
--- 添加备份任务到 Quartz 调度
-INSERT INTO sys_job VALUES(100, 'talkBackup', 'ryTask', 'talkBackup', '0 0 2 * * ?', '0', '0', '0', 'admin', NOW(), '', NULL, '谈心谈话数据备份');
+-- 注意：此任务需要 ryTask.talkBackup() 方法实现，当前标记为暂不启用
+-- 如需启用，请先实现对应的定时任务方法
+-- INSERT INTO sys_job VALUES(100, 'talkBackup', 'ryTask', 'talkBackup', '0 0 2 * * ?', '0', '0', '0', 'admin', NOW(), '', NULL, '谈心谈话数据备份');

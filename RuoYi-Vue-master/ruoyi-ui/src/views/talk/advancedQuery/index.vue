@@ -125,8 +125,8 @@ export default {
             talkPerson: '',
             talkContent: '',
             talkTime: ''
-          }))
-        )).then(enriched => {
+          })))
+        ).then(enriched => {
           let filtered = enriched
           if (p.keyword) {
             const kw = p.keyword.toLowerCase()
@@ -166,6 +166,7 @@ export default {
           this.loading = false
         })
       }).catch(() => {
+        this.$modal.msgError('操作失败')
         this.result = []
         this.total = 0
         this.loading = false

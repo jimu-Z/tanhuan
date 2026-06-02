@@ -13,13 +13,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="studentFeedback"    column="student_feedback"    />
         <result property="followupPlan"    column="followup_plan"    />
         <result property="followupStatus"    column="followup_status"    />
+        <result property="notified"         column="notified"          />
+        <result property="teacherNotified"  column="teacher_notified"  />
         <result property="createTime"    column="create_time"    />
         <result property="updateTime"    column="update_time"    />
     </resultMap>
 
     <sql id="selectTalkStudentRecordVo">
         select tsr.record_id, tsr.session_id, tsr.student_id, st.student_name, st.student_code,
-               tsr.student_feedback, tsr.followup_plan, tsr.followup_status, tsr.create_time, tsr.update_time
+               tsr.student_feedback, tsr.followup_plan, tsr.followup_status,
+               tsr.notified, tsr.teacher_notified,
+               tsr.create_time, tsr.update_time
         from talk_student_record tsr
         left join talk_student st on tsr.student_id = st.student_id
     </sql>
@@ -29,10 +33,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>  
             <if test="sessionId != null "> and tsr.session_id = #{sessionId}</if>
             <if test="studentId != null "> and tsr.student_id = #{studentId}</if>
+            <if test="studentCode != null and studentCode != ''"> and st.student_code = #{studentCode}</if>
             <if test="studentName != null and studentName != ''"> and st.student_name like concat('%', #{studentName}, '%')</if>
             <if test="studentFeedback != null  and studentFeedback != ''"> and tsr.student_feedback = #{studentFeedback}</if>
             <if test="followupPlan != null  and followupPlan != ''"> and tsr.followup_plan = #{followupPlan}</if>
             <if test="followupStatus != null  and followupStatus != ''"> and tsr.followup_status = #{followupStatus}</if>
+            <if test="notified != null"> and tsr.notified = #{notified}</if>
+            <if test="teacherNotified != null"> and tsr.teacher_notified = #{teacherNotified}</if>
             ${params.dataScope}
         </where>
     </select>
@@ -60,6 +67,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="studentFeedback != null">student_feedback,</if>
             <if test="followupPlan != null and followupPlan != ''">followup_plan,</if>
             <if test="followupStatus != null">followup_status,</if>
+            <if test="notified != null">notified,</if>
+            <if test="teacherNotified != null">teacher_notified,</if>
             <if test="createTime != null">create_time,</if>
             <if test="updateTime != null">update_time,</if>
          </trim>
@@ -69,6 +78,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="studentFeedback != null">#{studentFeedback},</if>
             <if test="followupPlan != null and followupPlan != ''">#{followupPlan},</if>
             <if test="followupStatus != null">#{followupStatus},</if>
+            <if test="notified != null">#{notified},</if>
+            <if test="teacherNotified != null">#{teacherNotified},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="updateTime != null">#{updateTime},</if>
          </trim>
@@ -82,6 +93,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="studentFeedback != null">student_feedback = #{studentFeedback},</if>
             <if test="followupPlan != null and followupPlan != ''">followup_plan = #{followupPlan},</if>
             <if test="followupStatus != null">followup_status = #{followupStatus},</if>
+            <if test="notified != null">notified = #{notified},</if>
+            <if test="teacherNotified != null">teacher_notified = #{teacherNotified},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
         </trim>
         where record_id = #{recordId}
@@ -122,7 +135,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="countRecordsFiltered" parameterType="map" resultType="int">
         select count(*) from talk_student_record tsr
         <where>
-            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+            <if test="counselorUsername != null and counselorUsername != ''"> and tsr.session_id in (select ts.session_id from talk_session ts where ts.create_by = #{counselorUsername})</if>
+            <if test="secretaryDeptId != null"> and tsr.student_id in (select stu.student_id from talk_student stu join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
         </where>
     </select>
 
@@ -130,8 +144,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select tsr.followup_status as status, count(*) as cnt
         from talk_student_record tsr
         <where>
-            <if test="dataScope != null and dataScope != ''">${dataScope}</if>
+            <if test="counselorUsername != null and counselorUsername != ''"> and tsr.session_id in (select ts.session_id from talk_session ts where ts.create_by = #{counselorUsername})</if>
+            <if test="secretaryDeptId != null"> and tsr.student_id in (select stu.student_id from talk_student stu join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
         </where>
         group by tsr.followup_status
+    </select>
+
+    <select id="countPendingFeedback" parameterType="map" resultType="int">
+        select count(*) from talk_student_record tsr
+        <where>
+            tsr.student_feedback is not null and tsr.student_feedback != '' and tsr.student_feedback != '无'
+            and tsr.teacher_notified = 0
+            <if test="counselorUsername != null and counselorUsername != ''"> and tsr.session_id in (select ts.session_id from talk_session ts where ts.create_by = #{counselorUsername})</if>
+            <if test="secretaryDeptId != null"> and tsr.student_id in (select stu.student_id from talk_student stu join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+        </where>
     </select>
 </mapper>

@@ -1,5 +1,8 @@
 package com.ruoyi.talk.controller;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,7 +21,10 @@ import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.utils.SecurityUtils;
+import com.ruoyi.system.service.ISysDeptService;
 import com.ruoyi.talk.domain.TalkStudent;
 import com.ruoyi.talk.service.ITalkStudentService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
@@ -36,6 +42,9 @@ public class TalkStudentController extends BaseController {
     @Autowired
     private ITalkStudentService talkStudentService;
 
+    @Autowired
+    private ISysDeptService deptService;
+
     /**
      * 查询学生信息管理列表
      */
@@ -45,6 +54,107 @@ public class TalkStudentController extends BaseController {
         startPage();
         List<TalkStudent> list = talkStudentService.selectTalkStudentList(talkStudent);
         return getDataTable(list);
+    }
+
+    /**
+     * 获取班级树（学院→年级→班级），含学生数量
+     */
+    @PreAuthorize("@ss.hasPermi('talk:student:list')")
+    @GetMapping("/deptTree")
+    public AjaxResult deptTree() {
+        SysDept dept = new SysDept();
+        dept.setDeptType("class");
+        List<SysDept> depts = deptService.selectDeptList(dept);
+        List<Map<String, Object>> tree = buildDeptTree(depts);
+        return success(tree);
+    }
+
+    private List<Map<String, Object>> buildDeptTree(List<SysDept> depts) {
+        Map<Long, Map<String, Object>> nodeMap = new LinkedHashMap<>();
+        Map<Long, List<Map<String, Object>>> childrenMap = new HashMap<>();
+        List<Map<String, Object>> roots = new ArrayList<>();
+
+        for (SysDept d : depts) {
+            Map<String, Object> node = new LinkedHashMap<>();
+            node.put("deptId", d.getDeptId());
+            node.put("deptName", d.getDeptName());
+            node.put("parentId", d.getParentId());
+            node.put("deptType", d.getDeptType());
+            node.put("studentCount", talkStudentService.countStudentsByDeptId(d.getDeptId()));
+            node.put("children", new ArrayList<Map<String, Object>>());
+            nodeMap.put(d.getDeptId(), node);
+        }
+
+        for (SysDept d : depts) {
+            Map<String, Object> node = nodeMap.get(d.getDeptId());
+            if (d.getParentId() == null || d.getParentId() == 0 || !nodeMap.containsKey(d.getParentId())) {
+                if (node != null)
+                    roots.add(node);
+            } else {
+                childrenMap.computeIfAbsent(d.getParentId(), k -> new ArrayList<>()).add(node);
+            }
+        }
+
+        for (Map.Entry<Long, List<Map<String, Object>>> entry : childrenMap.entrySet()) {
+            Map<String, Object> parent = nodeMap.get(entry.getKey());
+            if (parent != null) {
+                ((List<Map<String, Object>>) parent.get("children")).addAll(entry.getValue());
+            }
+        }
+
+        nodeMap.values().forEach(n -> {
+            List<Map<String, Object>> children = (List<Map<String, Object>>) n.get("children");
+            if (children.isEmpty()) {
+                n.remove("children");
+            }
+        });
+
+        List<Map<String, Object>> collegeRoots = new ArrayList<>();
+        for (Map<String, Object> root : roots) {
+            if ("college".equals(root.get("deptType"))) {
+                collegeRoots.add(root);
+            }
+        }
+
+        return collegeRoots.isEmpty() ? roots : collegeRoots;
+    }
+
+    /**
+     * 查询未谈学生（指定日期范围内无谈话记录的学生）
+     */
+    @PreAuthorize("@ss.hasPermi('talk:student:list')")
+    @GetMapping("/untalked")
+    public TableDataInfo untalked(
+            @RequestParam(required = false) Long deptId,
+            @RequestParam(required = false) String beginDate,
+            @RequestParam(required = false) String endDate) {
+        startPage();
+        Map<String, Object> params = new HashMap<>();
+        if (deptId != null)
+            params.put("deptId", deptId);
+        if (beginDate != null)
+            params.put("beginDate", beginDate);
+        if (endDate != null)
+            params.put("endDate", endDate);
+        applyDataScope(params);
+        List<TalkStudent> list = talkStudentService.selectUntalkedStudents(params);
+        return getDataTable(list);
+    }
+
+    private void applyDataScope(Map<String, Object> params) {
+        if (SecurityUtils.isAdmin())
+            return;
+        String username = SecurityUtils.getUsername();
+        if (username == null)
+            return;
+        if (SecurityUtils.hasRole("talk_counselor")) {
+            params.put("counselorUsername", username);
+        } else if (SecurityUtils.hasRole("talk_secretary")) {
+            Long deptId = SecurityUtils.getDeptId();
+            if (deptId != null) {
+                params.put("secretaryDeptId", deptId);
+            }
+        }
     }
 
     /**
@@ -72,7 +182,7 @@ public class TalkStudentController extends BaseController {
      * 获取学生信息管理详细信息
      */
     @PreAuthorize("@ss.hasPermi('talk:student:query')")
-    @GetMapping(value = "/{studentId}")
+    @GetMapping("/byId/{studentId}")
     public AjaxResult getInfo(@PathVariable("studentId") Long studentId) {
         return success(talkStudentService.selectTalkStudentByStudentId(studentId));
     }
@@ -102,7 +212,7 @@ public class TalkStudentController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('talk:student:remove')")
     @Log(title = "学生信息管理", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{studentIds}")
+    @DeleteMapping("/{studentIds:[\\d,]+}")
     public AjaxResult remove(@PathVariable Long[] studentIds) {
         return toAjax(talkStudentService.deleteTalkStudentByStudentIds(studentIds));
     }
@@ -123,7 +233,8 @@ public class TalkStudentController extends BaseController {
     @PreAuthorize("@ss.hasPermi('talk:student:import')")
     @Log(title = "学生信息管理", businessType = BusinessType.IMPORT)
     @PostMapping("/import/execute")
-    public AjaxResult importExecute(@RequestBody List<Map<String, Object>> confirmedRows) {
-        return success(talkStudentService.importExecute(confirmedRows));
+    public AjaxResult importExecute(@RequestBody List<Map<String, Object>> confirmedRows,
+            @RequestParam(defaultValue = "skip") String importMode) {
+        return success(talkStudentService.importExecute(confirmedRows, importMode));
     }
 }

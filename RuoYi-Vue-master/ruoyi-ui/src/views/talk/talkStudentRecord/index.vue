@@ -208,7 +208,7 @@ export default {
         this.talkrecordList = response.rows
         this.total = response.total
         this.loading = false
-      }).catch(() => { this.loading = false })
+      }).catch(() => { this.loading = false; this.$modal.msgError('加载失败') })
     },
     // 取消按钮
     cancel() {
@@ -269,13 +269,13 @@ export default {
               this.$modal.msgSuccess("修改成功")
               this.open = false
               this.getList()
-            }).catch(() => {})
+            }).catch(() => { this.$modal.msgError('操作失败') })
           } else {
             addTalkrecord(this.form).then(response => {
               this.$modal.msgSuccess("新增成功")
               this.open = false
               this.getList()
-            }).catch(() => {})
+            }).catch(() => { this.$modal.msgError('操作失败') })
           }
         }
       })
@@ -288,7 +288,7 @@ export default {
       }).then(() => {
         this.getList()
         this.$modal.msgSuccess("删除成功")
-      }).catch(() => {})
+      }).catch(() => { this.$modal.msgError('删除失败') })
     },
     /** 导出按钮操作 */
     handleExport() {

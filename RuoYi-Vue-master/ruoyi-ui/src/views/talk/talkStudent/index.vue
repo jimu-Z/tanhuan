@@ -513,7 +513,7 @@ export default {
     loadDeptTree() {
       listDept().then(res => {
         this.deptTree = this.buildTree(res.data || [])
-      }).catch(() => {})
+      }).catch(() => { this.$modal.msgError('操作失败') })
     },
     buildTree(list) {
       const map = {}, tree = []
@@ -624,13 +624,13 @@ export default {
               this.$modal.msgSuccess("修改成功")
               this.open = false
               this.getList()
-            }).catch(() => {})
+            }).catch(() => { this.$modal.msgError('修改失败') })
           } else {
             addTalk(this.form).then(response => {
               this.$modal.msgSuccess("新增成功")
               this.open = false
               this.getList()
-            }).catch(() => {})
+            }).catch(() => { this.$modal.msgError('新增失败') })
           }
         }
       })
@@ -643,7 +643,7 @@ export default {
       }).then(() => {
         this.getList()
         this.$modal.msgSuccess("删除成功")
-      }).catch(() => {})
+      }).catch(() => { this.$modal.msgError('删除失败') })
     },
     /** 导出按钮操作 */
     handleExport() {
@@ -684,8 +684,7 @@ export default {
     handleImportExecute() {
       this.importLoading = true
       const importData = this.importResult.previewRows.map(row => row.data)
-      importData._importMode = this.importMode
-      importExecute(importData).then(response => {
+      importExecute(importData, this.importMode).then(response => {
         this.$modal.msgSuccess("导入成功，共导入 " + response.data.successCount + " 条记录")
         this.importOpen = false
         this.importLoading = false

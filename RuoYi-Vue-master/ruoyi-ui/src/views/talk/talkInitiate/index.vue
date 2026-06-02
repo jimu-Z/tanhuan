@@ -40,21 +40,29 @@
       <!-- Step 2: 选择学生 -->
       <div v-if="step === 1" class="ti-step-content ti-step-select">
         <div class="ti-transfer">
+          <div class="ti-transfer-panel ti-tree-panel">
+            <div class="ti-panel-title">班级导航</div>
+            <el-input v-model="treeFilter" placeholder="搜索班级" size="small" clearable class="ti-transfer-search" />
+            <el-tree :data="deptTree" :props="treeProps" :filter-node-method="filterTreeNode"
+                     node-key="deptId" @node-click="onTreeNodeClick" ref="deptTree" highlight-current
+                     default-expand-all style="flex:1;overflow:auto">
+              <span class="custom-tree-node" slot-scope="{ node, data }">
+                <span>{{ node.label }}</span>
+                <span class="tree-student-count">{{ data.studentCount || 0 }}人</span>
+              </span>
+            </el-tree>
+          </div>
           <div class="ti-transfer-panel">
             <div class="ti-panel-title">
-              可选学生 ({{ availableStudents.length }})
-              <el-button type="text" size="mini" @click="loadStudents" :loading="studentLoading">
-                <i class="el-icon-refresh" />
+              {{ currentNodeName || '可选学生' }} ({{ availableStudents.length }})
+              <el-button type="text" size="mini" @click="selectAllAvailable" :disabled="availableStudents.length === 0">
+                全选本班
               </el-button>
             </div>
             <el-input v-model="searchKey" placeholder="搜索学号/姓名" size="small" clearable class="ti-transfer-search" />
             <div class="ti-transfer-list" v-loading="studentLoading">
-              <div
-                v-for="stu in filteredAvailable"
-                :key="stu.studentId"
-                class="ti-transfer-item"
-                @click="selectStudent(stu)"
-              >
+              <div v-for="stu in filteredAvailable" :key="stu.studentId" class="ti-transfer-item"
+                   @click="selectStudent(stu)">
                 <span>{{ stu.studentName }}</span>
                 <span class="ti-transfer-code">{{ stu.studentCode }}</span>
               </div>
@@ -70,15 +78,9 @@
           <div class="ti-transfer-panel">
             <div class="ti-panel-title">已选学生 ({{ selectedStudents.length }})</div>
             <div class="ti-transfer-list">
-              <div
-                v-for="stu in selectedStudents"
-                :key="stu.studentId"
-                class="ti-transfer-item"
-                @click="removeStudent(stu)"
-              >
-                <el-tag size="mini" type="success" closable @close="removeStudent(stu)">
-                  {{ stu.studentName }}
-                </el-tag>
+              <div v-for="stu in selectedStudents" :key="stu.studentId" class="ti-transfer-item"
+                   @click="removeStudent(stu)">
+                <el-tag size="mini" type="success" closable @close="removeStudent(stu)">{{ stu.studentName }}</el-tag>
                 <span class="ti-transfer-code">{{ stu.studentCode }}</span>
               </div>
               <div v-if="selectedStudents.length === 0" class="ti-empty">
@@ -89,11 +91,8 @@
         </div>
         <div class="ti-step-actions">
           <el-button @click="step = 0">上一步</el-button>
-          <el-button
-            type="primary"
-            @click="step = 2"
-            :disabled="form.talkType === 'group' ? selectedStudents.length === 0 : selectedStudents.length !== 1"
-          >
+          <el-button type="primary" @click="step = 2"
+                     :disabled="form.talkType === 'group' ? selectedStudents.length === 0 : selectedStudents.length !== 1">
             下一步
           </el-button>
         </div>
@@ -139,6 +138,14 @@
             <el-select v-model="form.tags" multiple placeholder="请选择谈话主题标签" style="width:100%">
               <el-option v-for="t in tagOptions" :key="t.value" :label="t.label" :value="t.value" />
             </el-select>
+          </el-form-item>
+          <el-form-item label="附件">
+            <el-upload ref="upload" :file-list="fileList" :auto-upload="false"
+                       :on-remove="handleFileRemove" :on-change="handleFileChange"
+                       :before-upload="() => false" action="" multiple>
+              <el-button size="small" type="primary" icon="el-icon-upload2">选择文件</el-button>
+              <div slot="tip" class="el-upload__tip">支持图片、PDF、Word等格式</div>
+            </el-upload>
           </el-form-item>
         </el-form>
 
@@ -211,9 +218,10 @@
 </template>
 
 <script>
-import { listTalk } from '@/api/talk/talkStudent'
+import { listTalk, getDeptTree } from '@/api/talk/talkStudent'
 import { createTalk } from '@/api/talk/talkInitiate'
 import { listSystemTemplate, listTemplate } from '@/api/talk/talkTemplate'
+import { uploadAttachment } from '@/api/talk/talkAttachment'
 import { TAG_LABELS } from '@/api/talk/talkSession'
 
 export default {
@@ -232,11 +240,18 @@ export default {
       activeCollapse: [0],
       allStudents: [],
       selectedStudents: [],
+      deptTree: [],
+      treeProps: { children: 'children', label: 'deptName' },
+      treeFilter: '',
+      currentNodeName: '',
+      currentDeptId: null,
+      fileList: [],
+      pendingFiles: [],
       form: {
         talkType: 'group',
         talkTime: '',
         talkLocation: '',
-        talkPerson: '',
+        talkPerson: this.$store.state.user?.name || this.$store.getters?.name || '',
         talkContent: '',
         tags: []
       },
@@ -252,7 +267,11 @@ export default {
   computed: {
     selectedIds() { return new Set(this.selectedStudents.map(s => s.studentId)) },
     availableStudents() {
-      return this.allStudents.filter(s => !this.selectedIds.has(s.studentId))
+      let list = this.allStudents.filter(s => !this.selectedIds.has(s.studentId))
+      if (this.currentDeptId != null) {
+        list = list.filter(s => s.deptId === this.currentDeptId)
+      }
+      return list
     },
     filteredAvailable() {
       const k = this.searchKey.toLowerCase()
@@ -262,17 +281,37 @@ export default {
       )
     }
   },
+  watch: {
+    treeFilter(val) {
+      this.$refs.deptTree.filter(val)
+    }
+  },
   created() {
     this.loadStudents()
+    this.loadDeptTree()
   },
   methods: {
     loadStudents() {
       this.studentLoading = true
       listTalk({ pageNum: 1, pageSize: 9999 }).then(res => {
         this.allStudents = res.rows || []
-      }).catch(() => {}).finally(() => {
+      }).catch(() => { this.$modal.msgError('操作失败') }).finally(() => {
         this.studentLoading = false
       })
+    },
+    loadDeptTree() {
+      getDeptTree().then(res => {
+        this.deptTree = res.data || res || []
+      }).catch(() => { this.$modal.msgError('操作失败') })
+    },
+    onTreeNodeClick(data) {
+      this.currentDeptId = data.deptId
+      this.currentNodeName = data.deptName
+      this.searchKey = ''
+    },
+    filterTreeNode(value, data) {
+      if (!value) return true
+      return data.deptName.toLowerCase().includes(value.toLowerCase())
     },
     selectStudent(stu) {
       if (this.form.talkType === 'individual') {
@@ -302,6 +341,12 @@ export default {
     removeAllSelected() {
       this.selectedStudents = []
     },
+    handleFileChange(file, fileList) {
+      this.pendingFiles = fileList.filter(f => f.raw)
+    },
+    handleFileRemove(file, fileList) {
+      this.pendingFiles = fileList.filter(f => f.raw)
+    },
     openTemplateDialog() {
       this.selectedTemplateId = null
       this.templateTab = 'system'
@@ -309,8 +354,8 @@ export default {
       this.loadTemplates()
     },
     loadTemplates() {
-      listSystemTemplate().then(res => { this.systemTemplates = res.rows || res.data || [] }).catch(() => {})
-      listTemplate({ templateType: 'personal' }).then(res => { this.personalTemplates = res.rows || [] }).catch(() => {})
+      listSystemTemplate().then(res => { this.systemTemplates = res.rows || res.data || [] }).catch(() => { this.$modal.msgError('加载系统模板失败') })
+      listTemplate({ templateType: 'personal' }).then(res => { this.personalTemplates = res.rows || [] }).catch(() => { this.$modal.msgError('加载个人模板失败') })
     },
     clearContent() {
       this.$confirm('确认清空谈话内容？', '提示', { type: 'warning' }).then(() => {
@@ -323,7 +368,7 @@ export default {
       const all = [...this.systemTemplates, ...this.personalTemplates]
       const tpl = all.find(t => t.templateId === this.selectedTemplateId)
       if (!tpl) return
-      
+
       if (mode === 'replace') {
         if (this.form.talkContent) {
           this.$confirm('当前内容将被替换，是否继续？', '提示', { type: 'warning' }).then(() => {
@@ -354,6 +399,16 @@ export default {
     getTagLabel(value) {
       return TAG_LABELS[value] || value
     },
+    uploadFiles(sessionId) {
+      if (this.pendingFiles.length === 0) return Promise.resolve()
+      const promises = this.pendingFiles.map(file => {
+        const formData = new FormData()
+        formData.append('sessionId', sessionId)
+        formData.append('file', file.raw)
+        return uploadAttachment(formData)
+      })
+      return Promise.all(promises)
+    },
     submitForm() {
       this.$refs.talkForm.validate(valid => {
         if (!valid) return
@@ -374,13 +429,32 @@ export default {
           }))
         }
         createTalk(data).then(res => {
+          const sessionId = res.data?.sessionId || res.sessionId
+          if (sessionId && this.pendingFiles.length > 0) {
+            return this.uploadFiles(sessionId).then(() => {
+              this.$modal.msgSuccess('谈话记录保存成功')
+            })
+          }
           this.$modal.msgSuccess('谈话记录保存成功')
+        }).then(() => {
           this.selectedStudents = []
           this.step = 0
-          this.form = { talkType: 'group', talkTime: '', talkLocation: '', talkPerson: '', talkContent: '', tags: [] }
+          this.currentDeptId = null
+          this.currentNodeName = ''
+          this.fileList = []
+          this.pendingFiles = []
+          this.form = {
+            talkType: 'group',
+            talkTime: '',
+            talkLocation: '',
+            talkPerson: this.$store.state.user?.name || this.$store.getters?.name || '',
+            talkContent: '',
+            tags: []
+          }
           this.searchKey = ''
           this.activeCollapse = [0]
-          this.$refs.talkForm.resetFields()
+          this.$refs.upload && this.$refs.upload.clearFiles()
+          this.$refs.talkForm && this.$refs.talkForm.resetFields()
         }).catch(err => {
           this.$modal.msgError(err.message || err.msg || '操作失败')
         }).finally(() => {
@@ -414,6 +488,9 @@ export default {
   flex: 1; border: 1px solid #e8e8e8; border-radius: 4px;
   display: flex; flex-direction: column; min-height: 360px;
 }
+.ti-tree-panel { max-width: 220px; }
+.custom-tree-node { flex: 1; display: flex; align-items: center; justify-content: space-between; font-size: 13px; padding-right: 8px; }
+.tree-student-count { font-size: 11px; color: #909399; }
 .ti-panel-title {
   padding: 10px 12px; font-weight: 600; font-size: 13px;
   border-bottom: 1px solid #eee; background: #fafafa;

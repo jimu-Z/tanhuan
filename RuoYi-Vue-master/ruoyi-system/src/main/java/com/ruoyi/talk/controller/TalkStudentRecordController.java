@@ -16,6 +16,8 @@ import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.utils.DateUtils;
+import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.talk.domain.TalkStudentRecord;
 import com.ruoyi.talk.service.ITalkStudentRecordService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
@@ -32,6 +34,18 @@ import com.ruoyi.common.core.page.TableDataInfo;
 public class TalkStudentRecordController extends BaseController {
     @Autowired
     private ITalkStudentRecordService talkStudentRecordService;
+
+    /**
+     * 查询当前学生自己的谈话记录
+     */
+    @GetMapping("/myRecords")
+    public TableDataInfo myRecords(TalkStudentRecord talkStudentRecord) {
+        String username = SecurityUtils.getUsername();
+        talkStudentRecord.setStudentCode(username);
+        startPage();
+        List<TalkStudentRecord> list = talkStudentRecordService.selectTalkStudentRecordList(talkStudentRecord);
+        return getDataTable(list);
+    }
 
     /**
      * 查询谈话记录管理列表
@@ -57,12 +71,19 @@ public class TalkStudentRecordController extends BaseController {
     }
 
     /**
-     * 获取谈话记录管理详细信息
+     * 获取谈话记录管理详细信息（教师查看时标记反馈已读）
      */
     @PreAuthorize("@ss.hasPermi('talk:record:query')")
-    @GetMapping(value = "/{recordId}")
+    @GetMapping(value = "/{recordId:\\d+}")
     public AjaxResult getInfo(@PathVariable("recordId") Long recordId) {
-        return success(talkStudentRecordService.selectTalkStudentRecordByRecordId(recordId));
+        TalkStudentRecord record = talkStudentRecordService.selectTalkStudentRecordByRecordId(recordId);
+        if (record != null && record.getTeacherNotified() != null && record.getTeacherNotified() == 0) {
+            TalkStudentRecord update = new TalkStudentRecord();
+            update.setRecordId(recordId);
+            update.setTeacherNotified(1);
+            talkStudentRecordService.updateTalkStudentRecord(update);
+        }
+        return success(record);
     }
 
     /**
@@ -73,6 +94,26 @@ public class TalkStudentRecordController extends BaseController {
     @PostMapping
     public AjaxResult add(@RequestBody TalkStudentRecord talkStudentRecord) {
         return toAjax(talkStudentRecordService.insertTalkStudentRecord(talkStudentRecord));
+    }
+
+    /**
+     * 学生提交反馈
+     */
+    @Log(title = "谈话记录管理", businessType = BusinessType.UPDATE)
+    @PutMapping("/submitFeedback")
+    public AjaxResult submitFeedback(@RequestBody TalkStudentRecord talkStudentRecord) {
+        String username = SecurityUtils.getUsername();
+        TalkStudentRecord existing = talkStudentRecordService
+                .selectTalkStudentRecordByRecordId(talkStudentRecord.getRecordId());
+        if (existing == null || !username.equals(existing.getStudentCode())) {
+            return error("无权限操作此记录");
+        }
+        TalkStudentRecord update = new TalkStudentRecord();
+        update.setRecordId(talkStudentRecord.getRecordId());
+        update.setStudentFeedback(talkStudentRecord.getStudentFeedback());
+        update.setTeacherNotified(0);
+        update.setUpdateTime(DateUtils.getNowDate());
+        return toAjax(talkStudentRecordService.updateTalkStudentRecord(update));
     }
 
     /**
@@ -90,7 +131,7 @@ public class TalkStudentRecordController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('talk:record:remove')")
     @Log(title = "谈话记录管理", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{recordIds}")
+    @DeleteMapping("/{recordIds:[\\d,]+}")
     public AjaxResult remove(@PathVariable Long[] recordIds) {
         return toAjax(talkStudentRecordService.deleteTalkStudentRecordByRecordIds(recordIds));
     }

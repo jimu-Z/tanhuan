@@ -12,7 +12,7 @@ export function listTalk(query) {
 // 查询学生信息管理详细
 export function getTalk(studentId) {
   return request({
-    url: '/ruoyi-system/talk/' + studentId,
+    url: '/ruoyi-system/talk/byId/' + studentId,
     method: 'get'
   })
 }
@@ -61,10 +61,28 @@ export function importPreview(data) {
 }
 
 // 执行导入
-export function importExecute(data) {
+export function importExecute(data, importMode) {
   return request({
     url: '/ruoyi-system/talk/import/execute',
     method: 'post',
+    params: { importMode: importMode || 'skip' },
     data: data
+  })
+}
+
+// 获取班级树
+export function getDeptTree() {
+  return request({
+    url: '/ruoyi-system/talk/deptTree',
+    method: 'get'
+  })
+}
+
+// 查询未谈学生
+export function listUntalked(params) {
+  return request({
+    url: '/ruoyi-system/talk/untalked',
+    method: 'get',
+    params: params
   })
 }

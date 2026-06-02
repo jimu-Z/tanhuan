@@ -98,6 +98,15 @@ const KPI_CONFIG = [
     iconBg: 'linear-gradient(135deg, rgba(247,186,42,0.12), rgba(245,135,66,0.12))',
     iconColor: '#e6a23c',
     accentColor: 'linear-gradient(180deg, #e6a23c 0%, #f58742 100%)'
+  },
+  {
+    key: 'pendingFeedback',
+    label: '待查看反馈',
+    unit: '条',
+    icon: 'el-icon-bell',
+    iconBg: 'linear-gradient(135deg, rgba(245,87,108,0.12), rgba(247,186,42,0.12))',
+    iconColor: '#f5576c',
+    accentColor: 'linear-gradient(180deg, #f5576c 0%, #f093fb 100%)'
   }
 ]
 
@@ -324,7 +333,7 @@ export default {
 
 .kpi-row {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 }
