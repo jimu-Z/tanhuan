@@ -110,3 +110,108 @@ export default {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+@import "@/assets/styles/variables.scss";
+
+.app-container {
+  padding: 20px;
+  background: linear-gradient(160deg, #f0f5fa 0%, #e8edf2 100%);
+  min-height: calc(100vh - 84px);
+}
+
+.mb8 {
+  ::v-deep .el-button--primary[plain] {
+    border-color: #1a5276;
+    color: #1a5276;
+    background: rgba(255, 255, 255, 0.9);
+
+    &:hover {
+      background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(26, 82, 118, 0.3);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+.el-table {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(26, 82, 118, 0.08);
+
+  ::v-deep th.el-table__cell {
+    background: linear-gradient(135deg, #2a6fa8 0%, #4a8fc7 100%) !important;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 14px;
+    border-color: #e8edf2;
+    padding: 12px 0;
+  }
+
+  ::v-deep td.el-table__cell {
+    border-color: #e8edf2;
+    font-size: 13px;
+    padding: 10px 0;
+  }
+
+  ::v-deep .el-table__body tr {
+    transition: background 0.2s ease;
+
+    &:hover > td {
+      background: #f0f6fc !important;
+    }
+  }
+
+  ::v-deep .el-table__body tr:nth-child(even) {
+    background: #fafbfd;
+  }
+
+  ::v-deep .el-table__body tr:nth-child(odd) {
+    background: #ffffff;
+  }
+}
+
+::v-deep .el-tag--primary {
+  background: rgba(42, 111, 168, 0.1);
+  border-color: #2a6fa8;
+  color: #1a5276;
+}
+
+::v-deep .el-tag--success {
+  background: rgba(103, 194, 58, 0.1);
+  border-color: #67c23a;
+  color: #529b2e;
+}
+
+::v-deep .pagination-container {
+  margin-top: 16px;
+  background: #ffffff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(26, 82, 118, 0.06);
+  display: flex;
+  justify-content: center;
+
+  .el-pagination {
+    .btn-prev,
+    .btn-next,
+    .el-pager li {
+      background: #ffffff;
+      color: #1a5276;
+      border-radius: 4px;
+
+      &:hover {
+        background: #f0f6fc;
+        color: #1a5276;
+      }
+
+      &.active {
+        background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+        color: #ffffff;
+      }
+    }
+  }
+}
+</style>

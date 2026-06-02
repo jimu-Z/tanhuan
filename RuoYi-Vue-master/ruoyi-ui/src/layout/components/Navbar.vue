@@ -146,8 +146,8 @@ export default {
   height: 50px;
   overflow: hidden;
   position: relative;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0,21,41,.08);
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(26, 82, 118, 0.08);
   display: flex;
   align-items: center;
   // padding: 0 8px;
@@ -165,7 +165,7 @@ export default {
     margin-right: 8px;
 
     &:hover {
-      background: rgba(0, 0, 0, .025)
+      background: rgba(26, 82, 118, .04)
     }
   }
 
@@ -188,33 +188,33 @@ export default {
   }
 
   .right-menu {
-    height: 100%;
-    line-height: 50px;
-    display: flex;
-    align-items: center;
-    margin-left: auto;
-
-    &:focus {
-      outline: none;
-    }
-
-    .right-menu-item {
-      display: inline-block;
-      padding: 0 8px;
       height: 100%;
-      font-size: 18px;
-      color: #5a5e66;
-      vertical-align: text-bottom;
+      line-height: 50px;
+      display: flex;
+      align-items: center;
+      margin-left: auto;
 
-      &.hover-effect {
-        cursor: pointer;
-        transition: background .3s;
+      &:focus {
+        outline: none;
+      }
 
-        &:hover {
-          background: rgba(0, 0, 0, .025)
+      .right-menu-item {
+        display: inline-block;
+        padding: 0 8px;
+        height: 100%;
+        font-size: 18px;
+        color: #5a7a8f;
+        vertical-align: text-bottom;
+
+        &.hover-effect {
+          cursor: pointer;
+          transition: background .3s;
+
+          &:hover {
+            background: rgba(26, 82, 118, .06)
+          }
         }
       }
-    }
 
     .avatar-container {
       margin-right: 0px;

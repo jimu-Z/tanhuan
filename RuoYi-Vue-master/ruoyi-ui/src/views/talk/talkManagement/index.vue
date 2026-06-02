@@ -600,3 +600,374 @@ export default {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+@import "@/assets/styles/variables.scss";
+
+.app-container {
+  padding: 20px;
+  background: linear-gradient(160deg, #f0f5fa 0%, #e8edf2 100%);
+  min-height: calc(100vh - 84px);
+}
+
+.el-form--inline {
+  display: flex;
+  flex-wrap: wrap;
+
+  ::v-deep .el-form-item {
+    margin-bottom: 16px;
+    flex: 1;
+    min-width: 220px;
+  }
+
+  ::v-deep .el-input__inner {
+    width: 100%;
+    height: 36px;
+    line-height: 36px;
+    border-radius: 6px;
+    border: 1px solid #d4e0eb;
+    background: #ffffff;
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: #2a6fa8;
+    }
+
+    &:focus {
+      border-color: #1a5276;
+      box-shadow: 0 0 0 3px rgba(26, 82, 118, 0.08);
+      background: #ffffff;
+    }
+  }
+
+  ::v-deep .el-date-editor {
+    .el-input__inner {
+      border-radius: 6px;
+      border: 1px solid #d4e0eb;
+    }
+  }
+}
+
+.el-form--inline > .el-form-item:last-child {
+  flex: none;
+}
+
+::v-deep .search-btn-item {
+  align-self: flex-end;
+  flex: none;
+  width: auto;
+  
+  .el-form-item__content {
+    margin-left: 12px !important;
+    display: flex;
+    align-items: center;
+    margin-top: 28px;
+  }
+  
+  .el-form-item__label {
+    display: none;
+    width: 0 !important;
+  }
+}
+
+.el-form--inline {
+  ::v-deep .el-button--primary {
+    background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+    border: none;
+    box-shadow: 0 2px 8px rgba(26, 82, 118, 0.25);
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: linear-gradient(135deg, #1e5f8a 0%, #3080ba 100%);
+      box-shadow: 0 4px 12px rgba(26, 82, 118, 0.35);
+      transform: translateY(-1px);
+    }
+  }
+
+  ::v-deep .el-button--default {
+    border-color: #d4e0eb;
+    color: #606266;
+    background: #ffffff;
+
+    &:hover {
+      border-color: #1a5276;
+      color: #1a5276;
+      background: #f0f6fc;
+    }
+  }
+}
+
+.mb8 {
+  ::v-deep .el-button--primary[plain] {
+    border-color: #1a5276;
+    color: #1a5276;
+    background: rgba(255, 255, 255, 0.9);
+
+    &:hover {
+      background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(26, 82, 118, 0.3);
+      transform: translateY(-1px);
+    }
+  }
+
+  ::v-deep .el-button--success[plain] {
+    border-color: #2a6fa8;
+    color: #2a6fa8;
+    background: rgba(255, 255, 255, 0.9);
+
+    &:hover {
+      background: linear-gradient(135deg, #2a6fa8 0%, #3a85c0 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(42, 111, 168, 0.3);
+    }
+  }
+
+  ::v-deep .el-button--danger[plain] {
+    border-color: #e64340;
+    color: #e64340;
+    background: rgba(255, 255, 255, 0.9);
+
+    &:hover {
+      background: linear-gradient(135deg, #e64340 0%, #f06060 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(230, 67, 64, 0.3);
+    }
+  }
+
+  ::v-deep .el-button--warning[plain] {
+    border-color: #f5a623;
+    color: #f5a623;
+    background: rgba(255, 255, 255, 0.9);
+
+    &:hover {
+      background: linear-gradient(135deg, #f5a623 0%, #f7c948 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(245, 166, 35, 0.3);
+    }
+  }
+
+  ::v-deep .el-button--info[plain] {
+    border-color: #37474f;
+    color: #37474f;
+    background: rgba(255, 255, 255, 0.9);
+
+    &:hover {
+      background: linear-gradient(135deg, #37474f 0%, #455a64 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(55, 71, 79, 0.3);
+    }
+  }
+}
+
+::v-deep .el-tabs__item.is-active {
+  color: #1a5276;
+}
+::v-deep .el-tabs__active-bar {
+  background-color: #1a5276;
+}
+::v-deep .el-tabs__item:hover {
+  color: #2a6fa8;
+}
+
+.el-table {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(26, 82, 118, 0.08);
+
+  ::v-deep th.el-table__cell {
+    background: linear-gradient(135deg, #2a6fa8 0%, #4a8fc7 100%) !important;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 14px;
+    border-color: #e8edf2;
+    padding: 12px 0;
+  }
+
+  ::v-deep td.el-table__cell {
+    border-color: #e8edf2;
+    font-size: 13px;
+    padding: 10px 0;
+  }
+
+  ::v-deep .el-table__body tr {
+    transition: background 0.2s ease;
+
+    &:hover > td {
+      background: #f0f6fc !important;
+    }
+  }
+
+  ::v-deep .el-table__body tr:nth-child(even) {
+    background: #fafbfd;
+  }
+
+  ::v-deep .el-table__body tr:nth-child(odd) {
+    background: #ffffff;
+  }
+
+  ::v-deep .el-table__body tr.current-row > td {
+    background: #e8f4f8 !important;
+  }
+}
+
+.small-padding {
+  ::v-deep .el-button--text {
+    padding: 4px 8px;
+    font-size: 13px;
+
+    &:first-child {
+      color: #2a6fa8;
+      &:hover { color: #3a85c0; text-decoration: underline; }
+    }
+
+    &:nth-child(2) {
+      color: #e64340;
+      &:hover { color: #f06060; text-decoration: underline; }
+    }
+  }
+}
+
+::v-deep .pagination-container {
+  margin-top: 16px;
+  background: #ffffff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(26, 82, 118, 0.06);
+  display: flex;
+  justify-content: center;
+
+  .el-pagination {
+    .btn-prev,
+    .btn-next,
+    .el-pager li {
+      background: #ffffff;
+      color: #1a5276;
+      border-radius: 4px;
+
+      &:hover {
+        background: #f0f6fc;
+        color: #1a5276;
+      }
+
+      &.active {
+        background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+        color: #ffffff;
+      }
+    }
+
+    .el-pagination__sizes {
+      .el-input__inner {
+        border-color: #d4e0eb;
+        &:hover { border-color: #1a5276; }
+      }
+    }
+  }
+}
+
+::v-deep .el-dialog {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(10, 37, 64, 0.2);
+
+  .el-dialog__header {
+    background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+    padding: 16px 20px;
+    margin: 0;
+
+    .el-dialog__title {
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .el-dialog__headerbtn {
+      .el-dialog__close {
+        color: rgba(255, 255, 255, 0.8);
+        &:hover {
+          color: #ffffff;
+          transform: rotate(90deg);
+        }
+      }
+    }
+  }
+
+  .el-dialog__body {
+    padding: 24px 20px;
+    background: #ffffff;
+
+    .el-form-item__label {
+      color: #1a5276;
+      font-weight: 500;
+    }
+
+    .el-input__inner,
+    .el-textarea__inner {
+      border-radius: 6px;
+      border: 1px solid #d4e0eb;
+
+      &:hover { border-color: #2a6fa8; }
+
+      &:focus {
+        border-color: #1a5276;
+        box-shadow: 0 0 0 3px rgba(26, 82, 118, 0.08);
+      }
+    }
+
+    .el-select .el-input__inner {
+      border-radius: 6px;
+    }
+  }
+
+  .el-dialog__footer {
+    padding: 12px 20px 20px;
+    background: #fafbfd;
+    border-top: 1px solid #e8edf2;
+    text-align: center;
+
+    .el-button--primary {
+      background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+      border: none;
+      box-shadow: 0 4px 12px rgba(26, 82, 118, 0.3);
+      min-width: 100px;
+
+      &:hover {
+        background: linear-gradient(135deg, #1e5f8a 0%, #3080ba 100%);
+        box-shadow: 0 6px 20px rgba(26, 82, 118, 0.4);
+        transform: translateY(-1px);
+      }
+    }
+
+    .el-button--default {
+      border-color: #d4e0eb;
+      color: #606266;
+      background: #ffffff;
+      min-width: 100px;
+
+      &:hover {
+        border-color: #1a5276;
+        color: #1a5276;
+        background: #f0f6fc;
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .app-container {
+    padding: 12px;
+  }
+
+  .el-form--inline {
+    ::v-deep .el-form-item {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+  }
+}
+</style>

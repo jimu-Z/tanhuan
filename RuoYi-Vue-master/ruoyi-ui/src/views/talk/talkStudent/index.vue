@@ -20,12 +20,20 @@
       <el-form-item label="部门" prop="deptId">
         <el-cascader v-model="queryParams.deptId" :options="deptTree"
           :props="{ checkStrictly:true, label:'label', value:'id' }"
-          placeholder="请选择部门" clearable style="width:240px" @change="handleQuery" />
+          placeholder="请选择部门" clearable style="width: 100%" @change="handleQuery" />
       </el-form-item>
       <el-form-item label="性别" prop="gender">
         <el-input
           v-model="queryParams.gender"
           placeholder="请输入性别"
+          clearable
+          @keyup.enter.native="handleQuery"
+        />
+      </el-form-item>
+      <el-form-item label="舍长" prop="dormLeader">
+        <el-input
+          v-model="queryParams.dormLeader"
+          placeholder="请输入舍长"
           clearable
           @keyup.enter.native="handleQuery"
         />
@@ -38,10 +46,10 @@
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="本人联系电话" prop="phone">
+      <el-form-item label="联系电话" prop="phone">
         <el-input
           v-model="queryParams.phone"
-          placeholder="请输入本人联系电话"
+          placeholder="请输入联系电话"
           clearable
           @keyup.enter.native="handleQuery"
         />
@@ -102,14 +110,6 @@
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="舍长" prop="dormLeader">
-        <el-input
-          v-model="queryParams.dormLeader"
-          placeholder="请输入舍长"
-          clearable
-          @keyup.enter.native="handleQuery"
-        />
-      </el-form-item>
       <el-form-item label="宿舍楼" prop="dormBuilding">
         <el-input
           v-model="queryParams.dormBuilding"
@@ -126,15 +126,15 @@
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="贫困等级认定" prop="povertyLevel">
+      <el-form-item label="贫困等级" prop="povertyLevel">
         <el-input
           v-model="queryParams.povertyLevel"
-          placeholder="请输入贫困等级认定"
+          placeholder="请输入贫困等级"
           clearable
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
-      <el-form-item>
+      <el-form-item class="search-btn-item">
         <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
         <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
       </el-form-item>
@@ -209,7 +209,7 @@
       </el-table-column>
       <el-table-column label="政治面貌" align="center" prop="politicalStatus" />
       <el-table-column label="民族" align="center" prop="nation" />
-      <el-table-column label="本人联系电话" align="center" prop="phone">
+      <el-table-column label="联系电话" align="center" prop="phone">
         <template slot-scope="scope">{{ maskPhone(scope.row.phone) }}</template>
       </el-table-column>
       <el-table-column label="身份证号" align="center" prop="idCard">
@@ -226,7 +226,7 @@
       <el-table-column label="宿舍号" align="center" prop="dormRoom" />
       <el-table-column label="学籍状态" align="center" prop="enrollmentStatus" />
       <el-table-column label="心理健康状态" align="center" prop="mentalHealthStatus" />
-      <el-table-column label="贫困等级认定" align="center" prop="povertyLevel" />
+      <el-table-column label="贫困等级" align="center" prop="povertyLevel" />
       <el-table-column label="备注" align="center" prop="remark" />
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
@@ -292,8 +292,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="24">
-            <el-form-item label="本人联系电话" prop="phone">
-              <el-input v-model="form.phone" placeholder="请输入本人联系电话" />
+            <el-form-item label="联系电话" prop="phone">
+              <el-input v-model="form.phone" placeholder="请输入联系电话" />
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -347,8 +347,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="24">
-            <el-form-item label="贫困等级认定" prop="povertyLevel">
-              <el-input v-model="form.povertyLevel" placeholder="请输入贫困等级认定" />
+            <el-form-item label="贫困等级" prop="povertyLevel">
+              <el-input v-model="form.povertyLevel" placeholder="请输入贫困等级" />
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -696,3 +696,423 @@ export default {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+@import "@/assets/styles/variables.scss";
+
+.app-container {
+  padding: 20px;
+  background: linear-gradient(160deg, #f0f5fa 0%, #e8edf2 100%);
+  min-height: calc(100vh - 84px);
+}
+
+/* ==================== 搜索表单样式 ==================== */
+.el-form--inline {
+  display: flex;
+  flex-wrap: wrap;
+
+  ::v-deep .el-form-item {
+    margin-bottom: 16px;
+    flex: 1;
+    min-width: 220px;
+  }
+
+  ::v-deep .el-input__inner {
+    width: 100%;
+    height: 36px;
+    line-height: 36px;
+    border-radius: 6px;
+    border: 1px solid #d4e0eb;
+    background: #ffffff;
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: #2a6fa8;
+    }
+
+    &:focus {
+      border-color: #1a5276;
+      box-shadow: 0 0 0 3px rgba(26, 82, 118, 0.08);
+      background: #ffffff;
+    }
+  }
+
+  ::v-deep .el-cascader__tags .el-tag {
+    background: #f0f6fc;
+    border-color: #d4e0eb;
+    color: #1a5276;
+  }
+}
+
+/* 搜索和重置按钮区域 */
+.el-form--inline > .el-form-item:last-child {
+  flex: none;
+}
+
+/* 搜索按钮对齐调整 */
+::v-deep .search-btn-item {
+  align-self: flex-end;
+  flex: none;
+  width: auto;
+  
+  .el-form-item__content {
+    margin-left: 12px !important;
+    display: flex;
+    align-items: center;
+    margin-top: 32px;
+  }
+  
+  .el-form-item__label {
+    display: none;
+    width: 0 !important;
+  }
+}
+
+/* 搜索和重置按钮 */
+.el-form--inline {
+  ::v-deep .el-button--primary {
+    background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+    border: none;
+    box-shadow: 0 2px 8px rgba(26, 82, 118, 0.25);
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: linear-gradient(135deg, #1e5f8a 0%, #3080ba 100%);
+      box-shadow: 0 4px 12px rgba(26, 82, 118, 0.35);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 6px rgba(26, 82, 118, 0.25);
+    }
+  }
+
+  ::v-deep .el-button--default {
+    border-color: #d4e0eb;
+    color: #606266;
+    background: #ffffff;
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: #1a5276;
+      color: #1a5276;
+      background: #f0f6fc;
+    }
+  }
+}
+
+/* ==================== 操作按钮区域 ==================== */
+.mb8 {
+  ::v-deep .el-button--primary[plain] {
+    border-color: #1a5276;
+    color: #1a5276;
+    background: rgba(255, 255, 255, 0.9);
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(26, 82, 118, 0.3);
+      transform: translateY(-1px);
+    }
+  }
+
+  ::v-deep .el-button--success[plain] {
+    border-color: #2a6fa8;
+    color: #2a6fa8;
+    background: rgba(255, 255, 255, 0.9);
+
+    &:hover {
+      background: linear-gradient(135deg, #2a6fa8 0%, #3a85c0 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(42, 111, 168, 0.3);
+    }
+  }
+
+  ::v-deep .el-button--danger[plain] {
+    border-color: #e64340;
+    color: #e64340;
+    background: rgba(255, 255, 255, 0.9);
+
+    &:hover {
+      background: linear-gradient(135deg, #e64340 0%, #f06060 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(230, 67, 64, 0.3);
+    }
+  }
+
+  ::v-deep .el-button--warning[plain] {
+    border-color: #f5a623;
+    color: #f5a623;
+    background: rgba(255, 255, 255, 0.9);
+
+    &:hover {
+      background: linear-gradient(135deg, #f5a623 0%, #f7c948 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(245, 166, 35, 0.3);
+    }
+  }
+
+  ::v-deep .el-button--info[plain] {
+    border-color: #37474f;
+    color: #37474f;
+    background: rgba(255, 255, 255, 0.9);
+
+    &:hover {
+      background: linear-gradient(135deg, #37474f 0%, #455a64 100%);
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(55, 71, 79, 0.3);
+    }
+  }
+}
+
+/* ==================== 表格样式 ==================== */
+.el-table {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(26, 82, 118, 0.08);
+
+  ::v-deep th.el-table__cell {
+    background: linear-gradient(135deg, #2a6fa8 0%, #4a8fc7 100%) !important;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 14px;
+    border-color: #e8edf2;
+    padding: 12px 0;
+  }
+
+  ::v-deep td.el-table__cell {
+    border-color: #e8edf2;
+    font-size: 13px;
+    padding: 10px 0;
+  }
+
+  ::v-deep .el-table__body tr {
+    transition: background 0.2s ease;
+
+    &:hover > td {
+      background: #f0f6fc !important;
+    }
+  }
+
+  ::v-deep .el-table__body tr:nth-child(even) {
+    background: #fafbfd;
+  }
+
+  ::v-deep .el-table__body tr:nth-child(odd) {
+    background: #ffffff;
+  }
+
+  /* 选中行样式 */
+  ::v-deep .el-table__body tr.current-row > td {
+    background: #e8f4f8 !important;
+  }
+}
+
+/* 操作列文字按钮 */
+.small-padding {
+  ::v-deep .el-button--text {
+    padding: 4px 8px;
+    font-size: 13px;
+    transition: all 0.2s ease;
+
+    &:first-child {
+      color: #1a5276;
+      &:hover { color: #2a6fa8; text-decoration: underline; }
+    }
+
+    &:nth-child(2) {
+      color: #2a6fa8;
+      &:hover { color: #3a85c0; text-decoration: underline; }
+    }
+
+    &:last-child {
+      color: #e64340;
+      &:hover { color: #f06060; text-decoration: underline; }
+    }
+  }
+}
+
+/* ==================== 分页样式 ==================== */
+::v-deep .pagination-container {
+  margin-top: 16px;
+  background: #ffffff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(26, 82, 118, 0.06);
+  display: flex;
+  justify-content: center;
+
+  .el-pagination {
+    .btn-prev,
+    .btn-next,
+    .el-pager li {
+      background: #ffffff;
+      color: #1a5276;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: #f0f6fc;
+        color: #1a5276;
+      }
+
+      &.active {
+        background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+        color: #ffffff;
+      }
+    }
+
+    .el-pagination__sizes {
+      .el-input__inner {
+        border-color: #d4e0eb;
+        &:hover { border-color: #1a5276; }
+      }
+    }
+  }
+}
+
+/* ==================== 对话框样式 ==================== */
+::v-deep .el-dialog {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(10, 37, 64, 0.2);
+
+  .el-dialog__header {
+    background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+    padding: 16px 20px;
+    margin: 0;
+
+    .el-dialog__title {
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .el-dialog__headerbtn {
+      .el-dialog__close {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 18px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: #ffffff;
+          transform: rotate(90deg);
+        }
+      }
+    }
+  }
+
+  .el-dialog__body {
+    padding: 24px 20px;
+    background: #ffffff;
+
+    .el-form-item__label {
+      color: #1a5276;
+      font-weight: 500;
+    }
+
+    .el-input__inner {
+      height: 38px;
+      line-height: 38px;
+      border-radius: 6px;
+      border: 1px solid #d4e0eb;
+      transition: all 0.3s ease;
+
+      &:hover { border-color: #2a6fa8; }
+
+      &:focus {
+        border-color: #1a5276;
+        box-shadow: 0 0 0 3px rgba(26, 82, 118, 0.08);
+      }
+    }
+
+    .el-textarea__inner {
+      border-radius: 6px;
+      border: 1px solid #d4e0eb;
+      transition: all 0.3s ease;
+
+      &:hover { border-color: #2a6fa8; }
+
+      &:focus {
+        border-color: #1a5276;
+        box-shadow: 0 0 0 3px rgba(26, 82, 118, 0.08);
+      }
+    }
+  }
+
+  .el-dialog__footer {
+    padding: 12px 20px 20px;
+    background: #fafbfd;
+    border-top: 1px solid #e8edf2;
+    text-align: center;
+
+    .el-button--primary {
+      background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+      border: none;
+      box-shadow: 0 4px 12px rgba(26, 82, 118, 0.3);
+      transition: all 0.3s ease;
+      min-width: 100px;
+
+      &:hover {
+        background: linear-gradient(135deg, #1e5f8a 0%, #3080ba 100%);
+        box-shadow: 0 6px 20px rgba(26, 82, 118, 0.4);
+        transform: translateY(-1px);
+      }
+    }
+
+    .el-button--default {
+      border-color: #d4e0eb;
+      color: #606266;
+      background: #ffffff;
+      min-width: 100px;
+      transition: all 0.3s ease;
+
+      &:hover {
+        border-color: #1a5276;
+        color: #1a5276;
+        background: #f0f6fc;
+      }
+    }
+  }
+}
+
+/* ==================== 导入对话框样式 ==================== */
+::v-deep .el-upload {
+  .el-upload-dragger {
+    border-color: #d4e0eb;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: #1a5276;
+      background: #f0f6fc;
+    }
+  }
+}
+
+::v-deep .el-alert {
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+/* ==================== 响应式调整 ==================== */
+@media screen and (max-width: 768px) {
+  .app-container {
+    padding: 12px;
+  }
+
+  .el-form--inline {
+    ::v-deep .el-form-item {
+      width: 100%;
+      margin-bottom: 12px;
+    }
+  }
+}
+</style>

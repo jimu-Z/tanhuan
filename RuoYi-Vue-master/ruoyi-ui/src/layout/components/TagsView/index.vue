@@ -370,17 +370,17 @@ export default {
 .tags-view-container {
   height: 34px;
   width: 100%;
-  background: #fff;
-  border-bottom: 1px solid #d8dce5;
+  background: #f0f5fa;
+  border-bottom: 1px solid #d4e0eb;
   display: flex;
   align-items: center;
 
   $btn-width: 28px;
-  $btn-color: #71717a;
-  $btn-hover-bg: #f0f2f5;
-  $btn-hover-color: #303133;
+  $btn-color: #5a7a8f;
+  $btn-hover-bg: #e8edf2;
+  $btn-hover-color: #1a5276;
   $btn-disabled-color: #c0c4cc;
-  $divider: 1px solid #d8dce5;
+  $divider: 1px solid #d4e0eb;
 
   .tags-nav-btn {
     flex-shrink: 0;
@@ -424,9 +424,9 @@ export default {
       cursor: pointer;
       height: 26px;
       line-height: 26px;
-      border: 1px solid #d8dce5;
+      border: 1px solid #d4e0eb;
       color: #495060;
-      background: #fff;
+      background: #ffffff;
       padding: 0 8px;
       font-size: 12px;
       margin-left: 5px;
@@ -439,9 +439,9 @@ export default {
         margin-right: 15px;
       }
       &.active {
-        background-color: #42b983;
+        background: linear-gradient(135deg, #2a6fa8 0%, #4a8fc7 100%);
         color: #fff;
-        border-color: #42b983;
+        border-color: #2a6fa8;
         &::before {
           content: '';
           background: #fff;
