@@ -62,7 +62,7 @@ export function getParticipants(sessionId) {
 // 批量获取会话标签
 export function getBatchTags(sessionIds) {
   return request({
-    url: '/ruoyi-system/talksession/tags/batch',
+    url: '/ruoyi-system/talksession/session-tags/batch',
     method: 'get',
     params: { sessionIds: sessionIds.join(',') }
   })

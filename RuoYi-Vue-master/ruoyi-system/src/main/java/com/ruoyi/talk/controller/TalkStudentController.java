@@ -173,7 +173,7 @@ public class TalkStudentController extends BaseController {
      * 获取学生详情（含历史谈话记录）
      */
     @PreAuthorize("@ss.hasPermi('talk:student:query')")
-    @GetMapping("/detail/{studentId}")
+    @GetMapping("/detail/{studentId:\\d+}")
     public AjaxResult getDetail(@PathVariable("studentId") Long studentId) {
         return success(talkStudentService.getStudentDetail(studentId));
     }

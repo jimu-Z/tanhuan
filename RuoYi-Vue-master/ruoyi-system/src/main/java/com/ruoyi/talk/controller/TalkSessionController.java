@@ -186,28 +186,28 @@ public class TalkSessionController extends BaseController {
     }
 
     @PreAuthorize("@ss.hasPermi('talk:session:query')")
-    @GetMapping("/detail/{sessionId}")
+    @GetMapping("/detail/{sessionId:\\d+}")
     public AjaxResult getInfo(@PathVariable("sessionId") Long sessionId) {
         return success(talkSessionService.selectTalkSessionBySessionId(sessionId));
-    }
-
-    @PreAuthorize("@ss.hasPermi('talk:session:query')")
-    @GetMapping("/tags/{sessionId}")
-    public AjaxResult getTags(@PathVariable("sessionId") Long sessionId) {
-        return success(talkSessionService.selectTalkSessionTags(sessionId));
     }
 
     /**
      * 批量获取多个会话的标签（解决N+1查询问题）
      */
     @PreAuthorize("@ss.hasPermi('talk:session:query')")
-    @GetMapping("/tags/batch")
+    @GetMapping("/session-tags/batch")
     public AjaxResult getTagsBatch(@RequestParam String sessionIds) {
         return success(talkSessionService.selectTalkSessionTagsBatch(sessionIds));
     }
 
     @PreAuthorize("@ss.hasPermi('talk:session:query')")
-    @GetMapping("/participants/{sessionId}")
+    @GetMapping("/tags/{sessionId:\\d+}")
+    public AjaxResult getTags(@PathVariable("sessionId") Long sessionId) {
+        return success(talkSessionService.selectTalkSessionTags(sessionId));
+    }
+
+    @PreAuthorize("@ss.hasPermi('talk:session:query')")
+    @GetMapping("/participants/{sessionId:\\d+}")
     public AjaxResult getParticipants(@PathVariable("sessionId") Long sessionId) {
         List<TalkStudentRecord> records = talkStudentRecordMapper.selectTalkStudentRecordBySessionId(sessionId);
         records.sort(Comparator.comparing(TalkStudentRecord::getStudentCode, Comparator.nullsLast(String::compareTo)));
