@@ -11,8 +11,7 @@ import com.ruoyi.common.core.domain.BaseEntity;
  * @author admin
  * @date 2026-05-27
  */
-public class TalkStudent extends BaseEntity
-{
+public class TalkStudent extends BaseEntity {
     private static final long serialVersionUID = 1L;
 
     /** 学生ID */
@@ -101,256 +100,212 @@ public class TalkStudent extends BaseEntity
     /** 班级名称（非数据库字段，仅用于查询展示） */
     private String deptName;
 
-    public void setStudentId(Long studentId) 
-    {
+    public void setStudentId(Long studentId) {
         this.studentId = studentId;
     }
 
-    public Long getStudentId() 
-    {
+    public Long getStudentId() {
         return studentId;
     }
 
-    public void setStudentCode(String studentCode) 
-    {
+    public void setStudentCode(String studentCode) {
         this.studentCode = studentCode;
     }
 
-    public String getStudentCode() 
-    {
+    public String getStudentCode() {
         return studentCode;
     }
 
-    public void setStudentName(String studentName) 
-    {
+    public void setStudentName(String studentName) {
         this.studentName = studentName;
     }
 
-    public String getStudentName() 
-    {
+    public String getStudentName() {
         return studentName;
     }
 
-    public void setDeptId(Long deptId) 
-    {
+    public void setDeptId(Long deptId) {
         this.deptId = deptId;
     }
 
-    public Long getDeptId() 
-    {
+    public Long getDeptId() {
         return deptId;
     }
 
-    public void setGender(String gender) 
-    {
+    public void setGender(String gender) {
         this.gender = gender;
     }
 
-    public String getGender() 
-    {
+    public String getGender() {
         return gender;
     }
 
-    public void setPoliticalStatus(String politicalStatus) 
-    {
+    public void setPoliticalStatus(String politicalStatus) {
         this.politicalStatus = politicalStatus;
     }
 
-    public String getPoliticalStatus() 
-    {
+    public String getPoliticalStatus() {
         return politicalStatus;
     }
 
-    public void setNation(String nation) 
-    {
+    public void setNation(String nation) {
         this.nation = nation;
     }
 
-    public String getNation() 
-    {
+    public String getNation() {
         return nation;
     }
 
-    public void setPhone(String phone) 
-    {
+    public void setPhone(String phone) {
         this.phone = phone;
     }
 
-    public String getPhone() 
-    {
+    public String getPhone() {
         return phone;
     }
 
-    public void setIdCard(String idCard) 
-    {
+    public void setIdCard(String idCard) {
         this.idCard = idCard;
     }
 
-    public String getIdCard() 
-    {
+    public String getIdCard() {
         return idCard;
     }
 
-    public void setAddress(String address) 
-    {
+    public void setAddress(String address) {
         this.address = address;
     }
 
-    public String getAddress() 
-    {
+    public String getAddress() {
         return address;
     }
 
-    public void setFatherName(String fatherName) 
-    {
+    public void setFatherName(String fatherName) {
         this.fatherName = fatherName;
     }
 
-    public String getFatherName() 
-    {
+    public String getFatherName() {
         return fatherName;
     }
 
-    public void setFatherPhone(String fatherPhone) 
-    {
+    public void setFatherPhone(String fatherPhone) {
         this.fatherPhone = fatherPhone;
     }
 
-    public String getFatherPhone() 
-    {
+    public String getFatherPhone() {
         return fatherPhone;
     }
 
-    public void setMotherName(String motherName) 
-    {
+    public void setMotherName(String motherName) {
         this.motherName = motherName;
     }
 
-    public String getMotherName() 
-    {
+    public String getMotherName() {
         return motherName;
     }
 
-    public void setMotherPhone(String motherPhone) 
-    {
+    public void setMotherPhone(String motherPhone) {
         this.motherPhone = motherPhone;
     }
 
-    public String getMotherPhone() 
-    {
+    public String getMotherPhone() {
         return motherPhone;
     }
 
-    public void setClassMonitor(String classMonitor) 
-    {
+    public void setClassMonitor(String classMonitor) {
         this.classMonitor = classMonitor;
     }
 
-    public String getClassMonitor() 
-    {
+    public String getClassMonitor() {
         return classMonitor;
     }
 
-    public void setDormLeader(String dormLeader) 
-    {
+    public void setDormLeader(String dormLeader) {
         this.dormLeader = dormLeader;
     }
 
-    public String getDormLeader() 
-    {
+    public String getDormLeader() {
         return dormLeader;
     }
 
-    public void setDormBuilding(String dormBuilding) 
-    {
+    public void setDormBuilding(String dormBuilding) {
         this.dormBuilding = dormBuilding;
     }
 
-    public String getDormBuilding() 
-    {
+    public String getDormBuilding() {
         return dormBuilding;
     }
 
-    public void setDormRoom(String dormRoom) 
-    {
+    public void setDormRoom(String dormRoom) {
         this.dormRoom = dormRoom;
     }
 
-    public String getDormRoom() 
-    {
+    public String getDormRoom() {
         return dormRoom;
     }
 
-    public void setEnrollmentStatus(String enrollmentStatus) 
-    {
+    public void setEnrollmentStatus(String enrollmentStatus) {
         this.enrollmentStatus = enrollmentStatus;
     }
 
-    public String getEnrollmentStatus() 
-    {
+    public String getEnrollmentStatus() {
         return enrollmentStatus;
     }
 
-    public void setMentalHealthStatus(String mentalHealthStatus) 
-    {
+    public void setMentalHealthStatus(String mentalHealthStatus) {
         this.mentalHealthStatus = mentalHealthStatus;
     }
 
-    public String getMentalHealthStatus() 
-    {
+    public String getMentalHealthStatus() {
         return mentalHealthStatus;
     }
 
-    public void setPovertyLevel(String povertyLevel) 
-    {
+    public void setPovertyLevel(String povertyLevel) {
         this.povertyLevel = povertyLevel;
     }
 
-    public String getPovertyLevel() 
-    {
+    public String getPovertyLevel() {
         return povertyLevel;
     }
 
-    public void setDeptName(String deptName) 
-    {
+    public void setDeptName(String deptName) {
         this.deptName = deptName;
     }
 
-    public String getDeptName() 
-    {
+    public String getDeptName() {
         return deptName;
     }
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
-            .append("studentId", getStudentId())
-            .append("studentCode", getStudentCode())
-            .append("studentName", getStudentName())
-            .append("deptId", getDeptId())
-            .append("gender", getGender())
-            .append("politicalStatus", getPoliticalStatus())
-            .append("nation", getNation())
-            .append("phone", getPhone())
-            .append("idCard", getIdCard())
-            .append("address", getAddress())
-            .append("fatherName", getFatherName())
-            .append("fatherPhone", getFatherPhone())
-            .append("motherName", getMotherName())
-            .append("motherPhone", getMotherPhone())
-            .append("classMonitor", getClassMonitor())
-            .append("dormLeader", getDormLeader())
-            .append("dormBuilding", getDormBuilding())
-            .append("dormRoom", getDormRoom())
-            .append("enrollmentStatus", getEnrollmentStatus())
-            .append("mentalHealthStatus", getMentalHealthStatus())
-            .append("povertyLevel", getPovertyLevel())
-            .append("deptName", getDeptName())
-            .append("remark", getRemark())
-            .append("createBy", getCreateBy())
-            .append("createTime", getCreateTime())
-            .append("updateBy", getUpdateBy())
-            .append("updateTime", getUpdateTime())
-            .toString();
+        return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
+                .append("studentId", getStudentId())
+                .append("studentCode", getStudentCode())
+                .append("studentName", getStudentName())
+                .append("deptId", getDeptId())
+                .append("gender", getGender())
+                .append("politicalStatus", getPoliticalStatus())
+                .append("nation", getNation())
+                .append("phone", getPhone())
+                .append("idCard", getIdCard())
+                .append("address", getAddress())
+                .append("fatherName", getFatherName())
+                .append("fatherPhone", getFatherPhone())
+                .append("motherName", getMotherName())
+                .append("motherPhone", getMotherPhone())
+                .append("classMonitor", getClassMonitor())
+                .append("dormLeader", getDormLeader())
+                .append("dormBuilding", getDormBuilding())
+                .append("dormRoom", getDormRoom())
+                .append("enrollmentStatus", getEnrollmentStatus())
+                .append("mentalHealthStatus", getMentalHealthStatus())
+                .append("povertyLevel", getPovertyLevel())
+                .append("deptName", getDeptName())
+                .append("remark", getRemark())
+                .append("createBy", getCreateBy())
+                .append("createTime", getCreateTime())
+                .append("updateBy", getUpdateBy())
+                .append("updateTime", getUpdateTime())
+                .toString();
     }
 }

@@ -144,18 +144,39 @@
     </el-card>
 
     <!-- 个人中心弹窗 -->
-    <el-dialog title="个人信息" :visible.sync="showProfile" width="500px" center>
-      <el-form label-width="100px">
-        <el-form-item label="学号">
-          <span>{{ user.studentCode || user.username || '-' }}</span>
-        </el-form-item>
-        <el-form-item label="姓名">
-          <span>{{ user.nickName || user.name || '-' }}</span>
-        </el-form-item>
-        <el-form-item label="班级">
-          <span>{{ user.deptName || '-' }}</span>
-        </el-form-item>
-      </el-form>
+    <el-dialog :visible.sync="showProfile" width="520px" :show-close="true" :append-to-body="true" custom-class="profile-dialog">
+      <div class="profile-card">
+        <div class="profile-header">
+          <div class="profile-avatar">
+            <i class="el-icon-user-solid"></i>
+          </div>
+          <h3 class="profile-name">{{ user.nickName || user.name || '同学' }}</h3>
+          <p class="profile-code">学号 {{ user.studentCode || user.username || '-' }}</p>
+        </div>
+        <div class="profile-body">
+          <div class="profile-row">
+            <div class="profile-label">
+              <i class="el-icon-school"></i>
+              <span>班级</span>
+            </div>
+            <div class="profile-value">{{ user.deptName || '-' }}</div>
+          </div>
+          <div class="profile-row">
+            <div class="profile-label">
+              <i class="el-icon-phone"></i>
+              <span>联系电话</span>
+            </div>
+            <div class="profile-value">{{ user.phonenumber || '-' }}</div>
+          </div>
+          <div class="profile-row">
+            <div class="profile-label">
+              <i class="el-icon-star-on"></i>
+              <span>政治面貌</span>
+            </div>
+            <div class="profile-value">{{ user.politicalStatus || '-' }}</div>
+          </div>
+        </div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -568,6 +589,104 @@ export default {
 .empty-state p {
   margin: 0;
   font-size: 14px;
+}
+
+/* 个人中心弹窗 */
+.profile-dialog ::v-deep .el-dialog {
+  border-radius: 20px;
+  overflow: hidden;
+  margin-top: 10vh !important;
+}
+
+.profile-dialog ::v-deep .el-dialog__header {
+  display: none;
+}
+
+.profile-dialog ::v-deep .el-dialog__body {
+  padding: 0;
+}
+
+.profile-card {
+  padding: 32px;
+}
+
+.profile-header {
+  text-align: center;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 24px;
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: 0 4px 16px rgba(26, 82, 118, 0.2);
+}
+
+.profile-avatar i {
+  font-size: 36px;
+  color: #fff;
+}
+
+.profile-name {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a5276;
+}
+
+.profile-code {
+  margin: 0;
+  font-size: 14px;
+  color: #909399;
+}
+
+.profile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  background: #f8fafc;
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+
+.profile-row:hover {
+  background: #f0f4f8;
+  transform: translateX(4px);
+}
+
+.profile-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 110px;
+  color: #606266;
+  font-size: 14px;
+}
+
+.profile-label i {
+  font-size: 16px;
+  color: #2a6fa8;
+  width: 18px;
+  text-align: center;
+}
+
+.profile-value {
+  color: #303133;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 /* 响应式 */
