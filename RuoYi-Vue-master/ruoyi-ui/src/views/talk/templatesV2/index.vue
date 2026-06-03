@@ -180,7 +180,7 @@ export default {
   name: 'TemplatesV2',
   data() {
     return {
-      loading: true,
+      loading: false,
       showSearch: true,
       total: 0,
       templateList: [],
@@ -220,6 +220,7 @@ export default {
         this.loading = false
       }).catch(() => {
         this.loading = false
+        this.$modal.msgError('加载模板列表失败')
       })
     },
     parseTags(tags) {
@@ -229,7 +230,6 @@ export default {
         var parsed = JSON.parse(tags)
         if (Array.isArray(parsed)) return parsed.map(toLabel)
       } catch (e) {
-        return tags.split(',').map(function(t) { return toLabel(t.trim()) }).filter(Boolean)
       }
       return tags.split(',').map(function(t) { return toLabel(t.trim()) }).filter(Boolean)
     },
@@ -255,7 +255,11 @@ export default {
       this.resetForm('queryForm')
       this.handleQuery()
     },
-    handleSelectionChange() {},
+    handleSelectionChange(selection) {
+      this.ids = selection.map(item => item.templateId)
+      this.single = selection.length !== 1
+      this.multiple = !selection.length
+    },
     handleAdd() {
       this.reset()
       this.open = true

@@ -201,10 +201,10 @@
       <el-table-column label="学生ID" align="center" prop="studentId" />
       <el-table-column label="学号" align="center" prop="studentCode" />
       <el-table-column label="姓名" align="center" prop="studentName" />
-      <el-table-column label="部门ID(班级)" align="center" prop="deptId" />
+      <el-table-column label="班级" align="center" prop="deptName" />
       <el-table-column label="性别" align="center" prop="gender">
         <template slot-scope="scope">
-          <span>{{ scope.row.gender === '1' ? '女' : '男' }}</span>
+          <span>{{ scope.row.gender === '0' ? '男' : scope.row.gender === '1' ? '女' : '-' }}</span>
         </template>
       </el-table-column>
       <el-table-column label="政治面貌" align="center" prop="politicalStatus" />
@@ -540,7 +540,7 @@ export default {
         this.talkList = response.rows
         this.total = response.total
         this.loading = false
-      }).catch(() => { this.loading = false })
+      }).catch(() => { this.loading = false; this.$modal.msgError('加载学生列表失败') })
     },
     // 取消按钮
     cancel() {
@@ -608,7 +608,15 @@ export default {
     /** 修改按钮操作 */
     handleUpdate(row) {
       this.reset()
-      const studentId = row.studentId || this.ids
+      if (this.ids.length > 1) {
+        this.$modal.msgWarning('每次只能修改一条记录')
+        return
+      }
+      const studentId = row ? row.studentId : this.ids[0]
+      if (!studentId) {
+        this.$modal.msgWarning('请先选择要修改的记录')
+        return
+      }
       getTalk(studentId).then(response => {
         this.form = response.data || {}
         this.open = true

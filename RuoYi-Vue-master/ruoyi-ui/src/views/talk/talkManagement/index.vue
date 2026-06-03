@@ -110,7 +110,7 @@
                   <el-tag v-if="s2.row.followupStatus==='pending'" type="info" size="mini">待跟进</el-tag>
                   <el-tag v-else-if="s2.row.followupStatus==='in_progress'" type="warning" size="mini">跟进中</el-tag>
                   <el-tag v-else-if="s2.row.followupStatus==='completed'" type="success" size="mini">已完成</el-tag>
-                  <el-tag v-else-if="s2.row.followupStatus==='none'" type="" size="mini">无需跟进</el-tag>
+                  <el-tag v-else-if="s2.row.followupStatus==='none'" type="info" size="mini">无需跟进</el-tag>
                   <span v-else>-</span>
                 </template>
               </el-table-column>
@@ -331,7 +331,7 @@ export default {
         if (res.data && Object.keys(res.data).length > 0) {
           this.tagLabels = res.data
         }
-      }).catch(() => { /* 标签映射加载失败，使用硬编码兜底 */ })
+      }).catch(() => { console.warn('标签映射加载失败，使用硬编码兜底') })
     },
     getList() {
       this.loading = true
@@ -352,7 +352,7 @@ export default {
         Object.keys(data).forEach(k => {
           this.$set(this.tagMap, Number(k), data[k] || [])
         })
-      }).catch(() => {})
+      }).catch(() => { console.warn('批量加载标签失败') })
     },
     loadRecordCounts() {
       const ids = this.sessionList.map(s => s.sessionId)

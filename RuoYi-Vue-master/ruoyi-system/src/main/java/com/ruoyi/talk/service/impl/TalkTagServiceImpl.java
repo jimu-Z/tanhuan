@@ -60,7 +60,7 @@ public class TalkTagServiceImpl implements ITalkTagService
             tag.setDelFlag("2");
             tag.setUpdateBy(SecurityUtils.getUsername());
             tag.setUpdateTime(DateUtils.getNowDate());
-            result += talkTagMapper.deleteTalkTagById(tagId);
+            result += talkTagMapper.updateTalkTag(tag);
         }
         return result;
     }

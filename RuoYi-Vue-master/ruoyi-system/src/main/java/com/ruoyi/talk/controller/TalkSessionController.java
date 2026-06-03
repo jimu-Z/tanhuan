@@ -93,7 +93,7 @@ public class TalkSessionController extends BaseController {
         }
         byte[] docxBytes = talkDocxService.generateDocxBySession(sessionId);
         boolean isZip = "group".equals(session.getTalkType());
-        String fileName = "谈话记录_" + session.getTalkPerson() + (isZip ? ".zip" : ".docx");
+        String fileName = "谈话记录_" + (session != null ? session.getTalkPerson() : "未知") + (isZip ? ".zip" : ".docx");
         writeFileDownload(response, docxBytes, fileName, isZip);
     }
 

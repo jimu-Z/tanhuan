@@ -85,7 +85,7 @@ export default {
         notified: 1
       }
       getPendingTalks(params).then(res => {
-        this.records = res.rows || []
+        this.tableData = res.rows || []
         this.total = res.total || 0
         this.loading = false
       }).catch(() => { this.loading = false; this.$message.error('加载失败') })

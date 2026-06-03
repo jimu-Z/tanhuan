@@ -75,37 +75,55 @@ export default {
         this.total = res.total
         this.loadTags()
         this.loadStudents()
-      }).catch(() => { this.loading = false; this.$modal.msgError('加载失败') }).finally(() => { this.loading = false })
+        this.loading = false
+      }).catch(() => { this.loading = false; this.$modal.msgError('加载谈话列表失败') })
     },
     loadTags() {
       this.talksessionList.forEach(s => {
-        getSessionTags(s.sessionId).then(r => this.$set(this.tagMap, s.sessionId, r.data || [])).catch(() => { this.$modal.msgError('加载标签失败') })
+        getSessionTags(s.sessionId).then(r => this.$set(this.tagMap, s.sessionId, r.data || [])).catch(err => {
+          console.warn('加载会话标签失败:', s.sessionId, err)
+        })
       })
     },
     loadStudents() {
       this.talksessionList.forEach(s => {
         listTalkrecord({ sessionId: s.sessionId, pageSize: 999 }).then(r => {
           const ids = (r.rows || []).map(rec => rec.studentId)
+          if (ids.length === 0) {
+            this.$set(this.studentMap, s.sessionId, [])
+            return
+          }
           Promise.all(ids.map(id => getTalk(id))).then(students => {
             this.$set(this.studentMap, s.sessionId, students.map(st => st.data ? st.data.studentName : '-'))
-          }).catch(() => { this.$modal.msgError('操作失败') })
-        }).catch(() => { this.$modal.msgError('操作失败') })
+          }).catch(err => {
+            console.warn('加载学生信息失败:', s.sessionId, err)
+            this.$set(this.studentMap, s.sessionId, [])
+          })
+        }).catch(err => {
+          console.warn('加载谈话记录失败:', s.sessionId, err)
+          this.$set(this.studentMap, s.sessionId, [])
+        })
       })
     },
     getTagLabel(v) { return TAG_LABELS[v] || v },
     handleExport(row) {
-      let url = '/ruoyi-system/talksession/exportDocx/' + row.sessionId;
-      this.$modal.confirm('导出' + row.talkPerson + '的谈话记录？').then(() => {
-        return request({ url: url, method: 'get', responseType: 'blob' }).catch(() => { this.$modal.msgError('导出失败') })
+      const url = '/ruoyi-system/talksession/exportDocx/' + row.sessionId
+      const personName = row.talkPerson || '未知'
+      this.$modal.confirm('导出' + personName + '的谈话记录？').then(() => {
+        return request({ url: url, method: 'get', responseType: 'blob' })
       }).then(blob => {
         const blobUrl = window.URL.createObjectURL(blob)
-        const a = document.createElement('a'); a.href = blobUrl
+        const a = document.createElement('a')
+        a.href = blobUrl
         const contentType = blob.type || ''
         const actualExt = contentType.includes('zip') ? '.zip' : '.docx'
-        a.download = '谈话记录_' + (row.talkPerson || row.sessionId) + actualExt
-        a.click(); window.URL.revokeObjectURL(blobUrl)
+        a.download = '谈话记录_' + personName + actualExt
+        a.click()
+        window.URL.revokeObjectURL(blobUrl)
         this.$modal.msgSuccess('导出成功')
-      }).catch(() => { this.$modal.msgError('导出失败') })
+      }).catch(() => {
+        this.$modal.msgError('导出失败')
+      })
     }
   }
 }

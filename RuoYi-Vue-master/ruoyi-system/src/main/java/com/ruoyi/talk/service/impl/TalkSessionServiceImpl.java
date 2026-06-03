@@ -98,10 +98,11 @@ public class TalkSessionServiceImpl implements ITalkSessionService {
     @Override
     @Transactional
     public int deleteTalkSessionBySessionIds(Long[] sessionIds) {
+        int total = 0;
         for (Long sessionId : sessionIds) {
-            deleteTalkSessionBySessionId(sessionId);
+            total += deleteTalkSessionBySessionId(sessionId);
         }
-        return sessionIds.length;
+        return total;
     }
 
     @Override

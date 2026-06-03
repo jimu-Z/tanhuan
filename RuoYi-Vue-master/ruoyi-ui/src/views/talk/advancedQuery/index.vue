@@ -141,12 +141,6 @@ export default {
           if (p.talkPerson) {
             filtered = filtered.filter(r => (r.talkPerson || '').includes(p.talkPerson))
           }
-          if (p.tags && p.tags.length > 0) {
-            filtered = filtered.filter(r => {
-              if (!r.tags || r.tags.length === 0) return false
-              return p.tags.some(t => r.tags.includes(t))
-            })
-          }
           if (p.dateRange && p.dateRange.length === 2) {
             const start = p.dateRange[0]
             const end = p.dateRange[1]

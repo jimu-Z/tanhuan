@@ -91,10 +91,12 @@ export default {
         this.history.forEach(h => {
           const sid = h.session ? h.session.sessionId : null
           if (sid) {
-            getSessionTags(sid).then(r => { this.$set(this.tagCache, sid, (r.data || []).map(t => TAG_LABELS[t.tagValue] || t.tagValue).join('、')) }).catch(() => { this.$modal.msgError('操作失败') })
+            getSessionTags(sid).then(r => { this.$set(this.tagCache, sid, (r.data || []).map(t => TAG_LABELS[t.tagValue] || t.tagValue).join('、')) }).catch(err => {
+              console.warn('加载会话标签失败:', sid, err)
+            })
           }
         })
-      }).catch(() => { this.loading = false; this.$modal.msgError('加载学生详情失败') }).finally(() => {
+      }).catch(() => { this.$modal.msgError('加载学生详情失败') }).finally(() => {
         this.loadingHistory = false
       })
     },

@@ -64,4 +64,6 @@ public interface TalkStudentMapper
     public int countStudentsByDeptId(Long deptId);
     public int countTalkStudentsFiltered(Map<String, Object> params);
     public List<TalkStudent> selectUntalkedStudents(Map<String, Object> params);
+    public Long selectMinAvailableStudentId();
+    public int countRecordsByStudentId(Long studentId);
 }

@@ -51,7 +51,6 @@ export default {
     }
   },
   created() {
-    this.fetchPendingCount()
   },
   methods: {
     fetchPendingCount() {
@@ -62,7 +61,9 @@ export default {
         pageSize: 1
       }).then(res => {
         this.$store.commit('SET_PENDING_COUNT', res.total || 0)
-      }).catch(() => {})
+      }).catch(err => {
+        console.error('获取待处理数量失败:', err)
+      })
     }
   }
 }

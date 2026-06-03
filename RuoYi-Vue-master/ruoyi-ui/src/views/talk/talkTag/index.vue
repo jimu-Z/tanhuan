@@ -75,6 +75,7 @@
         <template slot-scope="scope">
           <el-tag v-if="scope.row.status === '0'" type="success">启用</el-tag>
           <el-tag v-else-if="scope.row.status === '1'" type="danger">停用</el-tag>
+          <span v-else>-</span>
         </template>
       </el-table-column>
       <el-table-column label="创建时间" align="center" prop="createTime" width="180">

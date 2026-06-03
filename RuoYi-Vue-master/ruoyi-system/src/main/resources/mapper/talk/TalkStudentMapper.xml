@@ -211,4 +211,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
         order by s.student_code asc
     </select>
+
+    <select id="selectMinAvailableStudentId" resultType="Long">
+        SELECT IFNULL(MIN(t1.student_id + 1), 1) AS next_id
+        FROM talk_student t1
+        LEFT JOIN talk_student t2 ON t1.student_id + 1 = t2.student_id
+        WHERE t2.student_id IS NULL
+    </select>
+
+    <select id="countRecordsByStudentId" parameterType="Long" resultType="int">
+        select count(*) from talk_student_record where student_id = #{studentId}
+    </select>
 </mapper>

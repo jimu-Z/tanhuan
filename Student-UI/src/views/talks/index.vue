@@ -5,20 +5,16 @@
       <el-table-column type="index" label="序号" width="60" align="center" />
       <el-table-column prop="createTime" label="谈话时间" width="180" align="center" />
       <el-table-column prop="studentName" label="谈话人" width="120" align="center" />
-      <el-table-column prop="followupStatus" label="谈话类型" width="120" align="center">
+      <el-table-column prop="followupStatus" label="跟进状态" width="120" align="center">
         <template slot-scope="scope">
-          <el-tag v-if="scope.row.followupStatus === '1'" type="warning">首次谈话</el-tag>
-          <el-tag v-else-if="scope.row.followupStatus === '2'" type="success">跟进谈话</el-tag>
-          <el-tag v-else-if="scope.row.followupStatus === '0'" type="danger">紧急谈话</el-tag>
-          <span v-else>-</span>
+          <el-tag v-if="scope.row.followupStatus === 'none' || scope.row.followupStatus === null" type="info">无需跟进</el-tag>
+          <el-tag v-else-if="scope.row.followupStatus === 'pending'" type="warning">待跟进</el-tag>
+          <el-tag v-else-if="scope.row.followupStatus === 'in_progress'" type="primary">跟进中</el-tag>
+          <el-tag v-else-if="scope.row.followupStatus === 'completed'" type="success">已完成</el-tag>
+          <span v-else>{{ scope.row.followupStatus || '-' }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="followupPlan" label="谈话内容" min-width="200" show-overflow-tooltip />
-      <el-table-column label="内容标签" width="100" align="center">
-        <template slot-scope="scope">
-          <el-tag size="small" type="info">{{ scope.row.followupStatus || '-' }}</el-tag>
-        </template>
-      </el-table-column>
+      <el-table-column prop="followupPlan" label="跟进计划" min-width="200" show-overflow-tooltip />
       <el-table-column label="反馈状态" width="120" align="center">
         <template slot-scope="scope">
           <el-tag v-if="scope.row.studentFeedback === '无' || !scope.row.studentFeedback" type="info">未反馈</el-tag>

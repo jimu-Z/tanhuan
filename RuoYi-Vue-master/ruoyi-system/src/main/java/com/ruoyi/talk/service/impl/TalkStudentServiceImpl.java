@@ -114,6 +114,10 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     public int insertTalkStudent(TalkStudent talkStudent) {
         talkStudent.setCreateBy(SecurityUtils.getUsername());
         talkStudent.setCreateTime(DateUtils.getNowDate());
+        Long gapId = talkStudentMapper.selectMinAvailableStudentId();
+        if (gapId != null) {
+            talkStudent.setStudentId(gapId);
+        }
         return talkStudentMapper.insertTalkStudent(talkStudent);
     }
 
@@ -140,7 +144,12 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     @Transactional
     public int deleteTalkStudentByStudentIds(Long[] studentIds) {
         for (Long studentId : studentIds) {
-            talkStudentRecordMapper.deleteTalkStudentRecordByStudentId(studentId);
+            int recordCount = talkStudentMapper.countRecordsByStudentId(studentId);
+            if (recordCount > 0) {
+                TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
+                String name = student != null ? student.getStudentName() : "未知";
+                throw new RuntimeException("学生 " + name + " 有 " + recordCount + " 条谈话记录，无法删除。请先处理相关谈话记录。");
+            }
         }
         return talkStudentMapper.deleteTalkStudentByStudentIds(studentIds);
     }
@@ -154,7 +163,12 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     @Override
     @Transactional
     public int deleteTalkStudentByStudentId(Long studentId) {
-        talkStudentRecordMapper.deleteTalkStudentRecordByStudentId(studentId);
+        int recordCount = talkStudentMapper.countRecordsByStudentId(studentId);
+        if (recordCount > 0) {
+            TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
+            String name = student != null ? student.getStudentName() : "未知";
+            throw new RuntimeException("学生 " + name + " 有 " + recordCount + " 条谈话记录，无法删除。请先处理相关谈话记录。");
+        }
         return talkStudentMapper.deleteTalkStudentByStudentId(studentId);
     }
 
@@ -171,7 +185,10 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         List<TalkStudentRecord> records = talkStudentRecordMapper.selectTalkStudentRecordByStudentId(studentId);
         List<Map<String, Object>> history = new ArrayList<>();
         if (records != null && !records.isEmpty()) {
-            Set<Long> sessionIds = records.stream().map(TalkStudentRecord::getSessionId).collect(Collectors.toSet());
+            Set<Long> sessionIds = records.stream()
+                    .map(TalkStudentRecord::getSessionId)
+                    .filter(id -> id != null)
+                    .collect(Collectors.toSet());
             Map<Long, TalkSession> sessionCache = new HashMap<>();
             List<TalkSession> sessions = talkSessionMapper
                     .selectTalkSessionBySessionIds(sessionIds.toArray(new Long[0]));
@@ -425,6 +442,10 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 }
 
                 student.setCreateTime(DateUtils.getNowDate());
+                Long gapId = talkStudentMapper.selectMinAvailableStudentId();
+                if (gapId != null) {
+                    student.setStudentId(gapId);
+                }
                 talkStudentMapper.insertTalkStudent(student);
                 successCount++;
 
@@ -703,7 +724,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         }
 
         String ancestors;
-        if (parentId.equals(TOP_DEPT_ID)) {
+        if (TOP_DEPT_ID.equals(parentId)) {
             ancestors = "0,100";
         } else {
             SysDept parentDept = sysDeptMapper.selectDeptById(parentId);

@@ -361,7 +361,7 @@ export default {
       this.$confirm('确认清空谈话内容？', '提示', { type: 'warning' }).then(() => {
         this.form.talkContent = ''
         this.$message.success('已清空')
-      }).catch(() => {})
+      }).catch(() => { /* 用户取消操作 */ })
     },
     insertTemplate(mode) {
       if (!this.selectedTemplateId) return
@@ -373,7 +373,7 @@ export default {
         if (this.form.talkContent) {
           this.$confirm('当前内容将被替换，是否继续？', '提示', { type: 'warning' }).then(() => {
             this.doInsert(tpl)
-          }).catch(() => {})
+          }).catch(() => { /* 用户取消操作 */ })
         } else {
           this.doInsert(tpl)
         }

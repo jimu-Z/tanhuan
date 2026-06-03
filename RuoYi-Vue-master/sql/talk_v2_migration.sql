@@ -1,6 +1,7 @@
 -- ----------------------------
 -- 学生谈心谈话系统 V2 升级脚本
 -- 新增: 标签管理表、附件表、通知字段
+-- 生产环境：使用 INSERT IGNORE 防止主键冲突
 -- 注意：仅在首次部署时执行，请勿在生产环境重复执行
 -- ----------------------------
 
@@ -23,7 +24,7 @@ CREATE TABLE IF NOT EXISTS talk_tag (
 ) ENGINE=INNODB AUTO_INCREMENT=1 COMMENT = '谈话标签定义表';
 
 -- 初始化默认标签数据（从 TalkConstants 迁移）
-INSERT INTO talk_tag (tag_key, tag_name, sort_order, status, del_flag, create_by, create_time) VALUES
+INSERT IGNORE INTO talk_tag (tag_key, tag_name, sort_order, status, del_flag, create_by, create_time) VALUES
 ('thought_education', '思想理论教育和价值引领', 1, '0', '0', 'admin', NOW()),
 ('party_class',       '党团和班级建设',          2, '0', '0', 'admin', NOW()),
 ('study_style',       '学风建设',                3, '0', '0', 'admin', NOW()),
@@ -59,5 +60,5 @@ ALTER TABLE talk_student_record
 -- ----------------------------
 -- 4、新增学生角色（复用若依sys_user体系）
 -- ----------------------------
-INSERT INTO sys_role (role_id, role_name, role_key, role_sort, data_scope, menu_check_strictly, dept_check_strictly, status, del_flag, create_by, create_time, update_by, update_time, remark)
+INSERT IGNORE INTO sys_role (role_id, role_name, role_key, role_sort, data_scope, menu_check_strictly, dept_check_strictly, status, del_flag, create_by, create_time, update_by, update_time, remark)
 VALUES (6, '学生', 'talk_student', 6, 5, 1, 1, '0', '0', 'admin', NOW(), '', NULL, '学生角色，仅可查看自己的谈话记录');

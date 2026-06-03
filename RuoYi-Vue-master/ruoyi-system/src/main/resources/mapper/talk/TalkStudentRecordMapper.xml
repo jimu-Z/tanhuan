@@ -40,7 +40,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="followupStatus != null  and followupStatus != ''"> and tsr.followup_status = #{followupStatus}</if>
             <if test="notified != null"> and tsr.notified = #{notified}</if>
             <if test="teacherNotified != null"> and tsr.teacher_notified = #{teacherNotified}</if>
-            ${params.dataScope}
+            <if test="params.counselorUsername != null and params.counselorUsername != ''"> and tsr.session_id in (select ts.session_id from talk_session ts where ts.create_by = #{params.counselorUsername})</if>
+            <if test="params.secretaryDeptId != null"> and tsr.student_id in (select stu.student_id from talk_student stu join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{params.secretaryDeptId} or find_in_set(#{params.secretaryDeptId}, d.ancestors)))</if>
         </where>
     </select>
     

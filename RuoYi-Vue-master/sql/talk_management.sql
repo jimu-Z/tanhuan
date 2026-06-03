@@ -10,8 +10,9 @@ ALTER TABLE sys_dept ADD COLUMN dept_type VARCHAR(20) DEFAULT 'dept' COMMENT '�
 -- ----------------------------
 -- 2、学生基础信息表
 -- ----------------------------
-DROP TABLE IF EXISTS talk_student;
-CREATE TABLE talk_student (
+-- ⚠️ 生产环境：已移除 DROP TABLE 防止数据丢失
+-- DROP TABLE IF EXISTS talk_student;
+CREATE TABLE IF NOT EXISTS talk_student (
   student_id           BIGINT(20)      NOT NULL AUTO_INCREMENT    COMMENT '学生ID',
   student_code         VARCHAR(50)     NOT NULL                   COMMENT '学号',
   student_name         VARCHAR(50)     NOT NULL                   COMMENT '姓名',
@@ -47,8 +48,9 @@ CREATE TABLE talk_student (
 -- ----------------------------
 -- 3、谈话会话表
 -- ----------------------------
-DROP TABLE IF EXISTS talk_session;
-CREATE TABLE talk_session (
+-- ⚠️ 生产环境：已移除 DROP TABLE 防止数据丢失
+-- DROP TABLE IF EXISTS talk_session;
+CREATE TABLE IF NOT EXISTS talk_session (
   session_id       BIGINT(20)      NOT NULL AUTO_INCREMENT    COMMENT '会话ID',
   talk_type        VARCHAR(20)     NOT NULL                   COMMENT '谈话类型（individual 个体谈话 / group 集体谈话）',
   talk_time        DATETIME        NOT NULL                   COMMENT '谈话时间',
@@ -68,8 +70,9 @@ CREATE TABLE talk_session (
 -- ----------------------------
 -- 4、学生谈话记录明细表（关联学生与会话）
 -- ----------------------------
-DROP TABLE IF EXISTS talk_student_record;
-CREATE TABLE talk_student_record (
+-- ⚠️ 生产环境：已移除 DROP TABLE 防止数据丢失
+-- DROP TABLE IF EXISTS talk_student_record;
+CREATE TABLE IF NOT EXISTS talk_student_record (
   record_id        BIGINT(20)      NOT NULL AUTO_INCREMENT    COMMENT '记录ID',
   session_id       BIGINT(20)      NOT NULL                   COMMENT '会话ID',
   student_id       BIGINT(20)      NOT NULL                   COMMENT '学生ID',
@@ -87,8 +90,9 @@ CREATE TABLE talk_student_record (
 -- ----------------------------
 -- 5、会话-内容标签关联表
 -- ----------------------------
-DROP TABLE IF EXISTS talk_session_tag;
-CREATE TABLE talk_session_tag (
+-- ⚠️ 生产环境：已移除 DROP TABLE 防止数据丢失
+-- DROP TABLE IF EXISTS talk_session_tag;
+CREATE TABLE IF NOT EXISTS talk_session_tag (
   session_id       BIGINT(20)      NOT NULL                   COMMENT '会话ID',
   tag_value        VARCHAR(50)     NOT NULL                   COMMENT '标签值(对应 sys_dict_data.dict_value)',
   PRIMARY KEY (session_id, tag_value)
@@ -97,85 +101,85 @@ CREATE TABLE talk_session_tag (
 -- ----------------------------
 -- 6、字典类型 - 谈话相关
 -- ----------------------------
-INSERT INTO sys_dict_type VALUES(11, '谈话内容标签',    'talk_content_tag',       '0', 'admin', sysdate(), '', null, '谈话内容标签（可多选）');
-INSERT INTO sys_dict_type VALUES(12, '学籍状态',        'enrollment_status',      '0', 'admin', sysdate(), '', null, '学籍状态列表');
-INSERT INTO sys_dict_type VALUES(13, '心理健康状态',    'mental_health_status',   '0', 'admin', sysdate(), '', null, '心理健康状态列表');
-INSERT INTO sys_dict_type VALUES(14, '贫困等级认定',    'poverty_level',          '0', 'admin', sysdate(), '', null, '贫困等级认定列表');
-INSERT INTO sys_dict_type VALUES(15, '跟进状态',        'followup_status',        '0', 'admin', sysdate(), '', null, '跟进状态列表');
-INSERT INTO sys_dict_type VALUES(16, '谈话类型',        'talk_type',              '0', 'admin', sysdate(), '', null, '谈话类型列表');
-INSERT INTO sys_dict_type VALUES(17, '政治面貌',        'political_status',       '0', 'admin', sysdate(), '', null, '政治面貌列表');
-INSERT INTO sys_dict_type VALUES(18, '部门类型',        'dept_type',              '0', 'admin', sysdate(), '', null, '部门类型列表');
+INSERT IGNORE INTO sys_dict_type VALUES(11, '谈话内容标签',    'talk_content_tag',       '0', 'admin', NOW(), '', null, '谈话内容标签（可多选）');
+INSERT IGNORE INTO sys_dict_type VALUES(12, '学籍状态',        'enrollment_status',      '0', 'admin', NOW(), '', null, '学籍状态列表');
+INSERT IGNORE INTO sys_dict_type VALUES(13, '心理健康状态',    'mental_health_status',   '0', 'admin', NOW(), '', null, '心理健康状态列表');
+INSERT IGNORE INTO sys_dict_type VALUES(14, '贫困等级认定',    'poverty_level',          '0', 'admin', NOW(), '', null, '贫困等级认定列表');
+INSERT IGNORE INTO sys_dict_type VALUES(15, '跟进状态',        'followup_status',        '0', 'admin', NOW(), '', null, '跟进状态列表');
+INSERT IGNORE INTO sys_dict_type VALUES(16, '谈话类型',        'talk_type',              '0', 'admin', NOW(), '', null, '谈话类型列表');
+INSERT IGNORE INTO sys_dict_type VALUES(17, '政治面貌',        'political_status',       '0', 'admin', NOW(), '', null, '政治面貌列表');
+INSERT IGNORE INTO sys_dict_type VALUES(18, '部门类型',        'dept_type',              '0', 'admin', NOW(), '', null, '部门类型列表');
 
 -- ----------------------------
 -- 7、字典数据 - 谈话内容标签
 -- ----------------------------
-INSERT INTO sys_dict_data VALUES(30, 1, '思想理论教育和价值引领',   'thought_education',    'talk_content_tag', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(31, 2, '党团和班级建设',           'party_class',          'talk_content_tag', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(32, 3, '学风建设',                 'study_style',          'talk_content_tag', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(33, 4, '日常事务',                 'daily_affairs',        'talk_content_tag', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(34, 5, '心理健康教育与咨询',       'mental_health',        'talk_content_tag', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(35, 6, '危机事件应对',             'crisis_response',      'talk_content_tag', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(36, 7, '职业规划与就业创业指导',   'career_guidance',      'talk_content_tag', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(30, 1, '思想理论教育和价值引领',   'thought_education',    'talk_content_tag', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(31, 2, '党团和班级建设',           'party_class',          'talk_content_tag', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(32, 3, '学风建设',                 'study_style',          'talk_content_tag', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(33, 4, '日常事务',                 'daily_affairs',        'talk_content_tag', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(34, 5, '心理健康教育与咨询',       'mental_health',        'talk_content_tag', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(35, 6, '危机事件应对',             'crisis_response',      'talk_content_tag', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(36, 7, '职业规划与就业创业指导',   'career_guidance',      'talk_content_tag', '', '', 'N', '0', 'admin', NOW(), '', null, '');
 
 -- ----------------------------
 -- 8、字典数据 - 学籍状态
 -- ----------------------------
-INSERT INTO sys_dict_data VALUES(40, 1, '在读',     'active',       'enrollment_status', '', '', 'Y', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(41, 2, '休学',     'suspended',    'enrollment_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(42, 3, '退学',     'withdrawn',    'enrollment_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(43, 4, '毕业',     'graduated',    'enrollment_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(40, 1, '在读',     'active',       'enrollment_status', '', '', 'Y', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(41, 2, '休学',     'suspended',    'enrollment_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(42, 3, '退学',     'withdrawn',    'enrollment_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(43, 4, '毕业',     'graduated',    'enrollment_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
 
 -- ----------------------------
 -- 9、字典数据 - 心理健康状态
 -- ----------------------------
-INSERT INTO sys_dict_data VALUES(50, 1, '正常',     'normal',           'mental_health_status', '', '', 'Y', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(51, 2, '周跟踪',   'weekly_track',     'mental_health_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(52, 3, '月跟踪',   'monthly_track',    'mental_health_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(50, 1, '正常',     'normal',           'mental_health_status', '', '', 'Y', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(51, 2, '周跟踪',   'weekly_track',     'mental_health_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(52, 3, '月跟踪',   'monthly_track',    'mental_health_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
 
 -- ----------------------------
 -- 10、字典数据 - 贫困等级认定
 -- ----------------------------
-INSERT INTO sys_dict_data VALUES(60, 1, '无',                     'none',       'poverty_level', '', '', 'Y', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(61, 2, '家庭经济一般困难',       'general',    'poverty_level', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(62, 3, '家庭经济困难',           'difficult',  'poverty_level', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(63, 4, '家庭经济特别困难',       'severe',     'poverty_level', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(60, 1, '无',                     'none',       'poverty_level', '', '', 'Y', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(61, 2, '家庭经济一般困难',       'general',    'poverty_level', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(62, 3, '家庭经济困难',           'difficult',  'poverty_level', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(63, 4, '家庭经济特别困难',       'severe',     'poverty_level', '', '', 'N', '0', 'admin', NOW(), '', null, '');
 
 -- ----------------------------
 -- 11、字典数据 - 跟进状态
 -- ----------------------------
-INSERT INTO sys_dict_data VALUES(70, 1, '无需跟进',   'none',           'followup_status', '', '', 'Y', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(71, 2, '待跟进',     'pending',        'followup_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(72, 3, '跟进中',     'in_progress',    'followup_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(73, 4, '已完成',     'completed',      'followup_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(70, 1, '无需跟进',   'none',           'followup_status', '', '', 'Y', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(71, 2, '待跟进',     'pending',        'followup_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(72, 3, '跟进中',     'in_progress',    'followup_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(73, 4, '已完成',     'completed',      'followup_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
 
 -- ----------------------------
 -- 12、字典数据 - 谈话类型
 -- ----------------------------
-INSERT INTO sys_dict_data VALUES(80, 1, '个体谈话',   'individual',     'talk_type', '', '', 'Y', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(81, 2, '集体谈话',   'group',          'talk_type', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(80, 1, '个体谈话',   'individual',     'talk_type', '', '', 'Y', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(81, 2, '集体谈话',   'group',          'talk_type', '', '', 'N', '0', 'admin', NOW(), '', null, '');
 
 -- ----------------------------
 -- 13、字典数据 - 政治面貌
 -- ----------------------------
-INSERT INTO sys_dict_data VALUES(90, 1, '群众',       'people',             'political_status', '', '', 'Y', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(91, 2, '共青团员',   'league_member',      'political_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(92, 3, '中共预备党员', 'probationary_member','political_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(93, 4, '中共党员',   'party_member',       'political_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(94, 5, '其他',       'other',              'political_status', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(90, 1, '群众',       'people',             'political_status', '', '', 'Y', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(91, 2, '共青团员',   'league_member',      'political_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(92, 3, '中共预备党员', 'probationary_member','political_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(93, 4, '中共党员',   'party_member',       'political_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(94, 5, '其他',       'other',              'political_status', '', '', 'N', '0', 'admin', NOW(), '', null, '');
 
 -- ----------------------------
 -- 14、字典数据 - 部门类型
 -- ----------------------------
-INSERT INTO sys_dict_data VALUES(100, 1, '学院',     'college',      'dept_type', '', '', 'Y', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(101, 2, '年级',     'grade',        'dept_type', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
-INSERT INTO sys_dict_data VALUES(102, 3, '班级',     'class',        'dept_type', '', '', 'N', '0', 'admin', sysdate(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(100, 1, '学院',     'college',      'dept_type', '', '', 'Y', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(101, 2, '年级',     'grade',        'dept_type', '', '', 'N', '0', 'admin', NOW(), '', null, '');
+INSERT IGNORE INTO sys_dict_data VALUES(102, 3, '班级',     'class',        'dept_type', '', '', 'N', '0', 'admin', NOW(), '', null, '');
 
 -- ----------------------------
 -- 15、系统角色 - 谈心谈话系统
 -- ----------------------------
-INSERT INTO sys_role VALUES(3, '系统管理员', 'talk_admin',      1, 1, 1, 1, '0', '0', 'admin', sysdate(), '', null, '谈心谈话系统管理员，拥有所有权限');
-INSERT INTO sys_role VALUES(4, '书记/副书记', 'talk_secretary',  2, 2, 1, 1, '0', '0', 'admin', sysdate(), '', null, '查看本学院所有学生谈话记录');
-INSERT INTO sys_role VALUES(5, '辅导员/班主任', 'talk_counselor', 3, 5, 1, 1, '0', '0', 'admin', sysdate(), '', null, '仅查看自己负责谈话的学生记录');
+INSERT IGNORE INTO sys_role VALUES(3, '系统管理员', 'talk_admin',      1, 1, 1, 1, '0', '0', 'admin', NOW(), '', null, '谈心谈话系统管理员，拥有所有权限');
+INSERT IGNORE INTO sys_role VALUES(4, '书记/副书记', 'talk_secretary',  2, 2, 1, 1, '0', '0', 'admin', NOW(), '', null, '查看本学院所有学生谈话记录');
+INSERT IGNORE INTO sys_role VALUES(5, '辅导员/班主任', 'talk_counselor', 3, 5, 1, 1, '0', '0', 'admin', NOW(), '', null, '仅查看自己负责谈话的学生记录');
 
 -- ========== 数据备份定时任务 ==========
 -- 注意：此任务需要 ryTask.talkBackup() 方法实现，当前标记为暂不启用

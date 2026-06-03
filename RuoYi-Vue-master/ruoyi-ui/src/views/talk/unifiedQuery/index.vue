@@ -270,10 +270,6 @@ export default {
       }
 
       listUntalked(params).then(response => {
-        console.log('[DEBUG-c1] loadUntalkedList response: rows.length=', (response.rows || []).length, 'total=', response.total)
-        if (response.rows && response.rows.length > 0) {
-          console.log('[DEBUG-c1] first row:', JSON.stringify(response.rows[0]))
-        }
         this.displayList = response.rows || []
         this.total = response.total || 0
         this.loading = false
@@ -302,98 +298,96 @@ export default {
 
       if (this.talkTypeFilter) {
         params.talkType = this.talkTypeFilter
-      } else {
-        delete params.talkType
       }
 
       if (hasFrontendFilters) {
         params.pageNum = 1
         params.pageSize = 9999
       }
- 
-        listTalksession(params).then(response => {
-          const sessions = response.rows || []
-          if (sessions.length === 0) {
-          this.allData = []
-          this.tagDataMap = {}
-          this.applyFilters()
-          this.loading = false
-          return
-        }
 
-        this.loadTagsForSessions(sessions)
+      listTalksession(params).then(response => {
+         const sessions = response.rows || []
+         if (sessions.length === 0) {
+           this.allData = []
+           this.tagDataMap = {}
+           this.applyFilters()
+           this.loading = false
+           return
+         }
 
-        const recordPromises = sessions.map(async session => {
-          try {
-            const recRes = await listTalkrecord({ sessionId: session.sessionId, pageSize: 999 })
-            const records = recRes.rows || []
-            const enriched = await Promise.all(records.map(async record => {
-              try {
-                const stuRes = await getTalk(record.studentId)
-                return {
-                  rowKey: session.sessionId + '_' + record.recordId,
-                  sessionId: session.sessionId,
-                  talkType: session.talkType,
-                  talkTime: session.talkTime,
-                  talkContent: session.talkContent,
-                  talkPerson: session.talkPerson,
-                  talkLocation: session.talkLocation,
-                  recordId: record.recordId,
-                  studentId: record.studentId,
-                  studentName: stuRes.data ? stuRes.data.studentName : '',
-                  studentCode: stuRes.data ? stuRes.data.studentCode : '',
-                  studentFeedback: record.studentFeedback,
-                  followupPlan: record.followupPlan,
-                  followupStatus: record.followupStatus
-                }
-              } catch (e) {
-                return {
-                  rowKey: session.sessionId + '_' + record.recordId,
-                  sessionId: session.sessionId,
-                  talkType: session.talkType,
-                  talkTime: session.talkTime,
-                  talkContent: session.talkContent,
-                  talkPerson: session.talkPerson,
-                  talkLocation: session.talkLocation,
-                  recordId: record.recordId,
-                  studentId: record.studentId,
-                  studentName: '',
-                  studentCode: '',
-                  studentFeedback: record.studentFeedback,
-                  followupPlan: record.followupPlan,
-                  followupStatus: record.followupStatus
-                }
-              }
-            }))
-            return enriched
-          } catch (e) {
-            this.$modal.msgError('加载学生信息失败')
-            return []
-          }
-        })
+         this.loadTagsForSessions(sessions)
 
-        Promise.all(recordPromises).then(results => {
-          this.allData = results.flat()
-          if (hasFrontendFilters) {
-            this.applyFilters()
-          } else {
-            this.total = response.total
-            this.displayList = this.allData.slice()
-          }
-          this.loading = false
-        }).catch(() => {
-          this.allData = []
-          this.applyFilters()
-          this.loading = false
-          this.$modal.msgError('加载记录失败')
-        })
-      }).catch(() => {
-        this.$modal.msgError('加载会话失败')
-        this.allData = []
-        this.applyFilters()
-        this.loading = false
-      })
-    },
+         const recordPromises = sessions.map(async session => {
+           try {
+             const recRes = await listTalkrecord({ sessionId: session.sessionId, pageSize: 999 })
+             const records = recRes.rows || []
+             const enriched = await Promise.all(records.map(async record => {
+               try {
+                 const stuRes = await getTalk(record.studentId)
+                 return {
+                   rowKey: session.sessionId + '_' + record.recordId,
+                   sessionId: session.sessionId,
+                   talkType: session.talkType,
+                   talkTime: session.talkTime,
+                   talkContent: session.talkContent,
+                   talkPerson: session.talkPerson,
+                   talkLocation: session.talkLocation,
+                   recordId: record.recordId,
+                   studentId: record.studentId,
+                   studentName: stuRes.data ? stuRes.data.studentName : '',
+                   studentCode: stuRes.data ? stuRes.data.studentCode : '',
+                   studentFeedback: record.studentFeedback,
+                   followupPlan: record.followupPlan,
+                   followupStatus: record.followupStatus
+                 }
+               } catch (e) {
+                 return {
+                   rowKey: session.sessionId + '_' + record.recordId,
+                   sessionId: session.sessionId,
+                   talkType: session.talkType,
+                   talkTime: session.talkTime,
+                   talkContent: session.talkContent,
+                   talkPerson: session.talkPerson,
+                   talkLocation: session.talkLocation,
+                   recordId: record.recordId,
+                   studentId: record.studentId,
+                   studentName: '',
+                   studentCode: '',
+                   studentFeedback: record.studentFeedback,
+                   followupPlan: record.followupPlan,
+                   followupStatus: record.followupStatus
+                 }
+               }
+             }))
+             return enriched
+           } catch (e) {
+             this.$modal.msgError('加载学生信息失败')
+             return []
+           }
+         })
+
+         Promise.all(recordPromises).then(results => {
+           this.allData = results.flat()
+           if (hasFrontendFilters) {
+             this.applyFilters()
+           } else {
+             this.total = response.total
+             this.displayList = this.allData.slice()
+           }
+           this.loading = false
+         }).catch(() => {
+           this.allData = []
+           this.applyFilters()
+           this.loading = false
+           this.$modal.msgError('加载记录失败')
+         })
+       }).catch(() => {
+         this.$modal.msgError('加载会话失败')
+         this.allData = []
+         this.applyFilters()
+         this.loading = false
+       })
+     },
 
     loadTagsForSessions(sessions) {
       const newTagMap = {}
@@ -482,9 +476,9 @@ export default {
       this.handleQuery()
     },
 
-    handleTabClick(tab) {
-      this.talkTypeFilter = tab.name
+    handleTabClick() {
       this.queryParams.pageNum = 1
+      this.queryParams.talkType = ''
       this.getList()
     },
 

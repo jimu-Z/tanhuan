@@ -1,0 +1,26 @@
+18:53:45.312 [background-preinit] INFO  o.h.v.i.util.Version - [<clinit>,18] - HV000001: Hibernate Validator 9.0.1.Final
+18:53:45.404 [main] INFO  c.r.RuoYiApplication - [logStarting,54] - Starting RuoYiApplication using Java 21.0.5 with PID 14056 (F:\kaifa\XueXiaoTanHuan\RuoYi-Vue-master\ruoyi-admin\target\ruoyi-admin.jar started by 13469 in F:\kaifa\XueXiaoTanHuan)
+18:53:45.407 [main] INFO  c.r.RuoYiApplication - [logStartupProfileInfo,658] - The following 1 profile is active: "druid"
+18:53:50.445 [main] INFO  o.a.c.h.Http11NioProtocol - [log,168] - Initializing ProtocolHandler ["http-nio-8080"]
+18:53:50.449 [main] INFO  o.a.c.c.StandardService - [log,168] - Starting service [Tomcat]
+18:53:50.449 [main] INFO  o.a.c.c.StandardEngine - [log,168] - Starting Servlet engine: [Apache Tomcat/11.0.18]
+18:53:53.616 [main] INFO  c.a.d.p.DruidDataSource - [init,865] - {dataSource-1} inited
+18:53:58.557 [main] INFO  o.q.c.SchedulerSignalerImpl - [<init>,62] - Initialized Scheduler Signaller of type: class org.quartz.core.SchedulerSignalerImpl
+18:53:58.558 [main] INFO  o.q.c.QuartzScheduler - [<init>,224] - Quartz Scheduler v2.5.2 created.
+18:53:58.559 [main] INFO  o.q.s.RAMJobStore - [initialize,152] - RAMJobStore initialized.
+18:53:58.561 [main] INFO  o.q.c.QuartzScheduler - [initialize,289] - Scheduler meta-data: Quartz Scheduler (v2.5.2) 'quartzScheduler' with instanceId 'NON_CLUSTERED'
+  Scheduler class: 'org.quartz.core.QuartzScheduler' - running locally.
+  NOT STARTED.
+  Currently in standby mode.
+  Number of jobs executed: 0
+  Using thread pool 'org.quartz.simpl.SimpleThreadPool' - with 10 threads.
+  Using job-store 'org.quartz.simpl.RAMJobStore' - which does not support persistence. and is not clustered.
+
+18:53:58.562 [main] INFO  o.q.c.QuartzScheduler - [setJobFactory,2250] - JobFactory set to: org.springframework.scheduling.quartz.SpringBeanJobFactory@412bb41f
+18:54:00.403 [main] INFO  o.a.c.h.Http11NioProtocol - [log,168] - Starting ProtocolHandler ["http-nio-8080"]
+18:54:00.440 [main] INFO  o.q.c.QuartzScheduler - [shutdown,656] - Scheduler quartzScheduler_$_NON_CLUSTERED shutting down.
+18:54:00.441 [main] INFO  o.q.c.QuartzScheduler - [standby,576] - Scheduler quartzScheduler_$_NON_CLUSTERED paused.
+18:54:00.442 [main] INFO  o.q.c.QuartzScheduler - [shutdown,728] - Scheduler quartzScheduler_$_NON_CLUSTERED shutdown complete.
+18:54:00.443 [main] INFO  sys-user - [shutdownAsyncManager,31] - ====关闭后台任务任务线程池====
+18:54:00.447 [main] INFO  c.a.d.p.DruidDataSource - [close,2083] - {dataSource-1} closing ...
+18:54:00.456 [main] INFO  c.a.d.p.DruidDataSource - [close,2156] - {dataSource-1} closed

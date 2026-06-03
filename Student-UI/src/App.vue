@@ -59,11 +59,16 @@ export default {
     fetchPendingCount() {
       getPendingTalks({ studentFeedback: '无', notified: 1, pageNum: 1, pageSize: 1 }).then(res => {
         this.$store.commit('SET_PENDING_COUNT', res.total || 0)
-      }).catch(() => {})
+      }).catch(err => {
+        console.error('获取待处理数量失败:', err)
+      })
     },
     handleCommand(command) {
       if (command === 'logout') {
         this.$store.dispatch('logout').then(() => {
+          this.$router.push('/login')
+        }).catch(err => {
+          console.error('登出失败:', err)
           this.$router.push('/login')
         })
       } else {

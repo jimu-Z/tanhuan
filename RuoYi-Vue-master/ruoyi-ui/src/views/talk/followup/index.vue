@@ -148,7 +148,7 @@ export default {
         this.records = res.rows || []
         this.total = res.total || 0
         this.loading = false
-      }).catch(() => { this.loading = false })
+      }).catch(() => { this.loading = false; this.$modal.msgError('加载跟进记录失败') })
     },
     handleSearch() {
       this.queryParams.pageNum = 1
