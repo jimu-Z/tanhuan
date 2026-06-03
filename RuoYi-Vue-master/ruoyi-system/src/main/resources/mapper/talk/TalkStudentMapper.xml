@@ -39,7 +39,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                s.political_status, s.nation, s.phone, s.id_card, s.address, s.father_name, 
                s.father_phone, s.mother_name, s.mother_phone, s.class_monitor, s.dorm_leader, 
                s.dorm_building, s.dorm_room, s.enrollment_status, s.mental_health_status, 
-               s.poverty_level, s.remark, s.create_by, s.create_time, s.update_by, s.update_time 
+               s.poverty_level, s.remark, s.create_by, s.create_time, s.update_by, s.update_time,
+               d.dept_name
         from talk_student s
         left join sys_dept d on s.dept_id = d.dept_id
     </sql>

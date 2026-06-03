@@ -85,7 +85,7 @@
     </el-row>
 
     <el-tabs v-if="queryMode === 'records'" v-model="talkTypeFilter" @tab-click="handleTabClick" style="margin-bottom:8px">
-      <el-tab-pane label="全部" name="" />
+      <el-tab-pane label="全部" name="all" />
       <el-tab-pane label="个别谈话" name="individual" />
       <el-tab-pane label="集体谈话" name="group" />
     </el-tabs>
@@ -177,7 +177,7 @@ export default {
       showSearch: true,
       selected: [],
       total: 0,
-      talkTypeFilter: '',
+      talkTypeFilter: 'all',
       allData: [],
       displayList: [],
       tagDataMap: {},
@@ -283,22 +283,25 @@ export default {
 
     loadRecordsList() {
       this.loading = true
-      const params = { ...this.queryParams }
-      if (params.dateRange && params.dateRange.length === 2) {
-        params.beginTime = params.dateRange[0]
-        params.endTime = params.dateRange[1]
+      const params = {
+        pageNum: this.queryParams.pageNum,
+        pageSize: this.queryParams.pageSize
       }
-      delete params.dateRange
-      delete params.keyword
-      delete params.tags
 
-      const hasFrontendFilters = this.queryParams.keyword || this.queryParams.talkType || this.talkTypeFilter ||
+      if (this.queryParams.dateRange && this.queryParams.dateRange.length === 2) {
+        params.beginTime = this.queryParams.dateRange[0]
+        params.endTime = this.queryParams.dateRange[1]
+      }
+
+      if (this.talkTypeFilter && this.talkTypeFilter !== 'all') {
+         params.talkType = this.talkTypeFilter
+       } else if (this.queryParams.talkType) {
+         params.talkType = this.queryParams.talkType
+       }
+
+      const hasFrontendFilters = this.queryParams.keyword ||
         (this.queryParams.tags && this.queryParams.tags.length > 0) ||
         (this.queryParams.dateRange && this.queryParams.dateRange.length === 2)
-
-      if (this.talkTypeFilter) {
-        params.talkType = this.talkTypeFilter
-      }
 
       if (hasFrontendFilters) {
         params.pageNum = 1
@@ -306,88 +309,88 @@ export default {
       }
 
       listTalksession(params).then(response => {
-         const sessions = response.rows || []
-         if (sessions.length === 0) {
+        const sessions = response.rows || []
+        if (sessions.length === 0) {
            this.allData = []
            this.tagDataMap = {}
-           this.applyFilters()
+           this.total = 0
+           this.displayList = []
            this.loading = false
            return
          }
 
-         this.loadTagsForSessions(sessions)
+        this.loadTagsForSessions(sessions)
 
-         const recordPromises = sessions.map(async session => {
-           try {
-             const recRes = await listTalkrecord({ sessionId: session.sessionId, pageSize: 999 })
-             const records = recRes.rows || []
-             const enriched = await Promise.all(records.map(async record => {
-               try {
-                 const stuRes = await getTalk(record.studentId)
-                 return {
-                   rowKey: session.sessionId + '_' + record.recordId,
-                   sessionId: session.sessionId,
-                   talkType: session.talkType,
-                   talkTime: session.talkTime,
-                   talkContent: session.talkContent,
-                   talkPerson: session.talkPerson,
-                   talkLocation: session.talkLocation,
-                   recordId: record.recordId,
-                   studentId: record.studentId,
-                   studentName: stuRes.data ? stuRes.data.studentName : '',
-                   studentCode: stuRes.data ? stuRes.data.studentCode : '',
-                   studentFeedback: record.studentFeedback,
-                   followupPlan: record.followupPlan,
-                   followupStatus: record.followupStatus
-                 }
-               } catch (e) {
-                 return {
-                   rowKey: session.sessionId + '_' + record.recordId,
-                   sessionId: session.sessionId,
-                   talkType: session.talkType,
-                   talkTime: session.talkTime,
-                   talkContent: session.talkContent,
-                   talkPerson: session.talkPerson,
-                   talkLocation: session.talkLocation,
-                   recordId: record.recordId,
-                   studentId: record.studentId,
-                   studentName: '',
-                   studentCode: '',
-                   studentFeedback: record.studentFeedback,
-                   followupPlan: record.followupPlan,
-                   followupStatus: record.followupStatus
-                 }
-               }
-             }))
-             return enriched
-           } catch (e) {
-             this.$modal.msgError('加载学生信息失败')
-             return []
-           }
-         })
+        const recordPromises = sessions.map(async session => {
+          try {
+            const recRes = await listTalkrecord({ sessionId: session.sessionId, pageSize: 999 })
+            const records = recRes.rows || []
+            const enriched = await Promise.all(records.map(async record => {
+              try {
+                const stuRes = await getTalk(record.studentId)
+                return {
+                  rowKey: session.sessionId + '_' + record.recordId,
+                  sessionId: session.sessionId,
+                  talkType: session.talkType,
+                  talkTime: session.talkTime,
+                  talkContent: session.talkContent,
+                  talkPerson: session.talkPerson,
+                  talkLocation: session.talkLocation,
+                  recordId: record.recordId,
+                  studentId: record.studentId,
+                  studentName: stuRes.data ? stuRes.data.studentName : '',
+                  studentCode: stuRes.data ? stuRes.data.studentCode : '',
+                  studentFeedback: record.studentFeedback,
+                  followupPlan: record.followupPlan,
+                  followupStatus: record.followupStatus
+                }
+              } catch (e) {
+                return {
+                  rowKey: session.sessionId + '_' + record.recordId,
+                  sessionId: session.sessionId,
+                  talkType: session.talkType,
+                  talkTime: session.talkTime,
+                  talkContent: session.talkContent,
+                  talkPerson: session.talkPerson,
+                  talkLocation: session.talkLocation,
+                  recordId: record.recordId,
+                  studentId: record.studentId,
+                  studentName: '',
+                  studentCode: '',
+                  studentFeedback: record.studentFeedback,
+                  followupPlan: record.followupPlan,
+                  followupStatus: record.followupStatus
+                }
+              }
+            }))
+            return enriched
+          } catch (e) {
+            return []
+          }
+        })
 
-         Promise.all(recordPromises).then(results => {
-           this.allData = results.flat()
-           if (hasFrontendFilters) {
-             this.applyFilters()
-           } else {
-             this.total = response.total
-             this.displayList = this.allData.slice()
-           }
-           this.loading = false
-         }).catch(() => {
-           this.allData = []
-           this.applyFilters()
-           this.loading = false
-           this.$modal.msgError('加载记录失败')
-         })
-       }).catch(() => {
-         this.$modal.msgError('加载会话失败')
-         this.allData = []
-         this.applyFilters()
-         this.loading = false
-       })
-     },
+        Promise.all(recordPromises).then(results => {
+          this.allData = results.flat()
+          if (hasFrontendFilters) {
+            this.applyFilters()
+          } else {
+            this.total = response.total
+            this.displayList = this.allData.slice()
+          }
+          this.loading = false
+        }).catch(() => {
+          this.allData = []
+          this.total = 0
+          this.displayList = []
+          this.loading = false
+        })
+      }).catch(() => {
+        this.allData = []
+        this.total = 0
+        this.displayList = []
+        this.loading = false
+      })
+    },
 
     loadTagsForSessions(sessions) {
       const newTagMap = {}
@@ -416,7 +419,7 @@ export default {
         )
       }
 
-      if (this.talkTypeFilter) {
+      if (this.talkTypeFilter && this.talkTypeFilter !== 'all') {
         data = data.filter(row => row.talkType === this.talkTypeFilter)
       } else if (this.queryParams.talkType) {
         data = data.filter(row => row.talkType === this.queryParams.talkType)
@@ -470,7 +473,7 @@ export default {
         talkPerson: '',
         followupStatus: ''
       }
-      this.talkTypeFilter = ''
+      this.talkTypeFilter = 'all'
       this.selectedDeptPath = []
       this.selectedDeptId = null
       this.handleQuery()

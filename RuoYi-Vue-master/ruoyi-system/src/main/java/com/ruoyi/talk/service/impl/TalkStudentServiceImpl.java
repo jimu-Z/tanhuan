@@ -79,7 +79,9 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
     private static final Long TOP_DEPT_ID = 100L;
 
-    private static final String DEFAULT_PASSWORD = "changeAfterLogin123";
+    private static final String DEFAULT_PASSWORD = "123456";
+
+    private static final String STUDENT_ROLE_KEY = "talk_student";
 
     /**
      * 查询学生信息管理
@@ -118,7 +120,42 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         if (gapId != null) {
             talkStudent.setStudentId(gapId);
         }
-        return talkStudentMapper.insertTalkStudent(talkStudent);
+        int rows = talkStudentMapper.insertTalkStudent(talkStudent);
+
+        try {
+            String studentCode = talkStudent.getStudentCode();
+            String studentName = talkStudent.getStudentName();
+            Long deptId = talkStudent.getDeptId();
+            if (StringUtils.isNotEmpty(studentCode) && deptId != null) {
+                SysUser existingUser = sysUserMapper.selectUserByUserName(studentCode);
+                if (existingUser == null) {
+                    SysUser newUser = new SysUser();
+                    newUser.setUserName(studentCode);
+                    newUser.setNickName(StringUtils.isNotEmpty(studentName) ? studentName : studentCode);
+                    newUser.setPassword(SecurityUtils.encryptPassword(DEFAULT_PASSWORD));
+                    newUser.setDeptId(deptId);
+                    newUser.setStatus("0");
+                    newUser.setDelFlag("0");
+                    newUser.setCreateBy(SecurityUtils.getUsername());
+                    newUser.setCreateTime(new Date());
+                    sysUserMapper.insertUser(newUser);
+
+                    SysRole query = new SysRole();
+                    query.setRoleKey(STUDENT_ROLE_KEY);
+                    List<SysRole> roles = sysRoleMapper.selectRoleList(query);
+                    if (!roles.isEmpty()) {
+                        SysUserRole userRole = new SysUserRole();
+                        userRole.setUserId(newUser.getUserId());
+                        userRole.setRoleId(roles.get(0).getRoleId());
+                        sysUserRoleMapper.batchUserRole(List.of(userRole));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("为学生创建用户失败: studentCode={}", talkStudent.getStudentCode(), e);
+        }
+
+        return rows;
     }
 
     /**
@@ -354,6 +391,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
         Map<String, Long> secretaryRoleCache = new HashMap<>();
         Map<String, Long> counselorRoleCache = new HashMap<>();
+        Map<String, Long> studentRoleCache = new HashMap<>();
         Map<Long, Long> userRoleAssignedCache = new HashMap<>();
 
         for (int rowIdx = 0; rowIdx < confirmedRows.size(); rowIdx++) {
@@ -448,6 +486,11 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 }
                 talkStudentMapper.insertTalkStudent(student);
                 successCount++;
+
+                if (createUserIfNotExists(studentCode, classDeptId, STUDENT_ROLE_KEY,
+                        studentRoleCache, userRoleAssignedCache)) {
+                    userCreatedCount++;
+                }
 
                 String secretary = rowData.get("secretary");
                 String viceSecretary = rowData.get("vice_secretary");

@@ -278,12 +278,22 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="部门ID(班级)" prop="deptId">
-              <el-input v-model="form.deptId" placeholder="请输入部门ID(班级)" />
+              <el-cascader
+                v-model="form.deptId"
+                :options="deptTree"
+                :props="{ value: 'id', label: 'label', children: 'children', checkStrictly: true, emitPath: false }"
+                placeholder="请选择班级"
+                clearable
+                style="width: 100%"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="24">
             <el-form-item label="性别" prop="gender">
-              <el-input v-model="form.gender" placeholder="请输入性别" />
+              <el-radio-group v-model="form.gender">
+                <el-radio label="0">男</el-radio>
+                <el-radio label="1">女</el-radio>
+              </el-radio-group>
             </el-form-item>
           </el-col>
           <el-col :span="24">
