@@ -198,7 +198,7 @@
 
     <el-table v-loading="loading" :data="talkList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="学生ID" align="center" prop="studentId" />
+      <el-table-column label="序号" type="index" align="center" width="60" :index="indexMethod" />
       <el-table-column label="学号" align="center" prop="studentCode" />
       <el-table-column label="姓名" align="center" prop="studentName" />
       <el-table-column label="班级" align="center" prop="deptName" />
@@ -533,6 +533,9 @@ export default {
     maskIdCard(idCard) {
       if (!idCard || idCard.length < 8) return idCard || '-'
       return idCard.substring(0, 3) + '***********' + idCard.substring(idCard.length - 4)
+    },
+    indexMethod(index) {
+      return (this.queryParams.pageNum - 1) * this.queryParams.pageSize + index + 1
     },
     getList() {
       this.loading = true
