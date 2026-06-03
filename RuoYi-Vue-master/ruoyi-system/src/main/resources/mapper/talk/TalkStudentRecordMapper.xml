@@ -15,6 +15,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="followupStatus"    column="followup_status"    />
         <result property="notified"         column="notified"          />
         <result property="teacherNotified"  column="teacher_notified"  />
+        <result property="talkType"    column="talk_type"    />
+        <result property="talkTime"    column="talk_time"    />
+        <result property="talkLocation"    column="talk_location"    />
+        <result property="talkContent"    column="talk_content"    />
+        <result property="talkPerson"    column="talk_person"    />
         <result property="createTime"    column="create_time"    />
         <result property="updateTime"    column="update_time"    />
     </resultMap>
@@ -23,9 +28,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select tsr.record_id, tsr.session_id, tsr.student_id, st.student_name, st.student_code,
                tsr.student_feedback, tsr.followup_plan, tsr.followup_status,
                tsr.notified, tsr.teacher_notified,
+               ts.talk_time, ts.talk_type, ts.talk_location, ts.talk_content, ts.talk_person,
                tsr.create_time, tsr.update_time
         from talk_student_record tsr
         left join talk_student st on tsr.student_id = st.student_id
+        left join talk_session ts on tsr.session_id = ts.session_id
     </sql>
 
     <select id="selectTalkStudentRecordList" parameterType="TalkStudentRecord" resultMap="TalkStudentRecordResult">

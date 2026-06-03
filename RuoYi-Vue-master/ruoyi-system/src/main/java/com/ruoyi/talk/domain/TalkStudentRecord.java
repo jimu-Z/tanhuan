@@ -1,5 +1,7 @@
 package com.ruoyi.talk.domain;
 
+import java.util.Date;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.ruoyi.common.annotation.Excel;
@@ -45,6 +47,22 @@ public class TalkStudentRecord extends BaseEntity
     private Integer notified;
 
     private Integer teacherNotified;
+
+    /** 谈话类型（individual 个体谈话 / group 集体谈话） */
+    private String talkType;
+
+    /** 谈话时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date talkTime;
+
+    /** 谈话地点 */
+    private String talkLocation;
+
+    /** 谈话内容 */
+    private String talkContent;
+
+    /** 谈话人 */
+    private String talkPerson;
 
     public void setRecordId(Long recordId) 
     {
@@ -132,6 +150,21 @@ public class TalkStudentRecord extends BaseEntity
     public Integer getTeacherNotified() { return teacherNotified; }
     public void setTeacherNotified(Integer teacherNotified) { this.teacherNotified = teacherNotified; }
 
+    public void setTalkType(String talkType) { this.talkType = talkType; }
+    public String getTalkType() { return talkType; }
+
+    public void setTalkTime(Date talkTime) { this.talkTime = talkTime; }
+    public Date getTalkTime() { return talkTime; }
+
+    public void setTalkLocation(String talkLocation) { this.talkLocation = talkLocation; }
+    public String getTalkLocation() { return talkLocation; }
+
+    public void setTalkContent(String talkContent) { this.talkContent = talkContent; }
+    public String getTalkContent() { return talkContent; }
+
+    public void setTalkPerson(String talkPerson) { this.talkPerson = talkPerson; }
+    public String getTalkPerson() { return talkPerson; }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -145,6 +178,11 @@ public class TalkStudentRecord extends BaseEntity
             .append("followupStatus", getFollowupStatus())
             .append("notified", getNotified())
             .append("teacherNotified", getTeacherNotified())
+            .append("talkType", getTalkType())
+            .append("talkTime", getTalkTime())
+            .append("talkLocation", getTalkLocation())
+            .append("talkContent", getTalkContent())
+            .append("talkPerson", getTalkPerson())
             .append("createTime", getCreateTime())
             .append("updateTime", getUpdateTime())
             .toString();

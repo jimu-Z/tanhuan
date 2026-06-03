@@ -12,6 +12,13 @@
             @keyup.enter.native="handleLogin">
           </el-input>
         </el-form-item>
+        <el-form-item prop="code" v-if="captchaEnabled">
+          <el-input v-model="loginForm.code" placeholder="验证码" prefix-icon="el-icon-key" style="width: 63%" @keyup.enter.native="handleLogin">
+          </el-input>
+          <div class="login-code">
+            <img :src="codeUrl" @click="getCode" class="login-code-img" />
+          </div>
+        </el-form-item>
         <el-form-item>
           <el-button :loading="loading" type="primary" style="width:100%;" @click="handleLogin">
             登 录
@@ -23,26 +30,54 @@
 </template>
 
 <script>
+import { getCodeImg } from '@/api/talk/studentApi'
+
 export default {
   name: 'StudentLogin',
   data() {
     return {
-      loginForm: { username: '', password: '' },
+      loginForm: { username: '', password: '', code: '', uuid: '' },
       rules: {
         username: [{ required: true, message: '请输入学号', trigger: 'blur' }],
-        password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+        password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+        code: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
       },
-      loading: false
+      loading: false,
+      codeUrl: '',
+      captchaEnabled: true
     }
   },
+  created() {
+    this.getCode()
+  },
   methods: {
+    getCode() {
+      getCodeImg().then(res => {
+        this.captchaEnabled = res.captchaEnabled === undefined ? true : res.captchaEnabled
+        if (this.captchaEnabled) {
+          this.codeUrl = 'data:image/gif;base64,' + res.img
+          this.loginForm.uuid = res.uuid
+        }
+      })
+    },
     handleLogin() {
       this.$refs.loginForm.validate(valid => {
         if (!valid) return
         this.loading = true
-        this.$store.dispatch('login', { username: this.loginForm.username.trim(), password: this.loginForm.password }).then(() => {
+        this.$store.dispatch('login', {
+          username: this.loginForm.username.trim(),
+          password: this.loginForm.password,
+          code: this.loginForm.code,
+          uuid: this.loginForm.uuid
+        }).then(() => {
           this.$router.push('/')
-        }).catch(() => { this.loading = false; this.$message.error('登录失败，请检查学号和密码') })
+        }).catch(() => {
+          this.loading = false
+          if (this.captchaEnabled) {
+            this.getCode()
+          }
+          this.$message.error('登录失败，请检查学号和密码')
+        })
       })
     }
   }
@@ -75,5 +110,19 @@ export default {
 
 .login-form .el-input__inner {
   height: 44px;
+}
+
+.login-code {
+  width: 33%;
+  height: 44px;
+  float: right;
+  text-align: center;
+}
+
+.login-code-img {
+  height: 44px;
+  cursor: pointer;
+  border-radius: 4px;
+  vertical-align: middle;
 }
 </style>

@@ -11,28 +11,26 @@ export const constantRoutes = [
   },
   {
     path: '/',
-    component: () => import('@/App'),
     redirect: '/index',
-    children: [
-      {
-        path: 'index',
-        component: () => import('@/views/index'),
-        name: 'Index',
-        meta: { title: '首页', requiresAuth: true }
-      },
-      {
-        path: 'talks',
-        component: () => import('@/views/talks/index'),
-        name: 'Talks',
-        meta: { title: '我的谈话记录', requiresAuth: true }
-      },
-      {
-        path: 'pending',
-        component: () => import('@/views/pending/index'),
-        name: 'Pending',
-        meta: { title: '待处理谈话', requiresAuth: true }
-      }
-    ]
+    hidden: true
+  },
+  {
+    path: '/index',
+    component: () => import('@/views/index'),
+    name: 'Index',
+    meta: { title: '首页', requiresAuth: true }
+  },
+  {
+    path: '/talks',
+    component: () => import('@/views/talks/index'),
+    name: 'Talks',
+    meta: { title: '我的谈话记录', requiresAuth: true }
+  },
+  {
+    path: '/pending',
+    component: () => import('@/views/pending/index'),
+    name: 'Pending',
+    meta: { title: '待处理谈话', requiresAuth: true }
   }
 ]
 

@@ -88,7 +88,7 @@ html, body, #app {
 }
 
 .student-header {
-  background-color: #409EFF;
+  background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
   color: #fff;
   display: flex;
   align-items: center;
@@ -96,12 +96,14 @@ html, body, #app {
   padding: 0 20px;
   height: 60px !important;
   line-height: 60px;
+  box-shadow: 0 2px 8px rgba(26, 82, 118, 0.2);
 }
 
 .header-left h2 {
   margin: 0;
   font-size: 20px;
   color: #fff;
+  font-weight: 600;
 }
 
 .header-right {
@@ -116,6 +118,11 @@ html, body, #app {
 
 .header-badge .el-icon-bell {
   color: #fff;
+  transition: transform 0.2s;
+}
+
+.header-badge .el-icon-bell:hover {
+  transform: scale(1.1);
 }
 
 .user-dropdown {
@@ -128,12 +135,19 @@ html, body, #app {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background 0.3s;
+}
+
+.user-info:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .el-main {
-  background-color: #f0f2f5;
+  background: linear-gradient(160deg, #f0f5fa 0%, #e8edf2 100%);
   min-height: calc(100vh - 60px);
-  padding: 20px;
+  padding: 0;
 }
 
 .el-container {

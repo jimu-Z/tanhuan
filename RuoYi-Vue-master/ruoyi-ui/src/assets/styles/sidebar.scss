@@ -34,6 +34,14 @@
 
     .scrollbar-wrapper {
       overflow-x: hidden !important;
+
+      .el-scrollbar__wrap {
+        overflow-y: scroll;
+      }
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
     }
 
     .el-scrollbar__bar.is-vertical {
