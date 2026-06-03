@@ -42,3 +42,21 @@ export function delTalkrecord(recordId) {
     method: 'delete'
   })
 }
+
+// 查询当前学生自己的谈话记录
+export function getMyRecords(query) {
+  return request({
+    url: '/ruoyi-system/talkrecord/myRecords',
+    method: 'get',
+    params: query
+  })
+}
+
+// 学生提交反馈
+export function submitFeedback(data) {
+  return request({
+    url: '/ruoyi-system/talkrecord/submitFeedback',
+    method: 'put',
+    data: data
+  })
+}

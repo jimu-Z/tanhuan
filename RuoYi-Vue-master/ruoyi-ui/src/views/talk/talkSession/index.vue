@@ -224,10 +224,9 @@
 </template>
 
 <script>
-import { listTalksession, getTalksession, delTalksession, addTalksession, updateTalksession, getSessionTags, TAG_LABELS } from "@/api/talk/talkSession"
+import { listTalksession, getTalksession, delTalksession, addTalksession, updateTalksession, getSessionTags, TAG_LABELS, exportDocx, exportDocxBatch } from "@/api/talk/talkSession"
 import { listTalkrecord } from "@/api/talk/talkStudentRecord"
 import { getTalk } from "@/api/talk/talkStudent"
-import request from '@/utils/request'
 
 export default {
   name: "Talksession",
@@ -423,7 +422,7 @@ export default {
     handleBatchExport() {
       if (this.ids.length === 0) { this.$modal.msgWarning('请至少选择一条记录'); return }
       this.$modal.confirm('确认导出选中的 ' + this.ids.length + ' 条会话记录？').then(() => {
-        return request({ url: '/ruoyi-system/talksession/exportDocx/batch', method: 'post', data: this.ids, responseType: 'blob' }).catch(() => { this.$modal.msgError('导出失败') })
+        return exportDocxBatch(this.ids)
       }).then(blob => {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a'); a.href = url; a.download = '谈话记录批量导出.zip'; a.click()
@@ -435,7 +434,7 @@ export default {
       const isGroup = row.talkType === 'group'
       const ext = isGroup ? '.zip' : '.docx'
       this.$modal.confirm('确认导出' + row.talkPerson + '的谈话记录吗？' + (isGroup ? '（集体谈话将打包为zip）' : '')).then(() => {
-        return request({ url: '/ruoyi-system/talksession/exportDocx/' + row.sessionId, method: 'get', responseType: 'blob' }).catch(() => { this.$modal.msgError('导出失败') })
+        return exportDocx(row.sessionId)
       }).then(blob => {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')

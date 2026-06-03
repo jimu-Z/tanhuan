@@ -77,6 +77,34 @@ export function exportGroupSummary(sessionId) {
   })
 }
 
+// 导出单个会话为.docx
+export function exportDocx(sessionId) {
+  return request({
+    url: '/ruoyi-system/talksession/exportDocx/' + sessionId,
+    method: 'get',
+    responseType: 'blob'
+  })
+}
+
+// 导出单个学生的谈话记录为.docx
+export function exportDocxForStudent(sessionId, studentId) {
+  return request({
+    url: '/ruoyi-system/talksession/exportDocx/' + sessionId + '/student/' + studentId,
+    method: 'get',
+    responseType: 'blob'
+  })
+}
+
+// 批量导出会话为.docx（打包为zip）
+export function exportDocxBatch(sessionIds) {
+  return request({
+    url: '/ruoyi-system/talksession/exportDocx/batch',
+    method: 'post',
+    data: { sessionIds: sessionIds },
+    responseType: 'blob'
+  })
+}
+
 // 标签字典映射（作为兜底，优先从数据库读取getLabels()）
 export const TAG_LABELS = {
   thought_education: '思想理论教育和价值引领',

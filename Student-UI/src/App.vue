@@ -57,7 +57,7 @@ export default {
   },
   methods: {
     fetchPendingCount() {
-      getPendingTalks({ studentFeedback: '无', notified: 1, pageNum: 1, pageSize: 1 }).then(res => {
+      getPendingTalks({ hasNoFeedback: true, notified: 1, pageNum: 1, pageSize: 1 }).then(res => {
         this.$store.commit('SET_PENDING_COUNT', res.total || 0)
       }).catch(err => {
         console.error('获取待处理数量失败:', err)

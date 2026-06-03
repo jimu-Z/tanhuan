@@ -89,6 +89,12 @@
           <el-button
             size="mini"
             type="text"
+            icon="el-icon-chat-dot-round"
+            @click="handleFeedback(scope.row)"
+          >提交反馈</el-button>
+          <el-button
+            size="mini"
+            type="text"
             icon="el-icon-edit"
             @click="handleUpdate(scope.row)"
             v-hasPermi="['talk:record:edit']"
@@ -143,11 +149,38 @@
         <el-button @click="cancel">取 消</el-button>
       </div>
     </el-dialog>
+
+    <!-- 学生提交反馈对话框 -->
+    <el-dialog title="提交学生反馈" :visible.sync="feedbackOpen" width="600px" append-to-body>
+      <el-form ref="feedbackForm" :model="feedbackForm" label-width="100px">
+        <el-form-item label="谈话记录ID">
+          <el-input v-model="feedbackForm.recordId" disabled />
+        </el-form-item>
+        <el-form-item label="学生反馈" prop="studentFeedback">
+          <el-input
+            v-model="feedbackForm.studentFeedback"
+            type="textarea"
+            :rows="6"
+            placeholder="请输入您的反馈意见..."
+          />
+        </el-form-item>
+        <el-alert
+          title="提示：提交反馈后，教师将收到通知"
+          type="info"
+          :closable="false"
+          show-icon
+        />
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="feedbackOpen = false">取 消</el-button>
+        <el-button type="primary" @click="submitFeedbackForm" :loading="feedbackLoading">提 交</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { listTalkrecord, getTalkrecord, delTalkrecord, addTalkrecord, updateTalkrecord } from "@/api/talk/talkStudentRecord"
+import { listTalkrecord, getTalkrecord, delTalkrecord, addTalkrecord, updateTalkrecord, submitFeedback } from "@/api/talk/talkStudentRecord"
 
 export default {
   name: "Talkrecord",
@@ -194,7 +227,11 @@ export default {
         followupPlan: [
           { required: true, message: "跟进计划不能为空", trigger: "blur" }
         ],
-      }
+      },
+      // 学生反馈相关
+      feedbackOpen: false,
+      feedbackForm: {},
+      feedbackLoading: false
     }
   },
   created() {
@@ -295,6 +332,31 @@ export default {
       this.download('ruoyi-system/talkrecord/export', {
         ...this.queryParams
       }, `talkrecord_${new Date().getTime()}.xlsx`)
+    },
+    /** 打开学生反馈对话框 */
+    handleFeedback(row) {
+      this.feedbackForm = {
+        recordId: row.recordId,
+        studentFeedback: row.studentFeedback || ''
+      }
+      this.feedbackOpen = true
+    },
+    /** 提交学生反馈 */
+    submitFeedbackForm() {
+      if (!this.feedbackForm.studentFeedback) {
+        this.$modal.msgWarning('请输入反馈内容')
+        return
+      }
+      this.feedbackLoading = true
+      submitFeedback(this.feedbackForm).then(response => {
+        this.$modal.msgSuccess('反馈提交成功，教师将收到通知')
+        this.feedbackOpen = false
+        this.getList()
+      }).catch(() => {
+        this.$modal.msgError('反馈提交失败')
+      }).finally(() => {
+        this.feedbackLoading = false
+      })
     }
   }
 }

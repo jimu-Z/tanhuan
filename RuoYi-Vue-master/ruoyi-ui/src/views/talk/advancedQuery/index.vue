@@ -79,7 +79,7 @@
 
 <script>
 import { listTalkrecord } from '@/api/talk/talkStudentRecord'
-import { getTalksession, TAG_LABELS } from '@/api/talk/talkSession'
+import { getTalksession, exportDocx, TAG_LABELS } from '@/api/talk/talkSession'
 
 export default {
   name: 'AdvancedQuery',
@@ -109,24 +109,26 @@ export default {
           this.loading = false
           return
         }
-        Promise.all(rows.map(r =>
-          getTalksession(r.sessionId).then(sesRes => {
+        // Batch load session details to avoid N+1
+        const uniqueSessionIds = [...new Set(rows.map(r => r.sessionId))]
+        const sessionMap = {}
+        Promise.all(uniqueSessionIds.map(id =>
+          getTalksession(id).then(sesRes => {
             const ses = sesRes.data || sesRes
-            return {
-              ...r,
+            sessionMap[id] = {
               talkType: ses.talkType || '',
               talkPerson: ses.talkPerson || '',
               talkContent: ses.talkContent || '',
               talkTime: ses.talkTime || ''
             }
-          }).catch(() => ({
-            ...r,
-            talkType: '',
-            talkPerson: '',
-            talkContent: '',
-            talkTime: ''
-          })))
-        ).then(enriched => {
+          }).catch(() => {
+            sessionMap[id] = { talkType: '', talkPerson: '', talkContent: '', talkTime: '' }
+          })
+        )).then(() => {
+          const enriched = rows.map(r => {
+            const ses = sessionMap[r.sessionId] || {}
+            return { ...r, ...ses }
+          })
           let filtered = enriched
           if (p.keyword) {
             const kw = p.keyword.toLowerCase()
@@ -174,14 +176,10 @@ export default {
       const sid = row.sessionId
       if (!sid) { this.$modal.msgError('未找到对应会话'); return }
       const fileName = '谈话记录_' + (row.studentName || 'unknown') + '.docx'
-      import('@/utils/request').then(({ default: request }) => {
-        request({ url: '/ruoyi-system/talksession/exportDocx/' + sid, method: 'get', responseType: 'blob' }).then(blob => {
-          const url = window.URL.createObjectURL(blob)
-          const a = document.createElement('a'); a.href = url
-          a.download = fileName; a.click(); window.URL.revokeObjectURL(url)
-        }).catch(() => {
-          this.$modal.msgError('导出失败')
-        })
+      exportDocx(sid).then(blob => {
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href = url
+        a.download = fileName; a.click(); window.URL.revokeObjectURL(url)
       }).catch(() => {
         this.$modal.msgError('导出失败')
       })

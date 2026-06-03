@@ -2,12 +2,12 @@
   <div class="app-container">
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5">
-        <el-button type="primary" plain icon="el-icon-plus" size="mini" @click="$router.push('/talk/talkInitiate/index')">发起谈话</el-button>
+        <el-button type="info" plain icon="el-icon-refresh" size="mini" @click="getList">刷新</el-button>
       </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" />
     </el-row>
 
-    <el-table v-loading="loading" :data="talksessionList">
+    <el-table v-loading="loading" :data="myRecordList">
       <el-table-column type="index" label="序号" width="60" align="center" />
       <el-table-column label="谈话类型" align="center" width="90">
         <template slot-scope="scope">
@@ -20,38 +20,77 @@
       </el-table-column>
       <el-table-column label="谈话地点" prop="talkLocation" min-width="120" align="center" show-overflow-tooltip />
       <el-table-column label="谈话内容" prop="talkContent" min-width="200" align="center" show-overflow-tooltip />
-      <el-table-column label="参与学生" min-width="120" align="center">
+      <el-table-column label="谈话人" prop="talkPerson" width="100" align="center" />
+      <el-table-column label="我的反馈" align="center" min-width="150" show-overflow-tooltip>
         <template slot-scope="scope">
-          <span v-if="studentMap[scope.row.sessionId]">
-            {{ studentMap[scope.row.sessionId].join('、') }}
-          </span>
+          <span v-if="scope.row.studentFeedback" style="color:#666">{{ scope.row.studentFeedback }}</span>
+          <span v-else style="color:#ccc">未填写</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="跟进状态" align="center" width="100">
+        <template slot-scope="scope">
+          <el-tag v-if="scope.row.followupStatus === 'pending'" type="info" size="small">待跟进</el-tag>
+          <el-tag v-else-if="scope.row.followupStatus === 'in_progress'" type="warning" size="small">跟进中</el-tag>
+          <el-tag v-else-if="scope.row.followupStatus === 'completed'" type="success" size="small">已完成</el-tag>
+          <el-tag v-else-if="scope.row.followupStatus === 'none'" size="small">无需跟进</el-tag>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="教师已读" align="center" width="90">
+        <template slot-scope="scope">
+          <el-tag v-if="scope.row.teacherNotified === 1" type="success" size="small">已读</el-tag>
+          <el-tag v-else-if="scope.row.studentFeedback" type="warning" size="small">未读</el-tag>
           <span v-else style="color:#ccc">-</span>
         </template>
       </el-table-column>
-      <el-table-column label="标签" width="100" align="center">
+      <el-table-column label="操作" align="center" width="180">
         <template slot-scope="scope">
-          <span v-if="tagMap[scope.row.sessionId]" style="font-size:12px;color:#666">
-            {{ tagMap[scope.row.sessionId].map(t => getTagLabel(t.tagValue)).join('、') || '-' }}
-          </span>
-          <span v-else style="color:#ccc">-</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" align="center" width="150">
-        <template slot-scope="scope">
+          <el-button size="mini" type="text" icon="el-icon-edit" @click="handleFeedback(scope.row)">
+            {{ scope.row.studentFeedback ? '修改反馈' : '提交反馈' }}
+          </el-button>
           <el-button size="mini" type="text" icon="el-icon-download" @click="handleExport(scope.row)">导出</el-button>
         </template>
       </el-table-column>
     </el-table>
 
     <pagination v-show="total>0" :total="total" :page.sync="queryParams.pageNum" :limit.sync="queryParams.pageSize" @pagination="getList" />
+
+    <!-- 学生提交/修改反馈对话框 -->
+    <el-dialog :title="feedbackTitle" :visible.sync="feedbackOpen" width="600px" append-to-body>
+      <el-form ref="feedbackForm" :model="feedbackForm" label-width="100px">
+        <el-form-item label="谈话时间">
+          <el-input :value="currentRecord.talkTime" disabled />
+        </el-form-item>
+        <el-form-item label="谈话内容">
+          <el-input :value="currentRecord.talkContent" type="textarea" :rows="3" disabled />
+        </el-form-item>
+        <el-divider>我的反馈</el-divider>
+        <el-form-item label="学生反馈" prop="studentFeedback">
+          <el-input
+            v-model="feedbackForm.studentFeedback"
+            type="textarea"
+            :rows="6"
+            placeholder="请输入您的反馈意见..."
+          />
+        </el-form-item>
+        <el-alert
+          title="提示：提交反馈后，教师将收到通知"
+          type="info"
+          :closable="false"
+          show-icon
+        />
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="feedbackOpen = false">取 消</el-button>
+        <el-button type="primary" @click="submitFeedbackForm" :loading="feedbackLoading">提 交</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { listTalksession, getSessionTags, TAG_LABELS } from '@/api/talk/talkSession'
-import request from '@/utils/request'
-import { listTalkrecord } from '@/api/talk/talkStudentRecord'
-import { getTalk } from '@/api/talk/talkStudent'
+import { getMyRecords, submitFeedback } from '@/api/talk/talkStudentRecord'
+import { exportDocx } from '@/api/talk/talkSession'
 
 export default {
   name: 'MyRecords',
@@ -60,57 +99,55 @@ export default {
       loading: false,
       showSearch: false,
       total: 0,
-      talksessionList: [],
-      tagMap: {},
-      studentMap: {},
-      queryParams: { pageNum: 1, pageSize: 10 }
+      myRecordList: [],
+      queryParams: { pageNum: 1, pageSize: 10 },
+      // 反馈相关
+      feedbackOpen: false,
+      feedbackTitle: '提交反馈',
+      feedbackForm: {},
+      feedbackLoading: false,
+      currentRecord: {}
     }
   },
   created() { this.getList() },
   methods: {
     getList() {
       this.loading = true
-      listTalksession(this.queryParams).then(res => {
-        this.talksessionList = res.rows || []
+      getMyRecords(this.queryParams).then(res => {
+        this.myRecordList = res.rows || []
         this.total = res.total
-        this.loadTags()
-        this.loadStudents()
         this.loading = false
-      }).catch(() => { this.loading = false; this.$modal.msgError('加载谈话列表失败') })
+      }).catch(() => { this.loading = false; this.$modal.msgError('加载我的谈话记录失败') })
     },
-    loadTags() {
-      this.talksessionList.forEach(s => {
-        getSessionTags(s.sessionId).then(r => this.$set(this.tagMap, s.sessionId, r.data || [])).catch(err => {
-          console.warn('加载会话标签失败:', s.sessionId, err)
-        })
+    handleFeedback(row) {
+      this.currentRecord = row
+      this.feedbackTitle = row.studentFeedback ? '修改反馈' : '提交反馈'
+      this.feedbackForm = {
+        recordId: row.recordId,
+        studentFeedback: row.studentFeedback || ''
+      }
+      this.feedbackOpen = true
+    },
+    submitFeedbackForm() {
+      if (!this.feedbackForm.studentFeedback) {
+        this.$modal.msgWarning('请输入反馈内容')
+        return
+      }
+      this.feedbackLoading = true
+      submitFeedback(this.feedbackForm).then(response => {
+        this.$modal.msgSuccess('反馈提交成功，教师将收到通知')
+        this.feedbackOpen = false
+        this.getList()
+      }).catch(() => {
+        this.$modal.msgError('反馈提交失败')
+      }).finally(() => {
+        this.feedbackLoading = false
       })
     },
-    loadStudents() {
-      this.talksessionList.forEach(s => {
-        listTalkrecord({ sessionId: s.sessionId, pageSize: 999 }).then(r => {
-          const ids = (r.rows || []).map(rec => rec.studentId)
-          if (ids.length === 0) {
-            this.$set(this.studentMap, s.sessionId, [])
-            return
-          }
-          Promise.all(ids.map(id => getTalk(id))).then(students => {
-            this.$set(this.studentMap, s.sessionId, students.map(st => st.data ? st.data.studentName : '-'))
-          }).catch(err => {
-            console.warn('加载学生信息失败:', s.sessionId, err)
-            this.$set(this.studentMap, s.sessionId, [])
-          })
-        }).catch(err => {
-          console.warn('加载谈话记录失败:', s.sessionId, err)
-          this.$set(this.studentMap, s.sessionId, [])
-        })
-      })
-    },
-    getTagLabel(v) { return TAG_LABELS[v] || v },
     handleExport(row) {
-      const url = '/ruoyi-system/talksession/exportDocx/' + row.sessionId
       const personName = row.talkPerson || '未知'
       this.$modal.confirm('导出' + personName + '的谈话记录？').then(() => {
-        return request({ url: url, method: 'get', responseType: 'blob' })
+        return exportDocx(row.sessionId)
       }).then(blob => {
         const blobUrl = window.URL.createObjectURL(blob)
         const a = document.createElement('a')

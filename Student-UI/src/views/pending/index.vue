@@ -3,22 +3,25 @@
     <h3 class="page-title">待处理谈话</h3>
     <el-table v-loading="loading" :data="tableData" border stripe style="width: 100%;">
       <el-table-column type="index" label="序号" width="60" align="center" />
-      <el-table-column prop="createTime" label="谈话时间" width="180" align="center" />
-      <el-table-column prop="studentName" label="谈话人" width="120" align="center" />
-      <el-table-column prop="followupPlan" label="谈话内容" min-width="250" show-overflow-tooltip />
+      <el-table-column prop="talkTime" label="谈话时间" width="180" align="center" />
+      <el-table-column prop="talkPerson" label="谈话人" width="120" align="center" />
+      <el-table-column prop="followupPlan" label="跟进计划" min-width="200" show-overflow-tooltip />
       <el-table-column label="反馈状态" width="120" align="center">
         <template slot-scope="scope">
-          <el-tag v-if="scope.row.studentFeedback === '无' || !scope.row.studentFeedback" type="danger">待反馈</el-tag>
+          <el-tag v-if="!scope.row.studentFeedback || scope.row.studentFeedback === '无'" type="danger">待反馈</el-tag>
           <el-tag v-else type="success">已反馈</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="120" align="center">
         <template slot-scope="scope">
-          <el-button v-if="scope.row.studentFeedback === '无' || !scope.row.studentFeedback"
+          <el-button v-if="!scope.row.studentFeedback || scope.row.studentFeedback === '无'"
             type="primary" size="small" @click="openFeedback(scope.row)">
             填写反馈
           </el-button>
-          <span v-else style="color: #67C23A;">已完成</span>
+          <el-button v-else
+            type="text" size="small" @click="openFeedback(scope.row)">
+            修改反馈
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -81,7 +84,7 @@ export default {
       this.loading = true
       const params = {
         ...this.queryParams,
-        studentFeedback: '无',
+        hasNoFeedback: true,
         notified: 1
       }
       getPendingTalks(params).then(res => {

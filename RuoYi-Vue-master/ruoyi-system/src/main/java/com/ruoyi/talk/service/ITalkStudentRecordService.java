@@ -9,8 +9,15 @@ import com.ruoyi.talk.domain.TalkStudentRecord;
  * @author admin
  * @date 2026-05-27
  */
-public interface ITalkStudentRecordService 
-{
+public interface ITalkStudentRecordService {
+    /**
+     * 通过学号查询学生信息
+     * 
+     * @param studentCode 学号
+     * @return 学生信息
+     */
+    public com.ruoyi.talk.domain.TalkStudent selectTalkStudentByCode(String studentCode);
+
     /**
      * 查询谈话记录管理
      * 

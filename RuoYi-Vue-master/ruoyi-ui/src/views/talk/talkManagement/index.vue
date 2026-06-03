@@ -271,11 +271,10 @@
 </template>
 
 <script>
-import { listTalksession, getTalksession, delTalksession, addTalksession, updateTalksession, getBatchTags, exportGroupSummary, TAG_LABELS } from "@/api/talk/talkSession"
+import { listTalksession, getTalksession, delTalksession, addTalksession, updateTalksession, getBatchTags, exportGroupSummary, exportDocx, exportDocxForStudent, exportDocxBatch, TAG_LABELS } from "@/api/talk/talkSession"
 import { listTalkrecord, getTalkrecord, delTalkrecord, addTalkrecord, updateTalkrecord } from "@/api/talk/talkStudentRecord"
 import { getTalk } from "@/api/talk/talkStudent"
 import { getLabels } from "@/api/talk/talkTag"
-import request from '@/utils/request'
 
 export default {
   name: "TalkManagement",
@@ -318,6 +317,8 @@ export default {
         followupPlan: [{ required: true, message: "跟进计划不能为空", trigger: "blur" }],
         followupStatus: [{ required: true, message: "跟进状态不能为空", trigger: "change" }],
       },
+      // Cache student lookups to avoid N+1 requests
+      studentCache: {},
       currentSessionIdForRecord: null
     }
   },
@@ -379,14 +380,42 @@ export default {
           this.$set(row, '_loadingRecords', false)
           return
         }
-        Promise.all(records.map(r =>
-          getTalk(r.studentId).then(stu => ({
+        // Collect unique student IDs to batch fetch
+        const uniqueStudentIds = [...new Set(records.map(r => r.studentId))]
+        // Filter out cached students
+        const uncachedIds = uniqueStudentIds.filter(id => !this.studentCache[id])
+
+        if (uncachedIds.length === 0) {
+          // All students already cached
+          const enriched = records.map(r => ({
             ...r,
-            studentName: stu.data ? stu.data.studentName : '-',
-            studentCode: stu.data ? stu.data.studentCode : '-',
-          })).catch(() => ({ ...r, studentName: '-', studentCode: '-' }))
-        )).then(enrichedRecords => {
-          this.$set(row, '_records', enrichedRecords)
+            studentName: this.studentCache[r.studentId].studentName || '-',
+            studentCode: this.studentCache[r.studentId].studentCode || '-',
+          }))
+          this.$set(row, '_records', enriched)
+          this.$set(row, '_loadingRecords', false)
+          return
+        }
+
+        // Batch fetch uncached students
+        Promise.all(uncachedIds.map(id =>
+          getTalk(id).then(stu => {
+            if (stu.data) {
+              this.$set(this.studentCache, id, { studentName: stu.data.studentName, studentCode: stu.data.studentCode })
+            }
+          }).catch(() => {
+            this.$set(this.studentCache, id, { studentName: '-', studentCode: '-' })
+          })
+        )).then(() => {
+          const enriched = records.map(r => {
+            const cached = this.studentCache[r.studentId] || {}
+            return {
+              ...r,
+              studentName: cached.studentName || '-',
+              studentCode: cached.studentCode || '-',
+            }
+          })
+          this.$set(row, '_records', enriched)
           this.$set(row, '_loadingRecords', false)
         }).catch(() => {
           this.$set(row, '_records', [])
@@ -549,7 +578,7 @@ export default {
     handleBatchExport() {
       if (this.ids.length === 0) { this.$modal.msgWarning('请至少选择一条记录'); return }
       this.$modal.confirm('确认导出选中的 ' + this.ids.length + ' 条会话记录？').then(() => {
-        return request({ url: '/ruoyi-system/talksession/exportDocx/batch', method: 'post', data: this.ids, responseType: 'blob' })
+        return exportDocxBatch(this.ids)
       }).then(blob => {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a'); a.href = url; a.download = '谈话记录批量导出.zip'; a.click()
@@ -561,7 +590,7 @@ export default {
       const isGroup = row.talkType === 'group'
       const ext = isGroup ? '.zip' : '.docx'
       this.$modal.confirm('确认导出' + (row.talkPerson || '') + '的谈话记录吗？' + (isGroup ? '（集体谈话将打包为zip）' : '')).then(() => {
-        return request({ url: '/ruoyi-system/talksession/exportDocx/' + row.sessionId, method: 'get', responseType: 'blob' })
+        return exportDocx(row.sessionId)
       }).then(blob => {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a'); a.href = url
@@ -574,7 +603,7 @@ export default {
     handleExportStudentRecord(row) {
       const name = row.studentName || row.studentCode || row.studentId
       this.$modal.confirm('确认导出' + name + '的个人谈话表吗？').then(() => {
-        return request({ url: '/ruoyi-system/talksession/exportDocx/' + row.sessionId + '/student/' + row.studentId, method: 'get', responseType: 'blob' })
+        return exportDocxForStudent(row.sessionId, row.studentId)
       }).then(blob => {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a'); a.href = url

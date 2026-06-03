@@ -38,11 +38,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectTalkStudentRecordList" parameterType="TalkStudentRecord" resultMap="TalkStudentRecordResult">
         <include refid="selectTalkStudentRecordVo"/>
         <where>  
-            <if test="sessionId != null "> and tsr.session_id = #{sessionId}</if>
+            <if test="sessionId != null and sessionId != ''">
+                <if test="sessionId.toString().indexOf(',') != -1">
+                    and tsr.session_id in
+                    <foreach item="id" collection="sessionId.toString().split(',')" open="(" separator="," close=")">#{id}</foreach>
+                </if>
+                <if test="sessionId.toString().indexOf(',') == -1"> and tsr.session_id = #{sessionId}</if>
+            </if>
             <if test="studentId != null "> and tsr.student_id = #{studentId}</if>
             <if test="studentCode != null and studentCode != ''"> and st.student_code = #{studentCode}</if>
             <if test="studentName != null and studentName != ''"> and st.student_name like concat('%', #{studentName}, '%')</if>
-            <if test="studentFeedback != null  and studentFeedback != ''"> and tsr.student_feedback = #{studentFeedback}</if>
+            <if test="studentFeedback != null and studentFeedback != ''"> and tsr.student_feedback = #{studentFeedback}</if>
+            <if test="hasNoFeedback != null"> and (tsr.student_feedback is null or tsr.student_feedback = '' or tsr.student_feedback = '无')</if>
             <if test="followupPlan != null  and followupPlan != ''"> and tsr.followup_plan = #{followupPlan}</if>
             <if test="followupStatus != null  and followupStatus != ''"> and tsr.followup_status = #{followupStatus}</if>
             <if test="notified != null"> and tsr.notified = #{notified}</if>

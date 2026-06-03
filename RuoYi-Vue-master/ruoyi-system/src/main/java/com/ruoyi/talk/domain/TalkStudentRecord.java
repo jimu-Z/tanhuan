@@ -13,8 +13,7 @@ import com.ruoyi.common.core.domain.BaseEntity;
  * @author admin
  * @date 2026-05-27
  */
-public class TalkStudentRecord extends BaseEntity
-{
+public class TalkStudentRecord extends BaseEntity {
     private static final long serialVersionUID = 1L;
 
     /** 记录ID */
@@ -48,6 +47,9 @@ public class TalkStudentRecord extends BaseEntity
 
     private Integer teacherNotified;
 
+    /** 是否查询未反馈记录（非数据库字段，仅用于查询条件） */
+    private Boolean hasNoFeedback;
+
     /** 谈话类型（individual 个体谈话 / group 集体谈话） */
     private String talkType;
 
@@ -64,127 +66,146 @@ public class TalkStudentRecord extends BaseEntity
     /** 谈话人 */
     private String talkPerson;
 
-    public void setRecordId(Long recordId) 
-    {
+    public void setRecordId(Long recordId) {
         this.recordId = recordId;
     }
 
-    public Long getRecordId() 
-    {
+    public Long getRecordId() {
         return recordId;
     }
 
-    public void setSessionId(Long sessionId) 
-    {
+    public void setSessionId(Long sessionId) {
         this.sessionId = sessionId;
     }
 
-    public Long getSessionId() 
-    {
+    public Long getSessionId() {
         return sessionId;
     }
 
-    public void setStudentId(Long studentId) 
-    {
+    public void setStudentId(Long studentId) {
         this.studentId = studentId;
     }
 
-    public Long getStudentId() 
-    {
+    public Long getStudentId() {
         return studentId;
     }
 
-    public void setStudentName(String studentName) 
-    {
+    public void setStudentName(String studentName) {
         this.studentName = studentName;
     }
 
-    public String getStudentName() 
-    {
+    public String getStudentName() {
         return studentName;
     }
 
-    public void setStudentCode(String studentCode) 
-    {
+    public void setStudentCode(String studentCode) {
         this.studentCode = studentCode;
     }
 
-    public String getStudentCode() 
-    {
+    public String getStudentCode() {
         return studentCode;
     }
 
-    public void setStudentFeedback(String studentFeedback) 
-    {
+    public void setStudentFeedback(String studentFeedback) {
         this.studentFeedback = studentFeedback;
     }
 
-    public String getStudentFeedback() 
-    {
+    public String getStudentFeedback() {
         return studentFeedback;
     }
 
-    public void setFollowupPlan(String followupPlan) 
-    {
+    public void setFollowupPlan(String followupPlan) {
         this.followupPlan = followupPlan;
     }
 
-    public String getFollowupPlan() 
-    {
+    public String getFollowupPlan() {
         return followupPlan;
     }
 
-    public void setFollowupStatus(String followupStatus) 
-    {
+    public void setFollowupStatus(String followupStatus) {
         this.followupStatus = followupStatus;
     }
 
-    public String getFollowupStatus() 
-    {
+    public String getFollowupStatus() {
         return followupStatus;
     }
 
-    public Integer getNotified() { return notified; }
-    public void setNotified(Integer notified) { this.notified = notified; }
+    public Integer getNotified() {
+        return notified;
+    }
 
-    public Integer getTeacherNotified() { return teacherNotified; }
-    public void setTeacherNotified(Integer teacherNotified) { this.teacherNotified = teacherNotified; }
+    public void setNotified(Integer notified) {
+        this.notified = notified;
+    }
 
-    public void setTalkType(String talkType) { this.talkType = talkType; }
-    public String getTalkType() { return talkType; }
+    public Integer getTeacherNotified() {
+        return teacherNotified;
+    }
 
-    public void setTalkTime(Date talkTime) { this.talkTime = talkTime; }
-    public Date getTalkTime() { return talkTime; }
+    public void setTeacherNotified(Integer teacherNotified) {
+        this.teacherNotified = teacherNotified;
+    }
 
-    public void setTalkLocation(String talkLocation) { this.talkLocation = talkLocation; }
-    public String getTalkLocation() { return talkLocation; }
+    public void setTalkType(String talkType) {
+        this.talkType = talkType;
+    }
 
-    public void setTalkContent(String talkContent) { this.talkContent = talkContent; }
-    public String getTalkContent() { return talkContent; }
+    public String getTalkType() {
+        return talkType;
+    }
 
-    public void setTalkPerson(String talkPerson) { this.talkPerson = talkPerson; }
-    public String getTalkPerson() { return talkPerson; }
+    public void setTalkTime(Date talkTime) {
+        this.talkTime = talkTime;
+    }
+
+    public Date getTalkTime() {
+        return talkTime;
+    }
+
+    public void setTalkLocation(String talkLocation) {
+        this.talkLocation = talkLocation;
+    }
+
+    public String getTalkLocation() {
+        return talkLocation;
+    }
+
+    public void setTalkContent(String talkContent) {
+        this.talkContent = talkContent;
+    }
+
+    public String getTalkContent() {
+        return talkContent;
+    }
+
+    public void setTalkPerson(String talkPerson) {
+        this.talkPerson = talkPerson;
+    }
+
+    public String getTalkPerson() {
+        return talkPerson;
+    }
 
     @Override
     public String toString() {
-        return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
-            .append("recordId", getRecordId())
-            .append("sessionId", getSessionId())
-            .append("studentId", getStudentId())
-            .append("studentName", getStudentName())
-            .append("studentCode", getStudentCode())
-            .append("studentFeedback", getStudentFeedback())
-            .append("followupPlan", getFollowupPlan())
-            .append("followupStatus", getFollowupStatus())
-            .append("notified", getNotified())
-            .append("teacherNotified", getTeacherNotified())
-            .append("talkType", getTalkType())
-            .append("talkTime", getTalkTime())
-            .append("talkLocation", getTalkLocation())
-            .append("talkContent", getTalkContent())
-            .append("talkPerson", getTalkPerson())
-            .append("createTime", getCreateTime())
-            .append("updateTime", getUpdateTime())
-            .toString();
+        return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
+                .append("recordId", getRecordId())
+                .append("sessionId", getSessionId())
+                .append("studentId", getStudentId())
+                .append("studentName", getStudentName())
+                .append("studentCode", getStudentCode())
+                .append("studentFeedback", getStudentFeedback())
+                .append("followupPlan", getFollowupPlan())
+                .append("followupStatus", getFollowupStatus())
+                .append("notified", getNotified())
+                .append("teacherNotified", getTeacherNotified())
+                .append("talkType", getTalkType())
+                .append("talkTime", getTalkTime())
+                .append("talkLocation", getTalkLocation())
+                .append("talkContent", getTalkContent())
+                .append("talkPerson", getTalkPerson())
+                .append("createTime", getCreateTime())
+                .append("updateTime", getUpdateTime())
+                .toString();
     }
 }

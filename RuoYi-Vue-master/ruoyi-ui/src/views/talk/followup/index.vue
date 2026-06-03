@@ -157,6 +157,7 @@ export default {
     resetQuery() {
       this.queryParams = { pageNum: 1, pageSize: 10, followupStatus: null, studentName: null }
       this.fetchRecords()
+      this.fetchStats()
     },
     filterByStatus(status) {
       this.queryParams.followupStatus = status === this.queryParams.followupStatus ? null : status

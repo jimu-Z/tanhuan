@@ -112,6 +112,42 @@ export const constantRoutes = [
     children: [{ path: '', component: () => import('@/views/talk/followup/index'), name: 'Followup', meta: { title: '谈话跟进' } }]
   },
   {
+    path: '/talk/talkInitiate',
+    component: Layout,
+    hidden: true,
+    children: [{ path: 'index', component: () => import('@/views/talk/talkInitiate/index'), name: 'TalkInitiate', meta: { title: '发起谈话' } }]
+  },
+  {
+    path: '/talk/unifiedQuery',
+    component: Layout,
+    hidden: true,
+    children: [{ path: '', component: () => import('@/views/talk/unifiedQuery/index'), name: 'UnifiedQuery', meta: { title: '统一查询' } }]
+  },
+  {
+    path: '/talk/dashboardV2',
+    component: Layout,
+    hidden: true,
+    children: [{ path: '', component: () => import('@/views/talk/dashboardV2/index'), name: 'DashboardV2', meta: { title: '数据看板' } }]
+  },
+  {
+    path: '/talk/alertsV2',
+    component: Layout,
+    hidden: true,
+    children: [{ path: '', component: () => import('@/views/talk/alertsV2/index'), name: 'AlertsV2', meta: { title: '预警中心' } }]
+  },
+  {
+    path: '/talk/templatesV2',
+    component: Layout,
+    hidden: true,
+    children: [{ path: '', component: () => import('@/views/talk/templatesV2/index'), name: 'TemplatesV2', meta: { title: '模板库' } }]
+  },
+  {
+    path: '/talk/bigscreenV2',
+    component: Layout,
+    hidden: true,
+    children: [{ path: '', component: () => import('@/views/talk/bigscreenV2/index'), name: 'BigscreenV2', meta: { title: '大屏展示' } }]
+  },
+  {
     path: '/user',
     component: Layout,
     hidden: true,

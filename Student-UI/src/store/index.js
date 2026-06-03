@@ -14,7 +14,10 @@ const store = new Vuex.Store({
       nickName: '',
       userId: null,
       studentId: null,
-      studentCode: ''
+      studentCode: '',
+      deptName: '',
+      phonenumber: '',
+      politicalStatus: ''
     }
   },
 
@@ -51,12 +54,16 @@ const store = new Vuex.Store({
       return new Promise((resolve, reject) => {
         getInfo().then(res => {
           const user = res.user
+          const params = user.params || {}
           commit('SET_USER', {
             name: user.userName,
             nickName: user.nickName || user.userName,
             userId: user.userId,
-            studentId: user.studentId || null,
-            studentCode: user.studentCode || user.userName
+            studentId: params.studentId || user.studentId || null,
+            studentCode: params.studentCode || user.studentCode || user.userName,
+            deptName: params.deptName || user.deptName || '',
+            phonenumber: user.phonenumber || params.phonenumber || '',
+            politicalStatus: params.politicalStatus || user.politicalStatus || ''
           })
           resolve(res)
         }).catch(error => {
@@ -73,7 +80,10 @@ const store = new Vuex.Store({
           nickName: '',
           userId: null,
           studentId: null,
-          studentCode: ''
+          studentCode: '',
+          deptName: '',
+          phonenumber: '',
+          politicalStatus: ''
         })
         removeToken()
         resolve()

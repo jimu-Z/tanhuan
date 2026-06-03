@@ -42,6 +42,17 @@ public class TalkStudentRecordController extends BaseController {
     public TableDataInfo myRecords(TalkStudentRecord talkStudentRecord) {
         String username = SecurityUtils.getUsername();
         talkStudentRecord.setStudentCode(username);
+        // Also try matching by studentId if user has student info
+        try {
+            if (talkStudentRecord.getStudentId() == null) {
+                com.ruoyi.talk.domain.TalkStudent student = talkStudentRecordService.selectTalkStudentByCode(username);
+                if (student != null) {
+                    talkStudentRecord.setStudentId(student.getStudentId());
+                }
+            }
+        } catch (Exception e) {
+            // Ignore - fallback to studentCode matching only
+        }
         startPage();
         List<TalkStudentRecord> list = talkStudentRecordService.selectTalkStudentRecordList(talkStudentRecord);
         return getDataTable(list);

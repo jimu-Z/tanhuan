@@ -164,7 +164,7 @@
 </template>
 
 <script>
-import { listTalksession, getSessionTags, TAG_LABELS } from '@/api/talk/talkSession'
+import { listTalksession, getSessionTags, getBatchTags, TAG_LABELS } from '@/api/talk/talkSession'
 import { listTalkrecord } from '@/api/talk/talkStudentRecord'
 import { getTalk, getDeptTree, listUntalked } from '@/api/talk/talkStudent'
 import request from '@/utils/request'
@@ -321,63 +321,48 @@ export default {
 
         this.loadTagsForSessions(sessions)
 
-        const recordPromises = sessions.map(async session => {
-          try {
-            const recRes = await listTalkrecord({ sessionId: session.sessionId, pageSize: 999 })
-            const records = recRes.rows || []
-            const enriched = await Promise.all(records.map(async record => {
-              try {
-                const stuRes = await getTalk(record.studentId)
-                return {
-                  rowKey: session.sessionId + '_' + record.recordId,
-                  sessionId: session.sessionId,
-                  talkType: session.talkType,
-                  talkTime: session.talkTime,
-                  talkContent: session.talkContent,
-                  talkPerson: session.talkPerson,
-                  talkLocation: session.talkLocation,
-                  recordId: record.recordId,
-                  studentId: record.studentId,
-                  studentName: stuRes.data ? stuRes.data.studentName : '',
-                  studentCode: stuRes.data ? stuRes.data.studentCode : '',
-                  studentFeedback: record.studentFeedback,
-                  followupPlan: record.followupPlan,
-                  followupStatus: record.followupStatus
-                }
-              } catch (e) {
-                return {
-                  rowKey: session.sessionId + '_' + record.recordId,
-                  sessionId: session.sessionId,
-                  talkType: session.talkType,
-                  talkTime: session.talkTime,
-                  talkContent: session.talkContent,
-                  talkPerson: session.talkPerson,
-                  talkLocation: session.talkLocation,
-                  recordId: record.recordId,
-                  studentId: record.studentId,
-                  studentName: '',
-                  studentCode: '',
-                  studentFeedback: record.studentFeedback,
-                  followupPlan: record.followupPlan,
-                  followupStatus: record.followupStatus
-                }
-              }
-            }))
-            return enriched
-          } catch (e) {
-            return []
-          }
-        })
+        const sessionIds = sessions.map(s => s.sessionId)
+        listTalkrecord({ sessionId: sessionIds.join(','), pageSize: 9999 }).then(recRes => {
+          const records = recRes.rows || []
+          const sessionMap = {}
+          sessions.forEach(s => { sessionMap[s.sessionId] = s })
 
-        Promise.all(recordPromises).then(results => {
-          this.allData = results.flat()
-          if (hasFrontendFilters) {
-            this.applyFilters()
-          } else {
-            this.total = response.total
-            this.displayList = this.allData.slice()
-          }
-          this.loading = false
+          const studentIds = [...new Set(records.map(r => r.studentId))]
+          const studentMap = {}
+          Promise.all(studentIds.map(id =>
+            getTalk(id).then(stu => {
+              if (stu.data) { studentMap[id] = stu.data }
+            }).catch(() => {})
+          )).then(() => {
+            this.allData = records.map(record => {
+              const session = sessionMap[record.sessionId] || {}
+              const student = studentMap[record.studentId] || {}
+              return {
+                rowKey: record.sessionId + '_' + record.recordId,
+                sessionId: record.sessionId,
+                talkType: session.talkType || '',
+                talkTime: session.talkTime || '',
+                talkContent: session.talkContent || '',
+                talkPerson: session.talkPerson || '',
+                talkLocation: session.talkLocation || '',
+                recordId: record.recordId,
+                studentId: record.studentId,
+                studentName: student.studentName || '',
+                studentCode: student.studentCode || '',
+                studentFeedback: record.studentFeedback,
+                followupPlan: record.followupPlan,
+                followupStatus: record.followupStatus
+              }
+            })
+
+            if (hasFrontendFilters) {
+              this.applyFilters()
+            } else {
+              this.total = response.total
+              this.displayList = this.allData.slice()
+            }
+            this.loading = false
+          })
         }).catch(() => {
           this.allData = []
           this.total = 0
@@ -393,18 +378,16 @@ export default {
     },
 
     loadTagsForSessions(sessions) {
-      const newTagMap = {}
-      const tagPromises = sessions.map(session =>
-        getSessionTags(session.sessionId).then(res => {
-          const tags = res.data || []
-          newTagMap[session.sessionId] = tags.map(t => TAG_LABELS[t.tagValue] || t.tagValue)
-        }).catch(() => {
-          newTagMap[session.sessionId] = []
-          this.$modal.msgError('加载标签失败')
+      const sessionIds = sessions.map(s => s.sessionId)
+      getBatchTags(sessionIds).then(res => {
+        const data = res.data || {}
+        const newTagMap = {}
+        Object.keys(data).forEach(k => {
+          newTagMap[Number(k)] = (data[k] || []).map(t => TAG_LABELS[t.tagValue] || t.tagValue)
         })
-      )
-      Promise.all(tagPromises).then(() => {
         this.tagDataMap = newTagMap
+      }).catch(() => {
+        this.tagDataMap = {}
       })
     },
 
