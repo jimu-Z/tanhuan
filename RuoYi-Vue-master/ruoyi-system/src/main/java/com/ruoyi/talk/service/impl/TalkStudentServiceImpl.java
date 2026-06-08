@@ -495,6 +495,17 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                                 + counselor.trim() + "\"");
                         continue;
                     }
+                    // 关联教师
+                    student.setTeacherId(found.getTeacherId());
+                } else {
+                    // Excel中没有辅导员姓名，检查该学院是否有任何辅导员或书记
+                    List<TalkTeacher> collegeTeachers = talkTeacherService.selectCounselorsByDeptId(collegeDeptId);
+                    if (collegeTeachers == null || collegeTeachers.isEmpty()) {
+                        skipCount++;
+                        errors.add("第" + rowNum + "行: 学生" + studentName + "（学号" + studentCode
+                                + "）的学院没有辅导员/书记，请先导入辅导员/书记。");
+                        continue;
+                    }
                 }
 
                 student.setCreateTime(DateUtils.getNowDate());
@@ -894,6 +905,11 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         return talkStudentMapper.selectUntalkedStudentsInPeriod(
                 sdf.format(startTime), sdf.format(endTime), deptId);
+    }
+
+    @Override
+    public List<TalkStudent> selectByTeacherId(Long teacherId) {
+        return talkStudentMapper.selectByTeacherId(teacherId);
     }
 
 }

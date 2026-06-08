@@ -39,13 +39,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectTalkStudentRecordList" parameterType="TalkStudentRecord" resultMap="TalkStudentRecordResult">
         <include refid="selectTalkStudentRecordVo"/>
         <where>  
-            <if test="sessionId != null and sessionId != ''">
-                <if test="sessionId.toString().indexOf(',') != -1">
-                    and tsr.session_id in
-                    <foreach item="id" collection="sessionId.toString().split(',')" open="(" separator="," close=")">#{id}</foreach>
-                </if>
-                <if test="sessionId.toString().indexOf(',') == -1"> and tsr.session_id = #{sessionId}</if>
+            <if test="sessionIds != null and sessionIds != ''">
+                and tsr.session_id in
+                <foreach item="id" collection="sessionIds.split(',')" open="(" separator="," close=")">#{id}</foreach>
             </if>
+            <if test="sessionId != null "> and tsr.session_id = #{sessionId}</if>
             <if test="studentId != null "> and tsr.student_id = #{studentId}</if>
             <if test="studentCode != null and studentCode != ''"> and st.student_code = #{studentCode}</if>
             <if test="studentName != null and studentName != ''"> and st.student_name like concat('%', #{studentName}, '%')</if>

@@ -11,8 +11,7 @@ import com.ruoyi.talk.domain.TalkStudent;
  * @author admin
  * @date 2026-05-27
  */
-public interface TalkStudentMapper 
-{
+public interface TalkStudentMapper {
     /**
      * 查询学生信息管理
      * 
@@ -67,8 +66,11 @@ public interface TalkStudentMapper
     public int deleteTalkStudentByStudentIds(Long[] studentIds);
 
     public int countTalkStudents();
+
     public int countStudentsByDeptId(Long deptId);
+
     public int countTalkStudentsFiltered(Map<String, Object> params);
+
     public List<TalkStudent> selectUntalkedStudents(Map<String, Object> params);
 
     /**
@@ -78,12 +80,20 @@ public interface TalkStudentMapper
 
     /**
      * 查询指定时间段内未被谈话的学生
+     * 
      * @param startTime 开始时间
-     * @param endTime 结束时间
-     * @param deptId 可选部门ID过滤
+     * @param endTime   结束时间
+     * @param deptId    可选部门ID过滤
      */
-    public List<TalkStudent> selectUntalkedStudentsInPeriod(@Param("startTime") String startTime, @Param("endTime") String endTime, @Param("deptId") Long deptId);
+    public List<TalkStudent> selectUntalkedStudentsInPeriod(@Param("startTime") String startTime,
+            @Param("endTime") String endTime, @Param("deptId") Long deptId);
 
     public Long selectMinAvailableStudentId();
+
     public int countRecordsByStudentId(Long studentId);
+
+    /**
+     * 按教师ID查询学生列表
+     */
+    public List<TalkStudent> selectByTeacherId(@Param("teacherId") Long teacherId);
 }

@@ -119,6 +119,13 @@
           <el-button
             size="mini"
             type="text"
+            icon="el-icon-user"
+            @click="handleViewStudents(scope.row)"
+            v-hasPermi="['talk:teacher:list']"
+          >学生</el-button>
+          <el-button
+            size="mini"
+            type="text"
             icon="el-icon-edit"
             @click="handleUpdate(scope.row)"
             v-hasPermi="['talk:teacher:edit']"
@@ -179,11 +186,27 @@
         <el-button @click="cancel">取 消</el-button>
       </div>
     </el-dialog>
+
+    <!-- 学生列表弹窗 -->
+    <el-dialog :title="studentDialogTitle" :visible.sync="studentDialogOpen" width="900px" append-to-body>
+      <el-table :data="studentList" v-loading="studentLoading" max-height="450" border size="mini">
+        <el-table-column label="学号" prop="studentCode" width="140" />
+        <el-table-column label="姓名" prop="studentName" width="100" />
+        <el-table-column label="班级" prop="deptName" min-width="150" />
+        <el-table-column label="手机号" prop="phone" width="130" />
+        <el-table-column label="心理健康状态" prop="mentalHealthStatus" width="110">
+          <template slot-scope="scope"><dict-tag :options="dict.type.mental_health_status" :value="scope.row.mentalHealthStatus"/></template>
+        </el-table-column>
+        <el-table-column label="学籍状态" prop="enrollmentStatus" width="80">
+          <template slot-scope="scope"><dict-tag :options="dict.type.enrollment_status" :value="scope.row.enrollmentStatus"/></template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { listTeacher, getTeacher, addTeacher, updateTeacher, delTeacher } from "@/api/talk/teacher"
+import { listTeacher, getTeacher, addTeacher, updateTeacher, delTeacher, getTeacherStudents } from "@/api/talk/teacher"
 import { listDept } from "@/api/system/dept"
 import Treeselect from "@riophae/vue-treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
@@ -218,6 +241,11 @@ export default {
         deptId: undefined
       },
       form: {},
+      // 学生列表弹窗
+      studentDialogOpen: false,
+      studentDialogTitle: '',
+      studentList: [],
+      studentLoading: false,
       rules: {
         teacherCode: [
           { required: true, message: "工号不能为空", trigger: "blur" }
@@ -379,6 +407,17 @@ export default {
         this.getList()
         this.$modal.msgSuccess("删除成功")
       }).catch(() => { this.$modal.msgError('操作失败') })
+    },
+    /** 查看教师管理的所有学生 */
+    handleViewStudents(row) {
+      this.studentDialogTitle = row.name + ' 的学生'
+      this.studentDialogOpen = true
+      this.studentLoading = true
+      this.studentList = []
+      getTeacherStudents(row.teacherId).then(res => {
+        this.studentList = res.rows || []
+        this.studentLoading = false
+      }).catch(() => { this.studentLoading = false })
     },
     // 后端未实现导出接口，暂时注释
     // handleExport() {

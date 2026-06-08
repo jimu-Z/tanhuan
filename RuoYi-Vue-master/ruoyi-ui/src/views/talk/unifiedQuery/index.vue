@@ -322,7 +322,7 @@ export default {
         this.loadTagsForSessions(sessions)
 
         const sessionIds = sessions.map(s => s.sessionId)
-        listTalkrecord({ sessionId: sessionIds.join(','), pageSize: 9999 }).then(recRes => {
+        listTalkrecord({ sessionIds: sessionIds.join(','), pageSize: 9999 }).then(recRes => {
           const records = recRes.rows || []
           const sessionMap = {}
           sessions.forEach(s => { sessionMap[s.sessionId] = s })

@@ -28,7 +28,7 @@ import com.ruoyi.talk.service.ITalkAppointmentService;
  * @date 2026-06-06
  */
 @RestController
-@RequestMapping("/ruoyi-system/talk")
+@RequestMapping("/talk/appointment")
 public class TalkAppointmentController extends BaseController {
     @Autowired
     private ITalkAppointmentService talkAppointmentService;
@@ -37,7 +37,7 @@ public class TalkAppointmentController extends BaseController {
      * 查询预约列表（分页）
      */
     @PreAuthorize("@ss.hasPermi('talk:appointment:list')")
-    @GetMapping("/appointment/list")
+    @GetMapping("/list")
     public TableDataInfo list(TalkAppointment appointment) {
         startPage();
         List<TalkAppointment> list = talkAppointmentService.selectTalkAppointmentList(appointment);
@@ -48,7 +48,7 @@ public class TalkAppointmentController extends BaseController {
      * 获取预约详细信息
      */
     @PreAuthorize("@ss.hasPermi('talk:appointment:query')")
-    @GetMapping("/appointment/{appointmentId}")
+    @GetMapping("/{appointmentId}")
     public AjaxResult getInfo(@PathVariable("appointmentId") Long appointmentId) {
         return success(talkAppointmentService.selectTalkAppointmentById(appointmentId));
     }
@@ -58,7 +58,7 @@ public class TalkAppointmentController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('talk:appointment:add')")
     @Log(title = "学生预约谈话", businessType = BusinessType.INSERT)
-    @PostMapping("/appointment")
+    @PostMapping
     public AjaxResult add(@RequestBody TalkAppointment appointment) {
         return toAjax(talkAppointmentService.insertTalkAppointment(appointment));
     }
@@ -68,7 +68,7 @@ public class TalkAppointmentController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('talk:appointment:edit')")
     @Log(title = "学生预约谈话", businessType = BusinessType.UPDATE)
-    @PutMapping("/appointment")
+    @PutMapping
     public AjaxResult edit(@RequestBody TalkAppointment appointment) {
         return toAjax(talkAppointmentService.updateTalkAppointment(appointment));
     }
@@ -78,7 +78,7 @@ public class TalkAppointmentController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('talk:appointment:remove')")
     @Log(title = "学生预约谈话", businessType = BusinessType.DELETE)
-    @DeleteMapping("/appointment/{appointmentIds}")
+    @DeleteMapping("/{appointmentIds}")
     public AjaxResult remove(@PathVariable Long[] appointmentIds) {
         return toAjax(talkAppointmentService.deleteTalkAppointmentByIds(appointmentIds));
     }
@@ -88,7 +88,7 @@ public class TalkAppointmentController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('talk:appointment:confirm')")
     @Log(title = "学生预约谈话", businessType = BusinessType.UPDATE)
-    @PutMapping("/appointment/confirm/{appointmentId}")
+    @PutMapping("/confirm/{appointmentId}")
     public AjaxResult confirm(@PathVariable("appointmentId") Long appointmentId) {
         return toAjax(talkAppointmentService.confirmAppointment(appointmentId));
     }
@@ -98,8 +98,9 @@ public class TalkAppointmentController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('talk:appointment:reject')")
     @Log(title = "学生预约谈话", businessType = BusinessType.UPDATE)
-    @PutMapping("/appointment/reject/{appointmentId}")
-    public AjaxResult reject(@PathVariable("appointmentId") Long appointmentId, @RequestParam(required = false) String rejectReason) {
+    @PutMapping("/reject/{appointmentId}")
+    public AjaxResult reject(@PathVariable("appointmentId") Long appointmentId,
+            @RequestParam(required = false) String rejectReason) {
         return toAjax(talkAppointmentService.rejectAppointment(appointmentId, rejectReason));
     }
 
@@ -108,7 +109,7 @@ public class TalkAppointmentController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('talk:appointment:cancel')")
     @Log(title = "学生预约谈话", businessType = BusinessType.UPDATE)
-    @PutMapping("/appointment/cancel/{appointmentId}")
+    @PutMapping("/cancel/{appointmentId}")
     public AjaxResult cancel(@PathVariable("appointmentId") Long appointmentId) {
         return toAjax(talkAppointmentService.cancelAppointment(appointmentId));
     }
@@ -118,7 +119,7 @@ public class TalkAppointmentController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('talk:appointment:complete')")
     @Log(title = "学生预约谈话", businessType = BusinessType.UPDATE)
-    @PutMapping("/appointment/complete/{appointmentId}")
+    @PutMapping("/complete/{appointmentId}")
     public AjaxResult complete(@PathVariable("appointmentId") Long appointmentId) {
         return toAjax(talkAppointmentService.completeAppointment(appointmentId));
     }

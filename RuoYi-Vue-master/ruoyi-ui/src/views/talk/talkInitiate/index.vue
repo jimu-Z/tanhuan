@@ -60,11 +60,22 @@
               </el-button>
             </div>
             <el-input v-model="searchKey" placeholder="搜索学号/姓名" size="small" clearable class="ti-transfer-search" />
+            <div class="ti-transfer-search" style="display:flex;align-items:center;margin-bottom:8px;">
+              <el-date-picker v-model="dateRange" type="daterange" range-separator="至"
+                start-placeholder="开始日期" end-placeholder="结束日期" size="small"
+                value-format="yyyy-MM-dd HH:mm:ss" style="width:100%"
+                @change="onDateChange" />
+            </div>
             <div class="ti-transfer-list" v-loading="studentLoading">
               <div v-for="stu in filteredAvailable" :key="stu.studentId" class="ti-transfer-item"
                    @click="selectStudent(stu)">
                 <span>{{ stu.studentName }}</span>
                 <span class="ti-transfer-code">{{ stu.studentCode }}</span>
+                <el-tag v-if="wasTalkedInPeriod(stu)" size="mini" type="success" style="margin-left:4px;">已谈话</el-tag>
+                <el-tag v-else size="mini" type="warning" style="margin-left:4px;">未谈话</el-tag>
+                <span v-if="stu.lastTalkTime" class="ti-last-talk" style="color:#909399;font-size:11px;margin-left:2px;">
+                  {{ parseTime(stu.lastTalkTime, '{y}-{m}-{d}') }}
+                </span>
               </div>
               <div v-if="filteredAvailable.length === 0 && !studentLoading" class="ti-empty">无匹配学生</div>
             </div>
@@ -223,6 +234,7 @@ import { createTalk } from '@/api/talk/talkInitiate'
 import { listSystemTemplate, listTemplate } from '@/api/talk/talkTemplate'
 import { uploadAttachment } from '@/api/talk/talkAttachment'
 import { TAG_LABELS } from '@/api/talk/talkSession'
+import { parseTime } from '@/utils/ruoyi'
 
 export default {
   name: 'TalkInitiate',
@@ -243,6 +255,7 @@ export default {
       deptTree: [],
       treeProps: { children: 'children', label: 'deptName' },
       treeFilter: '',
+      dateRange: null,
       currentNodeName: '',
       currentDeptId: null,
       fileList: [],
@@ -291,9 +304,27 @@ export default {
     this.loadDeptTree()
   },
   methods: {
+    parseTime,
+    onDateChange() {
+      this.$nextTick(() => { this.loadStudents() })
+    },
+    wasTalkedInPeriod(stu) {
+      if (!stu.lastTalkTime) return false
+      // 未选择时间段：只要有过谈话就是"已谈话"
+      if (!this.dateRange || this.dateRange.length !== 2) return true
+      // 选择了时间段：检查上次谈话时间是否在范围内
+      const lastTime = new Date(stu.lastTalkTime).getTime()
+      const start = new Date(this.dateRange[0]).getTime()
+      const end = new Date(this.dateRange[1]).getTime()
+      return lastTime >= start && lastTime <= end
+    },
     loadStudents() {
       this.studentLoading = true
-      listTalk({ pageNum: 1, pageSize: 9999 }).then(res => {
+      const params = { pageNum: 1, pageSize: 9999 }
+      if (this.dateRange && this.dateRange.length === 2) {
+        params.dateRange = this.dateRange
+      }
+      listTalk(params).then(res => {
         this.allStudents = res.rows || []
       }).catch(() => { this.$modal.msgError('操作失败') }).finally(() => {
         this.studentLoading = false

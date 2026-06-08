@@ -207,7 +207,7 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
         // 创建学院
         SysDept newDept = new SysDept();
         newDept.setDeptName(deptName);
-        newDept.setParentId(100L);  // 顶级部门
+        newDept.setParentId(100L); // 顶级部门
         newDept.setAncestors("0,100");
         newDept.setDeptType("college");
         newDept.setStatus("0");

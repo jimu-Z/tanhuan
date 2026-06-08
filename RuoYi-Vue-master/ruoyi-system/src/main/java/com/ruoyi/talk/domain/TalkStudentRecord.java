@@ -50,6 +50,9 @@ public class TalkStudentRecord extends BaseEntity {
 
     private Integer teacherNotified;
 
+    /** 会话ID，支持逗号分隔多个ID(仅查询时使用) */
+    private String sessionIds;
+
     /** 是否查询未反馈记录（非数据库字段，仅用于查询条件） */
     private Boolean hasNoFeedback;
 
@@ -156,6 +159,9 @@ public class TalkStudentRecord extends BaseEntity {
     public void setTeacherNotified(Integer teacherNotified) {
         this.teacherNotified = teacherNotified;
     }
+
+    public String getSessionIds() { return sessionIds; }
+    public void setSessionIds(String sessionIds) { this.sessionIds = sessionIds; }
 
     public void setTalkType(String talkType) {
         this.talkType = talkType;

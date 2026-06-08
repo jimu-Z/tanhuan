@@ -164,6 +164,17 @@ public class TalkStudentController extends BaseController {
         return getDataTable(list);
     }
 
+    /**
+     * 按教师ID查询其管理的学生
+     */
+    @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
+    @GetMapping("/byTeacher/{teacherId}")
+    public TableDataInfo listByTeacher(@PathVariable Long teacherId) {
+        startPage();
+        List<TalkStudent> list = talkStudentService.selectByTeacherId(teacherId);
+        return getDataTable(list);
+    }
+
     private void applyDataScope(Map<String, Object> params) {
         if (SecurityUtils.isAdmin())
             return;

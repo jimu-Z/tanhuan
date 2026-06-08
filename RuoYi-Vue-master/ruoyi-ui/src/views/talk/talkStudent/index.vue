@@ -701,7 +701,20 @@ export default {
       this.importLoading = true
       const importData = this.importResult.previewRows.map(row => row.data)
       importExecute(importData, this.importMode).then(response => {
-        this.$modal.msgSuccess("导入成功，共导入 " + response.data.successCount + " 条记录")
+        const data = response.data
+        const msg = '成功导入 ' + (data.successCount || 0) + ' 条，跳过 ' + (data.skipCount || 0) + ' 条'
+        const errors = data.errors || []
+        if (errors.length > 0) {
+          this.$alert(
+            '<div style="max-height:300px;overflow-y:auto;">' +
+            errors.map(e => '<div style="margin:4px 0;color:#e6a23c;">' + e + '</div>').join('') +
+            '</div>',
+            msg,
+            { dangerouslyUseHTMLString: true, confirmButtonText: '知道了', type: data.successCount > 0 ? 'warning' : 'error' }
+          )
+        } else {
+          this.$modal.msgSuccess(msg)
+        }
         this.importOpen = false
         this.importLoading = false
         this.getList()

@@ -98,4 +98,9 @@ public interface ITalkStudentService {
      * @return 学生集合
      */
     public List<TalkStudent> selectUntalkedStudentsInPeriod(Date startTime, Date endTime, Long deptId);
+
+    /**
+     * 按教师ID查询学生列表
+     */
+    public List<TalkStudent> selectByTeacherId(Long teacherId);
 }

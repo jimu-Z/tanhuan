@@ -34,7 +34,8 @@ public class TalkTeacher extends BaseEntity {
 
     private String status;
 
-    /** 学院名称（非数据库字段） */
+    /** 学院名称（非数据库字段），导入时匹配"所属学院"列 */
+    @Excel(name = "所属学院")
     private String deptName;
 
     // === getters/setters ===

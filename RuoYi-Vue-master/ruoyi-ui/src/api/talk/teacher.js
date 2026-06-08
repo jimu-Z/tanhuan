@@ -29,3 +29,8 @@ export function delTeacher(teacherIds) {
 export function getCounselors(deptId) {
   return request({ url: '/talk/teacher/counselors/' + deptId, method: 'get' })
 }
+
+// 获取教师管理的所有学生
+export function getTeacherStudents(teacherId) {
+  return request({ url: '/ruoyi-system/talk/byTeacher/' + teacherId, method: 'get' })
+}

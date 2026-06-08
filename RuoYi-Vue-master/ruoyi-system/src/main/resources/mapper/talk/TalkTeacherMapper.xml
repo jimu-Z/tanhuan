@@ -80,7 +80,7 @@
     <select id="selectCounselorsByDeptId" parameterType="Long" resultMap="TalkTeacherResult">
         <include refid="selectTalkTeacherVo"/>
         where t.dept_id = #{deptId}
-          and t.position in ('counselor', 'head_teacher')
+          and t.position in ('counselor', 'head_teacher', 'secretary', 'deputy_secretary')
           and t.status = '0'
     </select>
 
