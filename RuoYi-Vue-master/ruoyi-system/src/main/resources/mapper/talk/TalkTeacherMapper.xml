@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.talk.mapper.TalkTeacherMapper">
+
+    <resultMap type="TalkTeacher" id="TalkTeacherResult">
+        <result property="teacherId"   column="teacher_id"   />
+        <result property="teacherCode" column="teacher_code" />
+        <result property="name"        column="name"         />
+        <result property="deptId"      column="dept_id"      />
+        <result property="position"    column="position"     />
+        <result property="phone"       column="phone"        />
+        <result property="userId"      column="user_id"      />
+        <result property="status"      column="status"       />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"  column="create_time"  />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"  column="update_time"  />
+        <result property="deptName"    column="dept_name"    />
+    </resultMap>
+
+    <sql id="selectTalkTeacherVo">
+        select t.teacher_id, t.teacher_code, t.name, t.dept_id, t.position,
+               t.phone, t.user_id, t.status,
+               t.create_by, t.create_time, t.update_by, t.update_time,
+               d.dept_name
+        from talk_teacher t
+        left join sys_dept d on t.dept_id = d.dept_id
+    </sql>
+
+    <select id="selectTalkTeacherList" parameterType="TalkTeacher" resultMap="TalkTeacherResult">
+        <include refid="selectTalkTeacherVo"/>
+        <where>
+            <if test="teacherCode != null and teacherCode != ''"> and t.teacher_code like concat('%', #{teacherCode}, '%')</if>
+            <if test="name != null and name != ''"> and t.name like concat('%', #{name}, '%')</if>
+            <if test="deptId != null"> and t.dept_id = #{deptId}</if>
+            <if test="position != null and position != ''"> and t.position = #{position}</if>
+            <if test="status != null and status != ''"> and t.status = #{status}</if>
+        </where>
+        order by t.dept_id, t.teacher_code
+    </select>
+
+    <select id="selectTalkTeacherById" parameterType="Long" resultMap="TalkTeacherResult">
+        <include refid="selectTalkTeacherVo"/>
+        where t.teacher_id = #{teacherId}
+    </select>
+
+    <insert id="insertTalkTeacher" parameterType="TalkTeacher" useGeneratedKeys="true" keyProperty="teacherId">
+        insert into talk_teacher (
+            teacher_code, name, dept_id, position, phone, user_id, status,
+            create_by, create_time
+        ) values (
+            #{teacherCode}, #{name}, #{deptId}, #{position}, #{phone}, #{userId}, #{status},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateTalkTeacher" parameterType="TalkTeacher">
+        update talk_teacher
+        <set>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="position != null and position != ''">position = #{position},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="status != null">status = #{status},</if>
+            update_by = #{updateBy},
+            update_time = sysdate()
+        </set>
+        where teacher_id = #{teacherId}
+    </update>
+
+    <delete id="deleteTalkTeacherById" parameterType="Long">
+        delete from talk_teacher where teacher_id = #{teacherId}
+    </delete>
+
+    <select id="checkTeacherCodeUnique" parameterType="String" resultType="int">
+        select count(1) from talk_teacher where teacher_code = #{teacherCode}
+    </select>
+
+    <select id="selectCounselorsByDeptId" parameterType="Long" resultMap="TalkTeacherResult">
+        <include refid="selectTalkTeacherVo"/>
+        where t.dept_id = #{deptId}
+          and t.position in ('counselor', 'head_teacher')
+          and t.status = '0'
+    </select>
+
+    <select id="selectByDeptIdAndName" resultMap="TalkTeacherResult">
+        <include refid="selectTalkTeacherVo"/>
+        where t.dept_id = #{deptId}
+          and t.name = #{name}
+          and t.status = '0'
+        limit 1
+    </select>
+
+    <select id="countByDeptAndNameExcludePosition" resultType="int">
+        select count(1) from talk_teacher
+        where dept_id = #{deptId}
+          and name = #{name}
+          and position != #{position}
+          and status = '0'
+    </select>
+
+</mapper>

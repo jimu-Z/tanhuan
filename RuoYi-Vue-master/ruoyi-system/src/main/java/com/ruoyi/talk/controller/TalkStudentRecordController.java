@@ -19,6 +19,7 @@ import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.talk.domain.TalkStudentRecord;
+import com.ruoyi.talk.service.ITalkAlertService;
 import com.ruoyi.talk.service.ITalkStudentRecordService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
@@ -34,6 +35,9 @@ import com.ruoyi.common.core.page.TableDataInfo;
 public class TalkStudentRecordController extends BaseController {
     @Autowired
     private ITalkStudentRecordService talkStudentRecordService;
+
+    @Autowired
+    private ITalkAlertService talkAlertService;
 
     /**
      * 查询当前学生自己的谈话记录
@@ -122,9 +126,13 @@ public class TalkStudentRecordController extends BaseController {
         TalkStudentRecord update = new TalkStudentRecord();
         update.setRecordId(talkStudentRecord.getRecordId());
         update.setStudentFeedback(talkStudentRecord.getStudentFeedback());
+        update.setOriginalStudentFeedback(talkStudentRecord.getStudentFeedback());
         update.setTeacherNotified(0);
         update.setUpdateTime(DateUtils.getNowDate());
-        return toAjax(talkStudentRecordService.updateTalkStudentRecord(update));
+        int rows = talkStudentRecordService.updateTalkStudentRecord(update);
+        // 触发敏感词检测
+        talkAlertService.checkStudentFeedbackForKeywords(existing.getStudentId(), talkStudentRecord.getStudentFeedback());
+        return toAjax(rows);
     }
 
     /**

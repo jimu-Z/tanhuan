@@ -35,6 +35,9 @@ public class TalkStudentRecord extends BaseEntity {
     @Excel(name = "学生反馈")
     private String studentFeedback;
 
+    /** 原始学生反馈（学生原始提交，不被教师修改） */
+    private String originalStudentFeedback;
+
     /** 跟进计划 */
     @Excel(name = "跟进计划")
     private String followupPlan;
@@ -112,6 +115,14 @@ public class TalkStudentRecord extends BaseEntity {
 
     public String getStudentFeedback() {
         return studentFeedback;
+    }
+
+    public void setOriginalStudentFeedback(String originalStudentFeedback) {
+        this.originalStudentFeedback = originalStudentFeedback;
+    }
+
+    public String getOriginalStudentFeedback() {
+        return originalStudentFeedback;
     }
 
     public void setFollowupPlan(String followupPlan) {
@@ -195,6 +206,7 @@ public class TalkStudentRecord extends BaseEntity {
                 .append("studentName", getStudentName())
                 .append("studentCode", getStudentCode())
                 .append("studentFeedback", getStudentFeedback())
+                .append("originalStudentFeedback", getOriginalStudentFeedback())
                 .append("followupPlan", getFollowupPlan())
                 .append("followupStatus", getFollowupStatus())
                 .append("notified", getNotified())

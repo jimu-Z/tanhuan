@@ -37,10 +37,12 @@ import com.ruoyi.system.mapper.SysUserRoleMapper;
 import com.ruoyi.talk.domain.TalkStudent;
 import com.ruoyi.talk.domain.TalkSession;
 import com.ruoyi.talk.domain.TalkStudentRecord;
+import com.ruoyi.talk.domain.TalkTeacher;
 import com.ruoyi.talk.mapper.TalkSessionMapper;
 import com.ruoyi.talk.mapper.TalkStudentMapper;
 import com.ruoyi.talk.mapper.TalkStudentRecordMapper;
 import com.ruoyi.talk.service.ITalkStudentService;
+import com.ruoyi.talk.service.ITalkTeacherService;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -76,6 +78,9 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
     @Autowired
     private TalkSessionMapper talkSessionMapper;
+
+    @Autowired
+    private ITalkTeacherService talkTeacherService;
 
     private static final Long TOP_DEPT_ID = 100L;
 
@@ -479,6 +484,19 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                     continue;
                 }
 
+                // 校验辅导员是否存在
+                String counselor = rowData.get("counselor");
+                if (!StringUtils.isEmpty(counselor)) {
+                    TalkTeacher found = talkTeacherService.findCounselorByStudentDeptAndName(classDeptId,
+                            counselor.trim());
+                    if (found == null) {
+                        skipCount++;
+                        errors.add("第" + rowNum + "行: 学生" + studentName + "（学号" + studentCode + "）无法导入，学院下没有对应姓名的辅导员\""
+                                + counselor.trim() + "\"");
+                        continue;
+                    }
+                }
+
                 student.setCreateTime(DateUtils.getNowDate());
                 Long gapId = talkStudentMapper.selectMinAvailableStudentId();
                 if (gapId != null) {
@@ -494,7 +512,6 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
                 String secretary = rowData.get("secretary");
                 String viceSecretary = rowData.get("vice_secretary");
-                String counselor = rowData.get("counselor");
                 String headTeacher = rowData.get("head_teacher");
 
                 if (!StringUtils.isEmpty(secretary)) {
@@ -864,6 +881,19 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     @Override
     public List<TalkStudent> selectUntalkedStudents(Map<String, Object> params) {
         return talkStudentMapper.selectUntalkedStudents(params);
+    }
+
+    @Override
+    @DataScope(deptAlias = "d")
+    public List<TalkStudent> selectTalkStudentListWithLastTalk(TalkStudent talkStudent) {
+        return talkStudentMapper.selectTalkStudentListWithLastTalk(talkStudent);
+    }
+
+    @Override
+    public List<TalkStudent> selectUntalkedStudentsInPeriod(Date startTime, Date endTime, Long deptId) {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        return talkStudentMapper.selectUntalkedStudentsInPeriod(
+                sdf.format(startTime), sdf.format(endTime), deptId);
     }
 
 }

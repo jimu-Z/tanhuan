@@ -1,5 +1,6 @@
 package com.ruoyi.talk.service;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.multipart.MultipartFile;
@@ -82,4 +83,19 @@ public interface ITalkStudentService {
     public int countStudentsByDeptId(Long deptId);
 
     public List<TalkStudent> selectUntalkedStudents(Map<String, Object> params);
+
+    /**
+     * 查询学生列表（含上次谈话时间）
+     */
+    public List<TalkStudent> selectTalkStudentListWithLastTalk(TalkStudent talkStudent);
+
+    /**
+     * 查询指定时间段内未被谈话的学生
+     * 
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     * @param deptId 可选部门ID过滤
+     * @return 学生集合
+     */
+    public List<TalkStudent> selectUntalkedStudentsInPeriod(Date startTime, Date endTime, Long deptId);
 }

@@ -27,6 +27,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="mentalHealthStatus"    column="mental_health_status"    />
         <result property="povertyLevel"    column="poverty_level"    />
         <result property="deptName"    column="dept_name"    />
+        <result property="lastTalkTime"    column="last_talk_time"    />
         <result property="remark"    column="remark"    />
         <result property="createBy"    column="create_by"    />
         <result property="createTime"    column="create_time"    />
@@ -75,6 +76,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectTalkStudentByStudentId" parameterType="Long" resultMap="TalkStudentResult">
         <include refid="selectTalkStudentVo"/>
         where s.student_id = #{studentId}
+    </select>
+
+    <select id="selectTalkStudentByCode" parameterType="String" resultMap="TalkStudentResult">
+        <include refid="selectTalkStudentVo"/>
+        where s.student_code = #{studentCode}
     </select>
 
     <insert id="insertTalkStudent" parameterType="TalkStudent" useGeneratedKeys="true" keyProperty="studentId">
@@ -222,5 +228,71 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="countRecordsByStudentId" parameterType="Long" resultType="int">
         select count(*) from talk_student_record where student_id = #{studentId}
+    </select>
+
+    <select id="selectTalkStudentListWithLastTalk" parameterType="TalkStudent" resultMap="TalkStudentResult">
+        select s.student_id, s.student_code, s.student_name, s.dept_id, s.gender, 
+               s.political_status, s.nation, s.phone, s.id_card, s.address, s.father_name, 
+               s.father_phone, s.mother_name, s.mother_phone, s.class_monitor, s.dorm_leader, 
+               s.dorm_building, s.dorm_room, s.enrollment_status, s.mental_health_status, 
+               s.poverty_level, s.remark, s.create_by, s.create_time, s.update_by, s.update_time,
+               d.dept_name,
+               (select max(ts.talk_time) 
+                from talk_student_record tsr 
+                join talk_session ts on tsr.session_id = ts.session_id 
+                where tsr.student_id = s.student_id) as last_talk_time
+        from talk_student s
+        left join sys_dept d on s.dept_id = d.dept_id
+        <where>  
+            <if test="studentCode != null  and studentCode != ''"> and s.student_code = #{studentCode}</if>
+            <if test="studentName != null  and studentName != ''"> and s.student_name like concat('%', #{studentName}, '%')</if>
+            <if test="deptId != null "> and s.dept_id = #{deptId}</if>
+            <if test="gender != null  and gender != ''"> and s.gender = #{gender}</if>
+            <if test="politicalStatus != null  and politicalStatus != ''"> and s.political_status = #{politicalStatus}</if>
+            <if test="nation != null  and nation != ''"> and s.nation = #{nation}</if>
+            <if test="phone != null  and phone != ''"> and s.phone = #{phone}</if>
+            <if test="idCard != null  and idCard != ''"> and s.id_card = #{idCard}</if>
+            <if test="address != null  and address != ''"> and s.address = #{address}</if>
+            <if test="fatherName != null  and fatherName != ''"> and s.father_name like concat('%', #{fatherName}, '%')</if>
+            <if test="fatherPhone != null  and fatherPhone != ''"> and s.father_phone = #{fatherPhone}</if>
+            <if test="motherName != null  and motherName != ''"> and s.mother_name like concat('%', #{motherName}, '%')</if>
+            <if test="motherPhone != null  and motherPhone != ''"> and s.mother_phone = #{motherPhone}</if>
+            <if test="classMonitor != null  and classMonitor != ''"> and s.class_monitor = #{classMonitor}</if>
+            <if test="dormLeader != null  and dormLeader != ''"> and s.dorm_leader = #{dormLeader}</if>
+            <if test="dormBuilding != null  and dormBuilding != ''"> and s.dorm_building = #{dormBuilding}</if>
+            <if test="dormRoom != null  and dormRoom != ''"> and s.dorm_room = #{dormRoom}</if>
+            <if test="enrollmentStatus != null  and enrollmentStatus != ''"> and s.enrollment_status = #{enrollmentStatus}</if>
+            <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and s.mental_health_status = #{mentalHealthStatus}</if>
+            <if test="povertyLevel != null  and povertyLevel != ''"> and s.poverty_level = #{povertyLevel}</if>
+            ${params.dataScope}
+        </where>
+    </select>
+
+    <select id="selectUntalkedStudentsInPeriod" resultMap="TalkStudentResult">
+        select s.student_id, s.student_code, s.student_name, s.dept_id, s.gender, 
+               s.political_status, s.nation, s.phone, s.id_card, s.address, s.father_name, 
+               s.father_phone, s.mother_name, s.mother_phone, s.class_monitor, s.dorm_leader, 
+               s.dorm_building, s.dorm_room, s.enrollment_status, s.mental_health_status, 
+               s.poverty_level, s.remark, s.create_by, s.create_time, s.update_by, s.update_time,
+               d.dept_name,
+               (select max(ts.talk_time) 
+                from talk_student_record tsr 
+                join talk_session ts on tsr.session_id = ts.session_id 
+                where tsr.student_id = s.student_id) as last_talk_time
+        from talk_student s
+        left join sys_dept d on s.dept_id = d.dept_id
+        <where>
+            not exists (
+                select 1 from talk_student_record tsr 
+                join talk_session ts on tsr.session_id = ts.session_id 
+                where tsr.student_id = s.student_id 
+                and ts.talk_time between #{startTime} and #{endTime}
+            )
+            <if test="deptId != null">
+                and s.dept_id in (select d2.dept_id from sys_dept d2 where d2.dept_id = #{deptId}
+                    or find_in_set(#{deptId}, d2.ancestors))
+            </if>
+        </where>
+        order by s.student_code asc
     </select>
 </mapper>

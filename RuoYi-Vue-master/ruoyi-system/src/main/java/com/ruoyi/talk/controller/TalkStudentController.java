@@ -1,6 +1,8 @@
 package com.ruoyi.talk.controller;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -8,6 +10,7 @@ import java.util.Map;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -46,13 +49,19 @@ public class TalkStudentController extends BaseController {
     private ISysDeptService deptService;
 
     /**
-     * 查询学生信息管理列表
+     * 查询学生信息管理列表（含上次谈话时间）
      */
     @PreAuthorize("@ss.hasPermi('talk:student:list')")
     @GetMapping("/list")
-    public TableDataInfo list(TalkStudent talkStudent) {
+    public TableDataInfo list(TalkStudent talkStudent,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") List<Date> dateRange) {
         startPage();
-        List<TalkStudent> list = talkStudentService.selectTalkStudentList(talkStudent);
+        if (dateRange != null && dateRange.size() == 2) {
+            List<TalkStudent> list = talkStudentService.selectUntalkedStudentsInPeriod(
+                    dateRange.get(0), dateRange.get(1), talkStudent.getDeptId());
+            return getDataTable(list);
+        }
+        List<TalkStudent> list = talkStudentService.selectTalkStudentListWithLastTalk(talkStudent);
         return getDataTable(list);
     }
 
@@ -141,6 +150,20 @@ public class TalkStudentController extends BaseController {
         return getDataTable(list);
     }
 
+    /**
+     * 查询指定时间段内未被谈话的学生（新接口）
+     */
+    @PreAuthorize("@ss.hasPermi('talk:student:list')")
+    @GetMapping("/untalkedInPeriod")
+    public TableDataInfo untalkedInPeriod(
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date startTime,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date endTime,
+            @RequestParam(required = false) Long deptId) {
+        startPage();
+        List<TalkStudent> list = talkStudentService.selectUntalkedStudentsInPeriod(startTime, endTime, deptId);
+        return getDataTable(list);
+    }
+
     private void applyDataScope(Map<String, Object> params) {
         if (SecurityUtils.isAdmin())
             return;
@@ -224,6 +247,9 @@ public class TalkStudentController extends BaseController {
     @Log(title = "学生信息管理", businessType = BusinessType.IMPORT)
     @PostMapping("/import/preview")
     public AjaxResult importPreview(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return error("请选择文件");
+        }
         return success(talkStudentService.importPreview(file));
     }
 

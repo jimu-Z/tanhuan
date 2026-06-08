@@ -148,6 +148,18 @@ export const constantRoutes = [
     children: [{ path: '', component: () => import('@/views/talk/bigscreenV2/index'), name: 'BigscreenV2', meta: { title: '大屏展示' } }]
   },
   {
+    path: '/talk/teacher',
+    component: Layout,
+    hidden: true,
+    children: [{ path: '', component: () => import('@/views/talk/teacher/index'), name: 'TalkTeacher', meta: { title: '教师管理', icon: 'user' } }]
+  },
+  {
+    path: '/talk/appointment',
+    component: Layout,
+    hidden: true,
+    children: [{ path: '', component: () => import('@/views/talk/appointment/index'), name: 'TalkAppointment', meta: { title: '预约管理', icon: 'date' } }]
+  },
+  {
     path: '/user',
     component: Layout,
     hidden: true,

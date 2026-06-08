@@ -1,0 +1,108 @@
+package com.ruoyi.talk.controller;
+
+import java.util.List;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import com.ruoyi.common.annotation.Log;
+import com.ruoyi.common.core.controller.BaseController;
+import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.utils.SecurityUtils;
+import com.ruoyi.common.utils.poi.ExcelUtil;
+import com.ruoyi.talk.domain.TalkTeacher;
+import com.ruoyi.talk.service.ITalkTeacherService;
+
+/**
+ * 教师信息Controller
+ *
+ * @author admin
+ * @date 2026-06-06
+ */
+@RestController
+@RequestMapping("/talk/teacher")
+public class TalkTeacherController extends BaseController {
+
+    @Autowired
+    private ITalkTeacherService teacherService;
+
+    @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
+    @GetMapping("/list")
+    public TableDataInfo list(TalkTeacher teacher) {
+        startPage();
+        List<TalkTeacher> list = teacherService.selectTalkTeacherList(teacher);
+        return getDataTable(list);
+    }
+
+    @PreAuthorize("@ss.hasPermi('talk:teacher:query')")
+    @GetMapping("/{teacherId}")
+    public AjaxResult getInfo(@PathVariable Long teacherId) {
+        return success(teacherService.selectTalkTeacherById(teacherId));
+    }
+
+    @PreAuthorize("@ss.hasPermi('talk:teacher:add')")
+    @Log(title = "教师管理", businessType = BusinessType.INSERT)
+    @PostMapping
+    public AjaxResult add(@Validated @RequestBody TalkTeacher teacher) {
+        teacher.setCreateBy(SecurityUtils.getUsername());
+        if (!teacherService.checkTeacherCodeUnique(teacher)) {
+            return error("工号 '" + teacher.getTeacherCode() + "' 已存在");
+        }
+        return toAjax(teacherService.insertTalkTeacher(teacher));
+    }
+
+    @PreAuthorize("@ss.hasPermi('talk:teacher:edit')")
+    @Log(title = "教师管理", businessType = BusinessType.UPDATE)
+    @PutMapping
+    public AjaxResult edit(@Validated @RequestBody TalkTeacher teacher) {
+        return toAjax(teacherService.updateTalkTeacher(teacher));
+    }
+
+    @PreAuthorize("@ss.hasPermi('talk:teacher:remove')")
+    @Log(title = "教师管理", businessType = BusinessType.DELETE)
+    @DeleteMapping("/{teacherIds}")
+    public AjaxResult remove(@PathVariable Long[] teacherIds) {
+        return toAjax(teacherService.deleteTalkTeacherByIds(teacherIds));
+    }
+
+    @PreAuthorize("@ss.hasPermi('talk:teacher:import')")
+    @Log(title = "教师管理", businessType = BusinessType.IMPORT)
+    @PostMapping("/importData")
+    public AjaxResult importData(MultipartFile file, boolean updateSupport) throws Exception {
+        if (file == null || file.isEmpty()) {
+            return error("请选择文件");
+        }
+        ExcelUtil<TalkTeacher> util = new ExcelUtil<>(TalkTeacher.class);
+        List<TalkTeacher> teacherList = util.importExcel(file.getInputStream());
+        String message = teacherService.importTeacher(teacherList, updateSupport);
+        return success(message);
+    }
+
+    @PreAuthorize("@ss.hasPermi('talk:teacher:import')")
+    @PostMapping("/importTemplate")
+    public void importTemplate(HttpServletResponse response) {
+        ExcelUtil<TalkTeacher> util = new ExcelUtil<>(TalkTeacher.class);
+        util.importTemplateExcel(response, "教师数据");
+    }
+
+    /**
+     * 获取指定学院下的辅导员/班主任列表（供书记新增和预约选择用）
+     */
+    @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
+    @GetMapping("/counselors/{deptId}")
+    public AjaxResult counselors(@PathVariable Long deptId) {
+        List<TalkTeacher> list = teacherService.selectCounselorsByDeptId(deptId);
+        return success(list);
+    }
+}

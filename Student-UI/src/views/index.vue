@@ -91,6 +91,30 @@
         </div>
       </el-col>
       <el-col :xs="24" :sm="8">
+        <div class="action-card" @click="$router.push('/appointment/create')">
+          <div class="action-icon action-icon-purple">
+            <i class="el-icon-date"></i>
+          </div>
+          <div class="action-info">
+            <h4>预约谈话</h4>
+            <p>发起新的谈话预约</p>
+          </div>
+          <i class="el-icon-arrow-right action-arrow"></i>
+        </div>
+      </el-col>
+      <el-col :xs="24" :sm="8">
+        <div class="action-card" @click="$router.push('/appointment/list')">
+          <div class="action-icon action-icon-teal">
+            <i class="el-icon-s-order"></i>
+          </div>
+          <div class="action-info">
+            <h4>我的预约</h4>
+            <p>查看预约记录与状态</p>
+          </div>
+          <i class="el-icon-arrow-right action-arrow"></i>
+        </div>
+      </el-col>
+      <el-col :xs="24" :sm="8">
         <div class="action-card" @click="showProfile = true">
           <div class="action-icon action-icon-green">
             <i class="el-icon-user"></i>
@@ -229,7 +253,7 @@ export default {
       })
     },
     getStatusType(status) {
-      const map = { pending: 'warning', in_progress: '', completed: 'success', none: 'info' }
+      const map = { pending: 'warning', in_progress: 'warning', completed: 'success', none: 'info' }
       return map[status] || 'info'
     },
     getStatusText(status) {
@@ -447,6 +471,16 @@ export default {
 
 .action-icon-orange {
   background: linear-gradient(135deg, #f5a623 0%, #f7c948 100%);
+  color: #fff;
+}
+
+.action-icon-purple {
+  background: linear-gradient(135deg, #7b2d8e 0%, #9b59b6 100%);
+  color: #fff;
+}
+
+.action-icon-teal {
+  background: linear-gradient(135deg, #00897b 0%, #26a69a 100%);
   color: #fff;
 }
 

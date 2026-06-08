@@ -1,5 +1,7 @@
 package com.ruoyi.talk.domain;
 
+import java.util.Date;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.ruoyi.common.annotation.Excel;
@@ -96,6 +98,10 @@ public class TalkStudent extends BaseEntity {
     /** 贫困等级认定 */
     @Excel(name = "贫困等级认定")
     private String povertyLevel;
+
+    /** 上次谈话时间（非数据库字段，仅用于查询展示） */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date lastTalkTime;
 
     /** 班级名称（非数据库字段，仅用于查询展示） */
     private String deptName;
@@ -268,6 +274,14 @@ public class TalkStudent extends BaseEntity {
         return povertyLevel;
     }
 
+    public void setLastTalkTime(Date lastTalkTime) {
+        this.lastTalkTime = lastTalkTime;
+    }
+
+    public Date getLastTalkTime() {
+        return lastTalkTime;
+    }
+
     public void setDeptName(String deptName) {
         this.deptName = deptName;
     }
@@ -300,6 +314,7 @@ public class TalkStudent extends BaseEntity {
                 .append("enrollmentStatus", getEnrollmentStatus())
                 .append("mentalHealthStatus", getMentalHealthStatus())
                 .append("povertyLevel", getPovertyLevel())
+                .append("lastTalkTime", getLastTalkTime())
                 .append("deptName", getDeptName())
                 .append("remark", getRemark())
                 .append("createBy", getCreateBy())

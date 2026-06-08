@@ -31,6 +31,18 @@ export const constantRoutes = [
     component: () => import('@/views/pending/index'),
     name: 'Pending',
     meta: { title: '待处理谈话', requiresAuth: true }
+  },
+  {
+    path: '/appointment/create',
+    name: 'AppointmentCreate',
+    component: () => import('@/views/appointment/create.vue'),
+    meta: { title: '发起预约', requiresAuth: true }
+  },
+  {
+    path: '/appointment/list',
+    name: 'AppointmentList',
+    component: () => import('@/views/appointment/index.vue'),
+    meta: { title: '我的预约', requiresAuth: true }
   }
 ]
 

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.talk.mapper.TalkAppointmentMapper">
+
+    <resultMap type="TalkAppointment" id="TalkAppointmentResult">
+        <result property="appointmentId"   column="appointment_id"   />
+        <result property="studentId"       column="student_id"       />
+        <result property="teacherId"       column="teacher_id"       />
+        <result property="appointmentTime" column="appointment_time" />
+        <result property="location"        column="location"         />
+        <result property="reason"          column="reason"           />
+        <result property="status"          column="status"           />
+        <result property="rejectReason"    column="reject_reason"    />
+        <result property="sessionId"       column="session_id"       />
+        <result property="createBy"        column="create_by"        />
+        <result property="createTime"      column="create_time"      />
+        <result property="updateBy"        column="update_by"        />
+        <result property="updateTime"      column="update_time"      />
+        <result property="studentName"     column="student_name"     />
+        <result property="studentCode"     column="student_code"     />
+        <result property="teacherName"     column="teacher_name"     />
+    </resultMap>
+
+    <sql id="selectTalkAppointmentVo">
+        select ta.appointment_id, ta.student_id, ta.teacher_id, ta.appointment_time,
+               ta.location, ta.reason, ta.status, ta.reject_reason, ta.session_id,
+               ta.create_by, ta.create_time, ta.update_by, ta.update_time,
+               st.student_name, st.student_code, tt.name as teacher_name
+        from talk_appointment ta
+        left join talk_student st on ta.student_id = st.student_id
+        left join talk_teacher tt on ta.teacher_id = tt.teacher_id
+    </sql>
+
+    <select id="selectTalkAppointmentList" parameterType="TalkAppointment" resultMap="TalkAppointmentResult">
+        <include refid="selectTalkAppointmentVo"/>
+        <where>
+            <if test="studentId != null"> and ta.student_id = #{studentId}</if>
+            <if test="teacherId != null"> and ta.teacher_id = #{teacherId}</if>
+            <if test="appointmentTime != null"> and ta.appointment_time = #{appointmentTime}</if>
+            <if test="location != null and location != ''"> and ta.location like concat('%', #{location}, '%')</if>
+            <if test="reason != null and reason != ''"> and ta.reason like concat('%', #{reason}, '%')</if>
+            <if test="status != null and status != ''"> and ta.status = #{status}</if>
+            <if test="studentName != null and studentName != ''"> and st.student_name like concat('%', #{studentName}, '%')</if>
+            <if test="studentCode != null and studentCode != ''"> and st.student_code like concat('%', #{studentCode}, '%')</if>
+            <if test="teacherName != null and teacherName != ''"> and tt.name like concat('%', #{teacherName}, '%')</if>
+            <if test="params.studentUsername != null and params.studentUsername != ''"> and ta.create_by = #{params.studentUsername}</if>
+            <if test="params.counselorUsername != null and params.counselorUsername != ''"> and ta.teacher_id in (select tt.teacher_id from talk_teacher tt join sys_user su on tt.user_id = su.user_id where su.user_name = #{params.counselorUsername})</if>
+            <if test="params.secretaryDeptId != null"> and st.dept_id is not null and exists (select 1 from sys_dept d where (d.dept_id = #{params.secretaryDeptId} or find_in_set(#{params.secretaryDeptId}, d.ancestors)) and d.dept_id = st.dept_id)</if>
+        </where>
+        order by ta.appointment_time desc
+    </select>
+
+    <select id="selectTalkAppointmentById" parameterType="Long" resultMap="TalkAppointmentResult">
+        <include refid="selectTalkAppointmentVo"/>
+        where ta.appointment_id = #{appointmentId}
+    </select>
+
+    <select id="selectByStudentId" parameterType="Long" resultMap="TalkAppointmentResult">
+        <include refid="selectTalkAppointmentVo"/>
+        where ta.student_id = #{studentId}
+        order by ta.appointment_time desc
+    </select>
+
+    <insert id="insertTalkAppointment" parameterType="TalkAppointment" useGeneratedKeys="true" keyProperty="appointmentId">
+        insert into talk_appointment
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="studentId != null">student_id,</if>
+            <if test="teacherId != null">teacher_id,</if>
+            <if test="appointmentTime != null">appointment_time,</if>
+            <if test="location != null and location != ''">location,</if>
+            <if test="reason != null and reason != ''">reason,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="sessionId != null">session_id,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="studentId != null">#{studentId},</if>
+            <if test="teacherId != null">#{teacherId},</if>
+            <if test="appointmentTime != null">#{appointmentTime},</if>
+            <if test="location != null and location != ''">#{location},</if>
+            <if test="reason != null and reason != ''">#{reason},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="sessionId != null">#{sessionId},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <update id="updateTalkAppointment" parameterType="TalkAppointment">
+        update talk_appointment
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="studentId != null">student_id = #{studentId},</if>
+            <if test="teacherId != null">teacher_id = #{teacherId},</if>
+            <if test="appointmentTime != null">appointment_time = #{appointmentTime},</if>
+            <if test="location != null and location != ''">location = #{location},</if>
+            <if test="reason != null and reason != ''">reason = #{reason},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="rejectReason != null">reject_reason = #{rejectReason},</if>
+            <if test="sessionId != null">session_id = #{sessionId},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where appointment_id = #{appointmentId}
+    </update>
+
+    <delete id="deleteTalkAppointmentByIds" parameterType="String">
+        delete from talk_appointment where appointment_id in
+        <foreach item="appointmentId" collection="array" open="(" separator="," close=")">
+            #{appointmentId}
+        </foreach>
+    </delete>
+
+</mapper>

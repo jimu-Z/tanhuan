@@ -15,6 +15,7 @@ const store = new Vuex.Store({
       userId: null,
       studentId: null,
       studentCode: '',
+      deptId: '',
       deptName: '',
       phonenumber: '',
       politicalStatus: ''
@@ -61,6 +62,7 @@ const store = new Vuex.Store({
             userId: user.userId,
             studentId: params.studentId || user.studentId || null,
             studentCode: params.studentCode || user.studentCode || user.userName,
+            deptId: params.deptId || user.deptId || '',
             deptName: params.deptName || user.deptName || '',
             phonenumber: user.phonenumber || params.phonenumber || '',
             politicalStatus: params.politicalStatus || user.politicalStatus || ''
@@ -81,6 +83,7 @@ const store = new Vuex.Store({
           userId: null,
           studentId: null,
           studentCode: '',
+          deptId: '',
           deptName: '',
           phonenumber: '',
           politicalStatus: ''

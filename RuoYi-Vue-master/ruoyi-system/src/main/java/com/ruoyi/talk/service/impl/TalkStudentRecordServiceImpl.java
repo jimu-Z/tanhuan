@@ -35,13 +35,17 @@ public class TalkStudentRecordServiceImpl implements ITalkStudentRecordService {
 
     @Override
     public TalkStudentRecord selectTalkStudentRecordByRecordId(Long recordId) {
-        return talkStudentRecordMapper.selectTalkStudentRecordByRecordId(recordId);
+        TalkStudentRecord record = talkStudentRecordMapper.selectTalkStudentRecordByRecordId(recordId);
+        maskForStudent(record);
+        return record;
     }
 
     @Override
     public List<TalkStudentRecord> selectTalkStudentRecordList(TalkStudentRecord talkStudentRecord) {
         applyDataScopeFilter(talkStudentRecord);
-        return talkStudentRecordMapper.selectTalkStudentRecordList(talkStudentRecord);
+        List<TalkStudentRecord> list = talkStudentRecordMapper.selectTalkStudentRecordList(talkStudentRecord);
+        applyStudentMask(list);
+        return list;
     }
 
     private void applyDataScopeFilter(TalkStudentRecord talkStudentRecord) {
@@ -85,5 +89,37 @@ public class TalkStudentRecordServiceImpl implements ITalkStudentRecordService {
     @Override
     public int deleteTalkStudentRecordByRecordId(Long recordId) {
         return talkStudentRecordMapper.deleteTalkStudentRecordByRecordId(recordId);
+    }
+
+    /**
+     * 学生角色数据脱敏：隐藏谈话内容、跟进计划、跟进状态，
+     * 并将studentFeedback替换为originalStudentFeedback
+     */
+    private void maskForStudent(TalkStudentRecord record) {
+        if (record == null) {
+            return;
+        }
+        if (SecurityUtils.hasRole("talk_student")) {
+            record.setTalkContent(null);
+            record.setFollowupPlan(null);
+            record.setFollowupStatus(null);
+            if (record.getOriginalStudentFeedback() != null) {
+                record.setStudentFeedback(record.getOriginalStudentFeedback());
+            }
+        }
+    }
+
+    /**
+     * 对学生角色列表进行数据脱敏
+     */
+    private void applyStudentMask(List<TalkStudentRecord> list) {
+        if (list == null || list.isEmpty()) {
+            return;
+        }
+        if (SecurityUtils.hasRole("talk_student")) {
+            for (TalkStudentRecord record : list) {
+                maskForStudent(record);
+            }
+        }
     }
 }

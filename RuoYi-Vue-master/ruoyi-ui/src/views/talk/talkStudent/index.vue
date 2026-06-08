@@ -134,6 +134,19 @@
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
+      <el-form-item label="日期范围" prop="dateRange">
+        <el-date-picker
+          v-model="queryParams.dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="yyyy-MM-dd"
+          clearable
+          style="width:240px"
+          @change="handleQuery"
+        />
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
         <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
@@ -480,6 +493,7 @@ export default {
         enrollmentStatus: null,
         mentalHealthStatus: null,
         povertyLevel: null,
+        dateRange: null
       },
       // 表单参数
       form: {},
@@ -610,7 +624,7 @@ export default {
     /** 修改按钮操作 */
     handleUpdate(row) {
       this.reset()
-      const studentId = row.studentId || this.ids
+      const studentId = row ? row.studentId : (this.ids && this.ids.length > 0 ? this.ids[0] : null)
       getTalk(studentId).then(response => {
         this.form = response.data || {}
         this.open = true

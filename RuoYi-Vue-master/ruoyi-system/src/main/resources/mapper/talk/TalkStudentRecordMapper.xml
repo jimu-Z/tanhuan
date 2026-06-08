@@ -11,6 +11,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="studentName"    column="student_name"    />
         <result property="studentCode"    column="student_code"    />
         <result property="studentFeedback"    column="student_feedback"    />
+        <result property="originalStudentFeedback" column="original_student_feedback" />
         <result property="followupPlan"    column="followup_plan"    />
         <result property="followupStatus"    column="followup_status"    />
         <result property="notified"         column="notified"          />
@@ -26,7 +27,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <sql id="selectTalkStudentRecordVo">
         select tsr.record_id, tsr.session_id, tsr.student_id, st.student_name, st.student_code,
-               tsr.student_feedback, tsr.followup_plan, tsr.followup_status,
+               tsr.student_feedback, tsr.original_student_feedback, tsr.followup_plan, tsr.followup_status,
                tsr.notified, tsr.teacher_notified,
                ts.talk_time, ts.talk_type, ts.talk_location, ts.talk_content, ts.talk_person,
                tsr.create_time, tsr.update_time
@@ -80,6 +81,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="sessionId != null">session_id,</if>
             <if test="studentId != null">student_id,</if>
             <if test="studentFeedback != null">student_feedback,</if>
+            <if test="originalStudentFeedback != null">original_student_feedback,</if>
             <if test="followupPlan != null and followupPlan != ''">followup_plan,</if>
             <if test="followupStatus != null">followup_status,</if>
             <if test="notified != null">notified,</if>
@@ -91,6 +93,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="sessionId != null">#{sessionId},</if>
             <if test="studentId != null">#{studentId},</if>
             <if test="studentFeedback != null">#{studentFeedback},</if>
+            <if test="originalStudentFeedback != null">#{originalStudentFeedback},</if>
             <if test="followupPlan != null and followupPlan != ''">#{followupPlan},</if>
             <if test="followupStatus != null">#{followupStatus},</if>
             <if test="notified != null">#{notified},</if>
@@ -106,6 +109,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="sessionId != null">session_id = #{sessionId},</if>
             <if test="studentId != null">student_id = #{studentId},</if>
             <if test="studentFeedback != null">student_feedback = #{studentFeedback},</if>
+            <if test="originalStudentFeedback != null">original_student_feedback = #{originalStudentFeedback},</if>
             <if test="followupPlan != null and followupPlan != ''">followup_plan = #{followupPlan},</if>
             <if test="followupStatus != null">followup_status = #{followupStatus},</if>
             <if test="notified != null">notified = #{notified},</if>
