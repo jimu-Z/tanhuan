@@ -31,10 +31,10 @@ public interface TalkTeacherMapper {
     /**
      * 在学院下按姓名查找教师
      */
-    TalkTeacher selectByDeptIdAndName(Long deptId, String name);
+    TalkTeacher selectByDeptIdAndName(Long deptId, String teacherName);
 
     /**
      * 检查同学院下是否存在同名但不同岗位的教师（用于兼任判定）
      */
-    int countByDeptAndNameExcludePosition(Long deptId, String name, String position);
+    int countByDeptAndNameExcludePosition(Long deptId, String teacherName, String position);
 }

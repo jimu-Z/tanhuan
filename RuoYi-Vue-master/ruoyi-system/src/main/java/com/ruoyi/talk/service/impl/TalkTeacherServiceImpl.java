@@ -144,6 +144,11 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
         StringBuilder failMsg = new StringBuilder();
 
         for (TalkTeacher teacher : teacherList) {
+            if (teacher == null) {
+                failCount++;
+                failMsg.append("空行; ");
+                continue;
+            }
             try {
                 // 如果学院不存在则自动创建
                 if (teacher.getDeptId() == null && teacher.getDeptName() != null) {
@@ -157,8 +162,11 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
                 successCount++;
             } catch (Exception e) {
                 failCount++;
-                failMsg.append(teacher.getName()).append("(").append(e.getMessage()).append("); ");
-                log.warn("导入教师失败: {} - {}", teacher.getName(), e.getMessage());
+                String teacherName = teacher.getTeacherName() != null ? teacher.getTeacherName()
+                        : (teacher.getTeacherCode() != null ? teacher.getTeacherCode() : "未知");
+                String errMsg = translateErrorMessage(e);
+                failMsg.append(teacherName).append("(").append(errMsg).append("); ");
+                log.warn("导入教师失败: {} - {}", teacherName, errMsg);
             }
         }
 
@@ -167,6 +175,75 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
             message += "，失败 " + failCount + " 条: " + failMsg;
         }
         return message;
+    }
+
+    /**
+     * 将异常信息翻译为中文提示
+     */
+    private String translateErrorMessage(Exception e) {
+        // 递归获取根因
+        Throwable root = e;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        String msg = root.getMessage();
+        if (msg == null) {
+            msg = e.getClass().getSimpleName();
+        }
+
+        // 唯一键冲突：工号重复
+        if (msg.contains("Duplicate entry") && msg.contains("uk_teacher_code")) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("Duplicate entry '(.*?)'").matcher(msg);
+            if (m.find()) {
+                return "工号'" + m.group(1) + "'已存在";
+            }
+            return "工号重复";
+        }
+        if (msg.contains("Duplicate entry")) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("Duplicate entry '(.*?)'").matcher(msg);
+            if (m.find()) {
+                return "数据重复：" + m.group(1);
+            }
+            return "数据重复";
+        }
+
+        // 字段不能为空
+        if (msg.contains("cannot be null")) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("Column '(.*?)' cannot be null").matcher(msg);
+            if (m.find()) {
+                String col = m.group(1);
+                switch (col) {
+                    case "teacher_code": return "工号不能为空";
+                    case "teacher_name": return "姓名不能为空";
+                    case "dept_id": return "所属学院不能为空";
+                    case "position": return "岗位不能为空";
+                    default: return col + "不能为空";
+                }
+            }
+            return "必填字段为空";
+        }
+
+        // 数据过长
+        if (msg.contains("Data too long")) {
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("Data too long for column '(.*?)'").matcher(msg);
+            if (m.find()) {
+                return m.group(1) + "内容过长";
+            }
+            return "数据内容过长";
+        }
+
+        // 数据截断
+        if (msg.contains("Data truncation")) {
+            return "数据格式不正确";
+        }
+
+        // 外键约束
+        if (msg.contains("foreign key") || msg.contains("a foreign key constraint")) {
+            return "关联数据不存在";
+        }
+
+        // 其他：截短显示
+        return msg.length() > 80 ? msg.substring(0, 80) + "..." : msg;
     }
 
     /**
@@ -232,7 +309,7 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
 
             SysUser newUser = new SysUser();
             newUser.setUserName(userName);
-            newUser.setNickName(teacher.getName());
+            newUser.setNickName(teacher.getTeacherName());
             newUser.setPassword(SecurityUtils.encryptPassword(DEFAULT_PASSWORD));
             newUser.setDeptId(teacher.getDeptId());
             newUser.setPhonenumber(teacher.getPhone());
@@ -245,7 +322,7 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
             // 分配角色
             assignRole(newUser.getUserId(), teacher.getPosition());
 
-            log.info("为教师 {} 创建用户成功: {}", teacher.getName(), userName);
+            log.info("为教师 {} 创建用户成功: {}", teacher.getTeacherName(), userName);
         } catch (Exception e) {
             log.error("为教师创建用户失败: {}", teacher.getTeacherCode(), e);
         }
@@ -282,14 +359,14 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
         if (code == null) {
             throw new IllegalArgumentException("教师工号不能为空");
         }
-        if (teacher.getDeptId() == null || teacher.getName() == null) {
+        if (teacher.getDeptId() == null || teacher.getTeacherName() == null) {
             return code;
         }
 
         String position = teacher.getPosition();
         // 检查同学院下是否有同名但不同岗位的教师
         int count = teacherMapper.countByDeptAndNameExcludePosition(
-                teacher.getDeptId(), teacher.getName(), position);
+                teacher.getDeptId(), teacher.getTeacherName(), position);
         if (count == 0) {
             return code; // 无兼任，直接用原工号
         }

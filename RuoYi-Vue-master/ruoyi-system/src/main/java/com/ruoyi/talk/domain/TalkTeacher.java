@@ -18,7 +18,7 @@ public class TalkTeacher extends BaseEntity {
     private String teacherCode;
 
     @Excel(name = "姓名")
-    private String name;
+    private String teacherName;
 
     @Excel(name = "所属学院ID")
     private Long deptId;
@@ -38,46 +38,105 @@ public class TalkTeacher extends BaseEntity {
     @Excel(name = "所属学院")
     private String deptName;
 
+    @Excel(name = "备注")
+    private String remark;
+
     // === getters/setters ===
 
-    public Long getTeacherId() { return teacherId; }
-    public void setTeacherId(Long teacherId) { this.teacherId = teacherId; }
+    public Long getTeacherId() {
+        return teacherId;
+    }
 
-    public String getTeacherCode() { return teacherCode; }
-    public void setTeacherCode(String teacherCode) { this.teacherCode = teacherCode; }
+    public void setTeacherId(Long teacherId) {
+        this.teacherId = teacherId;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getTeacherCode() {
+        return teacherCode;
+    }
 
-    public Long getDeptId() { return deptId; }
-    public void setDeptId(Long deptId) { this.deptId = deptId; }
+    public void setTeacherCode(String teacherCode) {
+        this.teacherCode = teacherCode;
+    }
 
-    public String getPosition() { return position; }
-    public void setPosition(String position) { this.position = position; }
+    public String getTeacherName() {
+        return teacherName;
+    }
 
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
+    public void setTeacherName(String teacherName) {
+        this.teacherName = teacherName;
+    }
 
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
+    public Long getDeptId() {
+        return deptId;
+    }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public void setDeptId(Long deptId) {
+        this.deptId = deptId;
+    }
 
-    public String getDeptName() { return deptName; }
-    public void setDeptName(String deptName) { this.deptName = deptName; }
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getDeptName() {
+        return deptName;
+    }
+
+    public void setDeptName(String deptName) {
+        this.deptName = deptName;
+    }
+
+    @Override
+    public String getRemark() {
+        return remark;
+    }
+
+    @Override
+    public void setRemark(String remark) {
+        this.remark = remark;
+    }
 
     @Override
     public String toString() {
         return "TalkTeacher{" +
                 "teacherId=" + teacherId +
                 ", teacherCode='" + teacherCode + '\'' +
-                ", name='" + name + '\'' +
+                ", teacherName='" + teacherName + '\'' +
                 ", deptId=" + deptId +
                 ", position='" + position + '\'' +
                 ", phone='" + phone + '\'' +
                 ", userId=" + userId +
                 ", status='" + status + '\'' +
+                ", remark='" + getRemark() + '\'' +
                 '}';
     }
 }

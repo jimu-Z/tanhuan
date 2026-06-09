@@ -789,6 +789,12 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         if (depts != null && !depts.isEmpty()) {
             for (SysDept d : depts) {
                 if (d.getDeptName().equals(deptName.trim()) && d.getParentId().equals(parentId)) {
+                    // 修复历史数据：如果已存在部门但缺少dept_type，补齐
+                    if (d.getDeptType() == null) {
+                        d.setDeptType(type);
+                        sysDeptMapper.updateDept(d);
+                        log.info("[IMPORT-FIX] 补全部门 {} dept_type = {}", d.getDeptId(), type);
+                    }
                     return d.getDeptId();
                 }
             }
@@ -806,12 +812,14 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         newDept.setDeptName(deptName.trim());
         newDept.setParentId(parentId);
         newDept.setAncestors(ancestors);
+        newDept.setDeptType(type);
         newDept.setOrderNum(1);
         newDept.setStatus("0");
         newDept.setDelFlag("0");
         newDept.setCreateBy(SecurityUtils.getUsername());
         newDept.setCreateTime(new Date());
         sysDeptMapper.insertDept(newDept);
+        log.info("[IMPORT-CREATE] 创建部门 {} deptType={} parentId={}", deptName.trim(), type, parentId);
         return newDept.getDeptId();
     }
 

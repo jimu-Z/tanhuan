@@ -114,7 +114,7 @@ public class TalkAppointmentServiceImpl implements ITalkAppointmentService {
 
         // 2. 查询教师信息获取教师姓名
         TalkTeacher teacher = talkTeacherMapper.selectTalkTeacherById(appointment.getTeacherId());
-        String teacherName = teacher != null ? teacher.getName() : "";
+        String teacherName = teacher != null ? teacher.getTeacherName() : "";
 
         // 3. 创建 TalkSession
         TalkSession session = new TalkSession();

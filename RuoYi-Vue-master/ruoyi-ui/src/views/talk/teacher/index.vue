@@ -107,6 +107,7 @@
         </template>
       </el-table-column>
       <el-table-column label="手机号码" align="center" prop="phone" />
+      <el-table-column label="备注" align="center" prop="remark" show-overflow-tooltip />
       <el-table-column label="状态" align="center" prop="status">
         <template slot-scope="scope">
           <el-tag v-if="scope.row.status === '0'" type="success">正常</el-tag>
@@ -202,12 +203,35 @@
         </el-table-column>
       </el-table>
     </el-dialog>
+
+    <!-- 教师导入对话框 -->
+    <el-dialog :title="upload.title" :visible.sync="upload.open" width="400px" append-to-body>
+      <el-upload ref="upload" :limit="1" accept=".xlsx, .xls" :headers="upload.headers"
+        :action="upload.url + '?updateSupport=' + upload.updateSupport"
+        :disabled="upload.isUploading" :on-progress="handleFileUploadProgress"
+        :on-success="handleFileSuccess" :auto-upload="false" drag>
+        <i class="el-icon-upload"></i>
+        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+        <div class="el-upload__tip text-center" slot="tip">
+          <div class="el-upload__tip" slot="tip">
+            <el-checkbox v-model="upload.updateSupport" />是否更新已经存在的教师数据
+          </div>
+          <span>仅允许导入xls、xlsx格式文件。</span>
+          <el-link type="primary" :underline="false" style="font-size:12px;vertical-align:baseline" @click="importTemplate">下载模板</el-link>
+        </div>
+      </el-upload>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="submitFileForm">确 定</el-button>
+        <el-button @click="upload.open = false">取 消</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { listTeacher, getTeacher, addTeacher, updateTeacher, delTeacher, getTeacherStudents } from "@/api/talk/teacher"
 import { listDept } from "@/api/system/dept"
+import { getToken } from "@/utils/auth"
 import Treeselect from "@riophae/vue-treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 
@@ -241,6 +265,15 @@ export default {
         deptId: undefined
       },
       form: {},
+      // 导入参数
+      upload: {
+        open: false,
+        title: "",
+        isUploading: false,
+        updateSupport: 0,
+        headers: { Authorization: "Bearer " + getToken() },
+        url: process.env.VUE_APP_BASE_API + "/talk/teacher/importData"
+      },
       // 学生列表弹窗
       studentDialogOpen: false,
       studentDialogTitle: '',
@@ -410,7 +443,7 @@ export default {
     },
     /** 查看教师管理的所有学生 */
     handleViewStudents(row) {
-      this.studentDialogTitle = row.name + ' 的学生'
+      this.studentDialogTitle = row.teacherName + ' 的学生'
       this.studentDialogOpen = true
       this.studentLoading = true
       this.studentList = []
@@ -425,8 +458,35 @@ export default {
     //     ...this.queryParams
     //   }, `teacher_${new Date().getTime()}.xlsx`)
     // },
+    /** 导入按钮操作 */
     handleImport() {
-      this.$modal.msgInfo("导入功能待实现")
+      this.upload.title = "教师导入"
+      this.upload.open = true
+    },
+    /** 下载模板操作 */
+    importTemplate() {
+      this.download('/talk/teacher/importTemplate', {}, `teacher_template_${new Date().getTime()}.xlsx`)
+    },
+    // 文件上传中处理
+    handleFileUploadProgress(event, file, fileList) {
+      this.upload.isUploading = true
+    },
+    // 文件上传成功处理
+    handleFileSuccess(response, file, fileList) {
+      this.upload.open = false
+      this.upload.isUploading = false
+      this.$refs.upload.clearFiles()
+      this.$alert("<div style='overflow:auto;overflow-x:hidden;max-height:70vh;padding:10px 20px 0;'>" + response.msg + "</div>", "导入结果", { dangerouslyUseHTMLString: true })
+      this.getList()
+    },
+    // 提交上传文件
+    submitFileForm() {
+      const file = this.$refs.upload.uploadFiles
+      if (!file || file.length === 0 || !file[0].name.toLowerCase().endsWith('.xls') && !file[0].name.toLowerCase().endsWith('.xlsx')) {
+        this.$modal.msgError("请选择后缀为 \"xls\"或\"xlsx\"的文件。")
+        return
+      }
+      this.$refs.upload.submit()
     }
   }
 }

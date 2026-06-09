@@ -1,7 +1,15 @@
 package com.ruoyi.talk.controller;
 
+import java.io.InputStream;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
@@ -83,10 +91,47 @@ public class TalkTeacherController extends BaseController {
         if (file == null || file.isEmpty()) {
             return error("请选择文件");
         }
+        // 自动检测表头行：兼容纯表头Excel和带标题行+表头的台账Excel
+        int titleNum = detectTitleRowNum(file.getInputStream());
         ExcelUtil<TalkTeacher> util = new ExcelUtil<>(TalkTeacher.class);
-        List<TalkTeacher> teacherList = util.importExcel(file.getInputStream());
+        List<TalkTeacher> teacherList = util.importExcel(file.getInputStream(), titleNum);
         String message = teacherService.importTeacher(teacherList, updateSupport);
         return success(message);
+    }
+
+    /**
+     * 检测Excel文件表头所在行号
+     * 如果第0行包含已知列名（工号/姓名等），返回0；否则返回1（兼容带标题行的台账）
+     */
+    private int detectTitleRowNum(InputStream is) throws Exception {
+        Set<String> knownHeaders = new HashSet<>(Arrays.asList("工号", "姓名", "所属学院", "岗位", "手机号码", "备注", "所属学院ID"));
+        Workbook wb = WorkbookFactory.create(is);
+        Sheet sheet = wb.getSheetAt(0);
+        if (sheet != null) {
+            Row row0 = sheet.getRow(0);
+            if (row0 != null) {
+                for (int i = 0; i < row0.getLastCellNum(); i++) {
+                    String val = row0.getCell(i) != null ? row0.getCell(i).toString().trim() : "";
+                    if (knownHeaders.contains(val)) {
+                        wb.close();
+                        return 0;
+                    }
+                }
+            }
+            // 第二行是表头，跳过第一行标题
+            Row row1 = sheet.getRow(1);
+            if (row1 != null) {
+                for (int i = 0; i < row1.getLastCellNum(); i++) {
+                    String val = row1.getCell(i) != null ? row1.getCell(i).toString().trim() : "";
+                    if (knownHeaders.contains(val)) {
+                        wb.close();
+                        return 1;
+                    }
+                }
+            }
+        }
+        wb.close();
+        return 0; // 兜底，按默认解析
     }
 
     @PreAuthorize("@ss.hasPermi('talk:teacher:import')")

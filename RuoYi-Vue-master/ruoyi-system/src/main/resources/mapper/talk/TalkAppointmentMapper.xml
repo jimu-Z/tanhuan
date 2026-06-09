@@ -27,7 +27,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select ta.appointment_id, ta.student_id, ta.teacher_id, ta.appointment_time,
                ta.location, ta.reason, ta.status, ta.reject_reason, ta.session_id,
                ta.create_by, ta.create_time, ta.update_by, ta.update_time,
-               st.student_name, st.student_code, tt.name as teacher_name
+               st.student_name, st.student_code, tt.teacher_name as teacher_name
         from talk_appointment ta
         left join talk_student st on ta.student_id = st.student_id
         left join talk_teacher tt on ta.teacher_id = tt.teacher_id
@@ -44,7 +44,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="status != null and status != ''"> and ta.status = #{status}</if>
             <if test="studentName != null and studentName != ''"> and st.student_name like concat('%', #{studentName}, '%')</if>
             <if test="studentCode != null and studentCode != ''"> and st.student_code like concat('%', #{studentCode}, '%')</if>
-            <if test="teacherName != null and teacherName != ''"> and tt.name like concat('%', #{teacherName}, '%')</if>
+            <if test="teacherName != null and teacherName != ''"> and tt.teacher_name like concat('%', #{teacherName}, '%')</if>
             <if test="params.studentUsername != null and params.studentUsername != ''"> and ta.create_by = #{params.studentUsername}</if>
             <if test="params.counselorUsername != null and params.counselorUsername != ''"> and ta.teacher_id in (select tt.teacher_id from talk_teacher tt join sys_user su on tt.user_id = su.user_id where su.user_name = #{params.counselorUsername})</if>
             <if test="params.secretaryDeptId != null"> and st.dept_id is not null and exists (select 1 from sys_dept d where (d.dept_id = #{params.secretaryDeptId} or find_in_set(#{params.secretaryDeptId}, d.ancestors)) and d.dept_id = st.dept_id)</if>

@@ -6,12 +6,13 @@
     <resultMap type="TalkTeacher" id="TalkTeacherResult">
         <result property="teacherId"   column="teacher_id"   />
         <result property="teacherCode" column="teacher_code" />
-        <result property="name"        column="name"         />
+        <result property="teacherName" column="teacher_name" />
         <result property="deptId"      column="dept_id"      />
         <result property="position"    column="position"     />
         <result property="phone"       column="phone"        />
         <result property="userId"      column="user_id"      />
         <result property="status"      column="status"       />
+        <result property="remark"      column="remark"       />
         <result property="createBy"    column="create_by"    />
         <result property="createTime"  column="create_time"  />
         <result property="updateBy"    column="update_by"    />
@@ -20,9 +21,9 @@
     </resultMap>
 
     <sql id="selectTalkTeacherVo">
-        select t.teacher_id, t.teacher_code, t.name, t.dept_id, t.position,
+        select t.teacher_id, t.teacher_code, t.teacher_name, t.dept_id, t.position,
                t.phone, t.user_id, t.status,
-               t.create_by, t.create_time, t.update_by, t.update_time,
+               t.remark, t.create_by, t.create_time, t.update_by, t.update_time,
                d.dept_name
         from talk_teacher t
         left join sys_dept d on t.dept_id = d.dept_id
@@ -32,7 +33,7 @@
         <include refid="selectTalkTeacherVo"/>
         <where>
             <if test="teacherCode != null and teacherCode != ''"> and t.teacher_code like concat('%', #{teacherCode}, '%')</if>
-            <if test="name != null and name != ''"> and t.name like concat('%', #{name}, '%')</if>
+            <if test="teacherName != null and teacherName != ''"> and t.teacher_name like concat('%', #{teacherName}, '%')</if>
             <if test="deptId != null"> and t.dept_id = #{deptId}</if>
             <if test="position != null and position != ''"> and t.position = #{position}</if>
             <if test="status != null and status != ''"> and t.status = #{status}</if>
@@ -47,22 +48,23 @@
 
     <insert id="insertTalkTeacher" parameterType="TalkTeacher" useGeneratedKeys="true" keyProperty="teacherId">
         insert into talk_teacher (
-            teacher_code, name, dept_id, position, phone, user_id, status,
-            create_by, create_time
+            teacher_code, teacher_name, dept_id, position, phone, user_id, status,
+            remark, create_by, create_time
         ) values (
-            #{teacherCode}, #{name}, #{deptId}, #{position}, #{phone}, #{userId}, #{status},
-            #{createBy}, sysdate()
+            #{teacherCode}, #{teacherName}, #{deptId}, #{position}, #{phone}, #{userId}, #{status},
+            #{remark}, #{createBy}, sysdate()
         )
     </insert>
 
     <update id="updateTalkTeacher" parameterType="TalkTeacher">
         update talk_teacher
         <set>
-            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="teacherName != null and teacherName != ''">teacher_name = #{teacherName},</if>
             <if test="deptId != null">dept_id = #{deptId},</if>
             <if test="position != null and position != ''">position = #{position},</if>
             <if test="phone != null">phone = #{phone},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
             update_by = #{updateBy},
             update_time = sysdate()
         </set>
@@ -87,7 +89,7 @@
     <select id="selectByDeptIdAndName" resultMap="TalkTeacherResult">
         <include refid="selectTalkTeacherVo"/>
         where t.dept_id = #{deptId}
-          and t.name = #{name}
+          and t.teacher_name = #{teacherName}
           and t.status = '0'
         limit 1
     </select>
@@ -95,7 +97,7 @@
     <select id="countByDeptAndNameExcludePosition" resultType="int">
         select count(1) from talk_teacher
         where dept_id = #{deptId}
-          and name = #{name}
+          and teacher_name = #{teacherName}
           and position != #{position}
           and status = '0'
     </select>

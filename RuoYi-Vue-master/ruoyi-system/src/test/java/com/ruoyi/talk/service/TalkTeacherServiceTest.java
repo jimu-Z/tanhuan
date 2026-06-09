@@ -53,7 +53,7 @@ class TalkTeacherServiceTest {
     void setUp() {
         testTeacher = new TalkTeacher();
         testTeacher.setTeacherCode("T001");
-        testTeacher.setName("张老师");
+        testTeacher.setTeacherName("张老师");
         testTeacher.setDeptId(100L);
         testTeacher.setPosition("counselor");
         testTeacher.setPhone("13800138000");

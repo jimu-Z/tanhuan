@@ -8,7 +8,7 @@ ALTER TABLE talk_appointment COMMENT = '学生预约谈话表';
 -- 修复 talk_teacher 列注释
 ALTER TABLE talk_teacher MODIFY COLUMN teacher_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '教师ID';
 ALTER TABLE talk_teacher MODIFY COLUMN teacher_code VARCHAR(50) NOT NULL COMMENT '工号';
-ALTER TABLE talk_teacher MODIFY COLUMN name VARCHAR(50) NOT NULL COMMENT '姓名';
+ALTER TABLE talk_teacher MODIFY COLUMN teacher_name VARCHAR(50) NOT NULL COMMENT '姓名';
 ALTER TABLE talk_teacher MODIFY COLUMN dept_id BIGINT(20) NOT NULL COMMENT '所属学院ID';
 ALTER TABLE talk_teacher MODIFY COLUMN position VARCHAR(20) NOT NULL COMMENT '岗位';
 ALTER TABLE talk_teacher MODIFY COLUMN phone VARCHAR(20) DEFAULT NULL COMMENT '手机号码';
@@ -18,6 +18,9 @@ ALTER TABLE talk_teacher MODIFY COLUMN create_by VARCHAR(64) DEFAULT '' COMMENT 
 ALTER TABLE talk_teacher MODIFY COLUMN create_time DATETIME COMMENT '创建时间';
 ALTER TABLE talk_teacher MODIFY COLUMN update_by VARCHAR(64) DEFAULT '' COMMENT '更新者';
 ALTER TABLE talk_teacher MODIFY COLUMN update_time DATETIME COMMENT '更新时间';
+
+-- 添加 remark 备注列
+ALTER TABLE talk_teacher ADD COLUMN remark VARCHAR(500) DEFAULT NULL COMMENT '备注' AFTER status;
 
 -- 修复 talk_alert 列注释
 ALTER TABLE talk_alert MODIFY COLUMN alert_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '预警ID';
