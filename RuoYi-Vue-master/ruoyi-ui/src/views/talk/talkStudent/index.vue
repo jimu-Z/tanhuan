@@ -17,10 +17,10 @@
           @keyup.enter.native="handleQuery"
         />
       </el-form-item>
-      <el-form-item label="部门" prop="deptId">
+      <el-form-item label="班级" prop="deptId">
         <el-cascader v-model="queryParams.deptId" :options="deptTree"
           :props="{ checkStrictly:true, label:'label', value:'id' }"
-          placeholder="请选择部门" clearable style="width:240px" @change="handleQuery" />
+          placeholder="请选择班级" clearable style="width:240px" @change="handleQuery" />
       </el-form-item>
       <el-form-item label="性别" prop="gender">
         <el-input
@@ -214,7 +214,7 @@
       <el-table-column label="学生ID" align="center" prop="studentId" />
       <el-table-column label="学号" align="center" prop="studentCode" />
       <el-table-column label="姓名" align="center" prop="studentName" />
-      <el-table-column label="部门ID(班级)" align="center" prop="deptId" />
+      <el-table-column label="班级" align="center" prop="deptName" :show-overflow-tooltip="true" />
       <el-table-column label="性别" align="center" prop="gender">
         <template slot-scope="scope">
           <span>{{ scope.row.gender === '1' ? '女' : '男' }}</span>

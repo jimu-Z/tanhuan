@@ -275,9 +275,9 @@ public class TalkDocxService {
 
         if (stu != null) {
             m.put("${enrollment_status}",
-                    TalkConstants.ENROLLMENT_STATUS_LABELS.getOrDefault(stu.getEnrollmentStatus(), ""));
-            m.put("${mental_health}", TalkConstants.MENTAL_HEALTH_LABELS.getOrDefault(stu.getMentalHealthStatus(), ""));
-            m.put("${poverty_level}", TalkConstants.POVERTY_LEVEL_LABELS.getOrDefault(stu.getPovertyLevel(), ""));
+                    TalkConstants.ENROLLMENT_STATUS_LABELS.getOrDefault(stu.getEnrollmentStatus(), s(stu.getEnrollmentStatus())));
+            m.put("${mental_health}", TalkConstants.MENTAL_HEALTH_LABELS.getOrDefault(stu.getMentalHealthStatus(), s(stu.getMentalHealthStatus())));
+            m.put("${poverty_level}", TalkConstants.POVERTY_LEVEL_LABELS.getOrDefault(stu.getPovertyLevel(), s(stu.getPovertyLevel())));
             m.put("${remark}", s(stu.getRemark()));
         }
 

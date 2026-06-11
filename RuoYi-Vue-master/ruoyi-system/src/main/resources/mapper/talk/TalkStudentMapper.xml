@@ -26,7 +26,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="enrollmentStatus"    column="enrollment_status"    />
         <result property="mentalHealthStatus"    column="mental_health_status"    />
         <result property="povertyLevel"    column="poverty_level"    />
-        <result property="teacherId"       column="teacher_id"      />
         <result property="deptName"    column="dept_name"    />
         <result property="lastTalkTime"    column="last_talk_time"    />
         <result property="remark"    column="remark"    />
@@ -41,7 +40,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                s.political_status, s.nation, s.phone, s.id_card, s.address, s.father_name, 
                s.father_phone, s.mother_name, s.mother_phone, s.class_monitor, s.dorm_leader, 
                s.dorm_building, s.dorm_room, s.enrollment_status, s.mental_health_status, 
-               s.poverty_level, s.teacher_id, s.remark, s.create_by, s.create_time, s.update_by, s.update_time,
+               s.poverty_level, s.remark, s.create_by, s.create_time, s.update_by, s.update_time,
                d.dept_name
         from talk_student s
         left join sys_dept d on s.dept_id = d.dept_id
@@ -71,6 +70,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and s.mental_health_status = #{mentalHealthStatus}</if>
             <if test="povertyLevel != null  and povertyLevel != ''"> and s.poverty_level = #{povertyLevel}</if>
             ${params.dataScope}
+            <if test="params.counselorCode != null"> and d.dept_name in (select class_name from talk_teacher_class where teacher_code = #{params.counselorCode})</if>
         </where>
     </select>
     
@@ -107,7 +107,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="enrollmentStatus != null">enrollment_status,</if>
             <if test="mentalHealthStatus != null">mental_health_status,</if>
             <if test="povertyLevel != null">poverty_level,</if>
-            <if test="teacherId != null">teacher_id,</if>
             <if test="remark != null">remark,</if>
             <if test="createBy != null">create_by,</if>
             <if test="createTime != null">create_time,</if>
@@ -135,7 +134,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="enrollmentStatus != null">#{enrollmentStatus},</if>
             <if test="mentalHealthStatus != null">#{mentalHealthStatus},</if>
             <if test="povertyLevel != null">#{povertyLevel},</if>
-            <if test="teacherId != null">#{teacherId},</if>
             <if test="remark != null">#{remark},</if>
             <if test="createBy != null">#{createBy},</if>
             <if test="createTime != null">#{createTime},</if>
@@ -167,7 +165,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="enrollmentStatus != null">enrollment_status = #{enrollmentStatus},</if>
             <if test="mentalHealthStatus != null">mental_health_status = #{mentalHealthStatus},</if>
             <if test="povertyLevel != null">poverty_level = #{povertyLevel},</if>
-            <if test="teacherId != null">teacher_id = #{teacherId},</if>
             <if test="remark != null">remark = #{remark},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
@@ -244,7 +241,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                s.political_status, s.nation, s.phone, s.id_card, s.address, s.father_name, 
                s.father_phone, s.mother_name, s.mother_phone, s.class_monitor, s.dorm_leader, 
                s.dorm_building, s.dorm_room, s.enrollment_status, s.mental_health_status, 
-               s.poverty_level, s.teacher_id, s.remark, s.create_by, s.create_time, s.update_by, s.update_time,
+               s.poverty_level, s.remark, s.create_by, s.create_time, s.update_by, s.update_time,
                d.dept_name,
                (select max(ts.talk_time) 
                 from talk_student_record tsr 
@@ -274,6 +271,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and s.mental_health_status = #{mentalHealthStatus}</if>
             <if test="povertyLevel != null  and povertyLevel != ''"> and s.poverty_level = #{povertyLevel}</if>
             ${params.dataScope}
+            <if test="params.counselorCode != null"> and d.dept_name in (select class_name from talk_teacher_class where teacher_code = #{params.counselorCode})</if>
         </where>
     </select>
 
@@ -282,7 +280,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                s.political_status, s.nation, s.phone, s.id_card, s.address, s.father_name, 
                s.father_phone, s.mother_name, s.mother_phone, s.class_monitor, s.dorm_leader, 
                s.dorm_building, s.dorm_room, s.enrollment_status, s.mental_health_status, 
-               s.poverty_level, s.teacher_id, s.remark, s.create_by, s.create_time, s.update_by, s.update_time,
+               s.poverty_level, s.remark, s.create_by, s.create_time, s.update_by, s.update_time,
                d.dept_name,
                (select max(ts.talk_time) 
                 from talk_student_record tsr 
@@ -305,9 +303,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by s.student_code asc
     </select>
 
-    <select id="selectByTeacherId" parameterType="Long" resultMap="TalkStudentResult">
+    <select id="selectByCollegeDeptId" parameterType="Long" resultMap="TalkStudentResult">
         <include refid="selectTalkStudentVo"/>
-        and s.teacher_id = #{teacherId}
+        where (s.dept_id = #{deptId}
+            or s.dept_id in (select dept_id from sys_dept where find_in_set(#{deptId}, ancestors)))
+        order by s.student_code
+    </select>
+
+    <select id="selectByTeacherCode" parameterType="String" resultMap="TalkStudentResult">
+        <include refid="selectTalkStudentVo"/>
+        where d.dept_name in (
+            select class_name from talk_teacher_class where teacher_code = #{teacherCode}
+        )
         order by s.student_code
     </select>
 

@@ -249,7 +249,7 @@ export default {
       selectedTemplateId: null,
       systemTemplates: [],
       personalTemplates: [],
-      activeCollapse: [0],
+      activeCollapse: [],
       allStudents: [],
       selectedStudents: [],
       deptTree: [],
@@ -264,7 +264,7 @@ export default {
         talkType: 'group',
         talkTime: '',
         talkLocation: '',
-        talkPerson: this.$store.state.user?.name || this.$store.getters?.name || '',
+        talkPerson: this.$store.state.user?.nickName || this.$store.state.user?.name || '',
         talkContent: '',
         tags: []
       },
@@ -478,12 +478,12 @@ export default {
             talkType: 'group',
             talkTime: '',
             talkLocation: '',
-            talkPerson: this.$store.state.user?.name || this.$store.getters?.name || '',
+            talkPerson: this.$store.state.user?.nickName || this.$store.state.user?.name || '',
             talkContent: '',
             tags: []
           }
           this.searchKey = ''
-          this.activeCollapse = [0]
+          this.activeCollapse = []
           this.$refs.upload && this.$refs.upload.clearFiles()
           this.$refs.talkForm && this.$refs.talkForm.resetFields()
         }).catch(err => {

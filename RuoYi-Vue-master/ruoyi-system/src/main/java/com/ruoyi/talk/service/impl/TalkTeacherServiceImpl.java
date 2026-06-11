@@ -2,6 +2,7 @@ package com.ruoyi.talk.service.impl;
 
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -97,12 +98,22 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
     }
 
     @Override
+    @Transactional
     public int deleteTalkTeacherByIds(Long[] teacherIds) {
         int count = 0;
         for (Long id : teacherIds) {
             TalkTeacher t = teacherMapper.selectTalkTeacherById(id);
-            if (t != null && t.getUserId() != null) {
-                userMapper.deleteUserById(t.getUserId());
+            if (t != null) {
+                Long userId = t.getUserId();
+                if (userId != null) {
+                    userMapper.deleteUserPhysically(userId);
+                } else {
+                    // fallback: 通过 teacherCode 查找并物理删除 sys_user
+                    SysUser user = userMapper.selectUserByUserName(t.getTeacherCode());
+                    if (user != null) {
+                        userMapper.deleteUserPhysically(user.getUserId());
+                    }
+                }
             }
             count += teacherMapper.deleteTalkTeacherById(id);
         }
@@ -213,11 +224,16 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
             if (m.find()) {
                 String col = m.group(1);
                 switch (col) {
-                    case "teacher_code": return "工号不能为空";
-                    case "teacher_name": return "姓名不能为空";
-                    case "dept_id": return "所属学院不能为空";
-                    case "position": return "岗位不能为空";
-                    default: return col + "不能为空";
+                    case "teacher_code":
+                        return "工号不能为空";
+                    case "teacher_name":
+                        return "姓名不能为空";
+                    case "dept_id":
+                        return "所属学院不能为空";
+                    case "position":
+                        return "岗位不能为空";
+                    default:
+                        return col + "不能为空";
                 }
             }
             return "必填字段为空";
@@ -225,7 +241,8 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
 
         // 数据过长
         if (msg.contains("Data too long")) {
-            java.util.regex.Matcher m = java.util.regex.Pattern.compile("Data too long for column '(.*?)'").matcher(msg);
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("Data too long for column '(.*?)'")
+                    .matcher(msg);
             if (m.find()) {
                 return m.group(1) + "内容过长";
             }
@@ -303,7 +320,9 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
             String userName = teacher.getTeacherCode();
             SysUser existingUser = userMapper.selectUserByUserName(userName);
             if (existingUser != null) {
-                log.info("用户已存在，跳过创建: {}", userName);
+                log.info("用户已存在，跳过创建: {}，更新 teacher.user_id", userName);
+                teacher.setUserId(existingUser.getUserId());
+                teacherMapper.updateTalkTeacherUserId(teacher);
                 return;
             }
 
@@ -318,6 +337,10 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
             newUser.setCreateBy(teacher.getCreateBy() != null ? teacher.getCreateBy() : "system");
             newUser.setCreateTime(new Date());
             userMapper.insertUser(newUser);
+            teacher.setUserId(newUser.getUserId());
+
+            // 回填 talk_teacher.user_id
+            teacherMapper.updateTalkTeacherUserId(teacher);
 
             // 分配角色
             assignRole(newUser.getUserId(), teacher.getPosition());
@@ -333,7 +356,7 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
      */
     private void assignRole(Long userId, String position) {
         String roleKey;
-        if ("secretary".equals(position) || "deputy_secretary".equals(position)) {
+        if ("书记".equals(position) || "副书记".equals(position)) {
             roleKey = ROLE_SECRETARY;
         } else {
             roleKey = ROLE_COUNSELOR;
@@ -372,11 +395,21 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
         }
 
         // 有兼任，根据岗位加前缀
-        if ("counselor".equals(position) || "head_teacher".equals(position)) {
+        if ("辅导员".equals(position) || "班主任".equals(position)) {
             return "f_" + code;
-        } else if ("secretary".equals(position) || "deputy_secretary".equals(position)) {
+        } else if ("书记".equals(position) || "副书记".equals(position)) {
             return "s_" + code;
         }
         return code;
+    }
+
+    @Override
+    public List<String> selectAllClassNames() {
+        SysDept query = new SysDept();
+        query.setDeptType("class");
+        return deptMapper.selectDeptList(query).stream()
+                .map(SysDept::getDeptName)
+                .sorted()
+                .collect(Collectors.toList());
     }
 }

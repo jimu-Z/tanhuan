@@ -31,6 +31,7 @@ import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.talk.domain.TalkTeacher;
 import com.ruoyi.talk.service.ITalkTeacherService;
+import com.ruoyi.talk.service.ITalkTeacherClassService;
 
 /**
  * 教师信息Controller
@@ -44,6 +45,9 @@ public class TalkTeacherController extends BaseController {
 
     @Autowired
     private ITalkTeacherService teacherService;
+
+    @Autowired
+    private ITalkTeacherClassService teacherClassService;
 
     @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
     @GetMapping("/list")
@@ -149,5 +153,39 @@ public class TalkTeacherController extends BaseController {
     public AjaxResult counselors(@PathVariable Long deptId) {
         List<TalkTeacher> list = teacherService.selectCounselorsByDeptId(deptId);
         return success(list);
+    }
+
+    /**
+     * 获取教师管理的班级名列表
+     */
+    @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
+    @GetMapping("/{teacherId}/classes")
+    public AjaxResult getTeacherClasses(@PathVariable Long teacherId) {
+        TalkTeacher teacher = teacherService.selectTalkTeacherById(teacherId);
+        if (teacher == null)
+            return error("教师不存在");
+        return success(teacherClassService.getClassNamesByTeacherCode(teacher.getTeacherCode()));
+    }
+
+    /**
+     * 保存教师管理的班级
+     */
+    @PreAuthorize("@ss.hasPermi('talk:teacher:edit')")
+    @PutMapping("/{teacherId}/classes")
+    public AjaxResult saveTeacherClasses(@PathVariable Long teacherId, @RequestBody List<String> classNames) {
+        TalkTeacher teacher = teacherService.selectTalkTeacherById(teacherId);
+        if (teacher == null)
+            return error("教师不存在");
+        teacherClassService.saveTeacherClasses(teacher.getTeacherCode(), classNames);
+        return success();
+    }
+
+    /**
+     * 获取全校所有班级名列表
+     */
+    @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
+    @GetMapping("/allClassNames")
+    public AjaxResult getAllClassNames() {
+        return success(teacherService.selectAllClassNames());
     }
 }

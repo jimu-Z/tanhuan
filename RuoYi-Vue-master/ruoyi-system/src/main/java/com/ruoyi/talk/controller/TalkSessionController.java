@@ -1,6 +1,7 @@
 package com.ruoyi.talk.controller;
 
 import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
@@ -128,7 +129,12 @@ public class TalkSessionController extends BaseController {
     @PreAuthorize("@ss.hasPermi('talk:session:export')")
     @Log(title = "谈话会话管理", businessType = BusinessType.EXPORT)
     @PostMapping("/exportDocx/batch")
-    public void exportDocxBatch(@RequestBody List<Long> sessionIds, HttpServletResponse response) throws Exception {
+    public void exportDocxBatch(@RequestBody Map<String, List<Long>> body, HttpServletResponse response) throws Exception {
+        List<Long> sessionIds = body.get("sessionIds");
+        if (sessionIds == null || sessionIds.isEmpty()) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "sessionIds不能为空");
+            return;
+        }
         ByteArrayOutputStream zip = new ByteArrayOutputStream();
         try (ZipOutputStream zos = new ZipOutputStream(zip)) {
             for (Long sid : sessionIds) {

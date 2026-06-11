@@ -25,9 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 /**
- * TDD T1: TalkTeacherService 教师导入测试
- *
- * 测试行为：管理员导入教师时，自动创建 sys_user + 分配角色
+ * TDD: TalkTeacherService 教师管理测试
  */
 @ExtendWith(MockitoExtension.class)
 class TalkTeacherServiceTest {
@@ -60,8 +58,51 @@ class TalkTeacherServiceTest {
         testTeacher.setCreateBy("admin");
     }
 
+    // ==================== T1: 教师删除 → 物理删除 sys_user ====================
+
     /**
-     * RED 1: 导入辅导员 → 自动创建 sys_user → 分配 talk_counselor 角色
+     * 删除教师时，应物理删除（DELETE FROM）关联的 sys_user，而非逻辑删除
+     */
+    @Test
+    void deleteTeacherShouldPhysicallyDeleteUser() {
+        // Given: 教师有 userId=10
+        testTeacher.setTeacherId(1L);
+        testTeacher.setUserId(10L);
+        when(teacherMapper.selectTalkTeacherById(1L)).thenReturn(testTeacher);
+        when(teacherMapper.deleteTalkTeacherById(1L)).thenReturn(1);
+
+        // When: 删除教师
+        int result = teacherService.deleteTalkTeacherByIds(new Long[] { 1L });
+
+        // Then: 返回删除条数 > 0
+        assertThat(result).isGreaterThan(0);
+
+        // Then: 应调用物理删除 user，而不是逻辑删除
+        verify(userMapper).deleteUserPhysically(10L);
+    }
+
+    /**
+     * 删除没有 userId 的教师时，不应尝试删用户
+     */
+    @Test
+    void deleteTeacherWithoutUserIdShouldNotDeleteUser() {
+        // Given: 教师没有 userId
+        testTeacher.setTeacherId(1L);
+        testTeacher.setUserId(null);
+        when(teacherMapper.selectTalkTeacherById(1L)).thenReturn(testTeacher);
+        when(teacherMapper.deleteTalkTeacherById(1L)).thenReturn(1);
+
+        // When: 删除教师
+        teacherService.deleteTalkTeacherByIds(new Long[] { 1L });
+
+        // Then: 不应该调用任何 userMapper 的删除方法
+        verify(userMapper, org.mockito.Mockito.never()).deleteUserPhysically(org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    // ==================== 原有测试：导入教师创建用户 ====================
+
+    /**
+     * 导入辅导员 → 自动创建 sys_user → 分配 talk_counselor 角色
      */
     @Test
     void insertCounselorShouldCreateSysUserAndAssignRole() {
@@ -71,7 +112,7 @@ class TalkTeacherServiceTest {
         when(roleMapper.selectRoleList(any())).thenReturn(List.of(counselorRole));
 
         when(teacherMapper.insertTalkTeacher(any())).thenReturn(1);
-        when(userMapper.selectUserByUserName("T001")).thenReturn(null);  // 用户不存在，需创建
+        when(userMapper.selectUserByUserName("T001")).thenReturn(null); // 用户不存在，需创建
         when(userMapper.insertUser(any(SysUser.class))).thenReturn(1);
 
         // When
@@ -87,7 +128,7 @@ class TalkTeacherServiceTest {
         ArgumentCaptor<SysUser> userCaptor = ArgumentCaptor.forClass(SysUser.class);
         verify(userMapper).insertUser(userCaptor.capture());
         SysUser createdUser = userCaptor.getValue();
-        assertThat(createdUser.getUserName()).isEqualTo("T001");  // 账号=工号
+        assertThat(createdUser.getUserName()).isEqualTo("T001"); // 账号=工号
         assertThat(createdUser.getNickName()).isEqualTo("张老师");
 
         // Then: 角色分配
@@ -98,7 +139,7 @@ class TalkTeacherServiceTest {
     }
 
     /**
-     * RED 2: 工号已存在 → 返回不唯一（false）
+     * 工号已存在 → 返回不唯一（false）
      */
     @Test
     void duplicateTeacherCodeShouldReturnNotUnique() {

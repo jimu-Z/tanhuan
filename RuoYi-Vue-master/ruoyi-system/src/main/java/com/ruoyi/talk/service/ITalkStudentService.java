@@ -100,7 +100,12 @@ public interface ITalkStudentService {
     public List<TalkStudent> selectUntalkedStudentsInPeriod(Date startTime, Date endTime, Long deptId);
 
     /**
-     * 按教师ID查询学生列表
+     * 按教师工号查询学生列表（通过班级关联）
      */
-    public List<TalkStudent> selectByTeacherId(Long teacherId);
+    public List<TalkStudent> selectByTeacherCode(String teacherCode);
+
+    /**
+     * 按学院ID查询学生（含子部门：年级+班级）
+     */
+    public List<TalkStudent> selectByCollegeDeptId(Long deptId);
 }

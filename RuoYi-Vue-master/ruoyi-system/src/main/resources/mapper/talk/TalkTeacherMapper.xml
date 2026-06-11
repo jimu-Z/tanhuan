@@ -71,6 +71,10 @@
         where teacher_id = #{teacherId}
     </update>
 
+    <update id="updateTalkTeacherUserId" parameterType="TalkTeacher">
+        update talk_teacher set user_id = #{userId} where teacher_id = #{teacherId}
+    </update>
+
     <delete id="deleteTalkTeacherById" parameterType="Long">
         delete from talk_teacher where teacher_id = #{teacherId}
     </delete>
@@ -82,7 +86,7 @@
     <select id="selectCounselorsByDeptId" parameterType="Long" resultMap="TalkTeacherResult">
         <include refid="selectTalkTeacherVo"/>
         where t.dept_id = #{deptId}
-          and t.position in ('counselor', 'head_teacher', 'secretary', 'deputy_secretary')
+          and t.position in ('辅导员', '班主任', '书记', '副书记')
           and t.status = '0'
     </select>
 
@@ -90,6 +94,7 @@
         <include refid="selectTalkTeacherVo"/>
         where t.dept_id = #{deptId}
           and t.teacher_name = #{teacherName}
+          and t.position in ('辅导员', '班主任')
           and t.status = '0'
         limit 1
     </select>

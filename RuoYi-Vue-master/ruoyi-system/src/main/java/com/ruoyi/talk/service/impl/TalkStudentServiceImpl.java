@@ -108,6 +108,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     @Override
     @DataScope(deptAlias = "d")
     public List<TalkStudent> selectTalkStudentList(TalkStudent talkStudent) {
+        applyCounselorFilter(talkStudent);
         return talkStudentMapper.selectTalkStudentList(talkStudent);
     }
 
@@ -173,7 +174,18 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     public int updateTalkStudent(TalkStudent talkStudent) {
         talkStudent.setUpdateBy(SecurityUtils.getUsername());
         talkStudent.setUpdateTime(DateUtils.getNowDate());
-        return talkStudentMapper.updateTalkStudent(talkStudent);
+        int rows = talkStudentMapper.updateTalkStudent(talkStudent);
+        // 同步更新 sys_user 的昵称为学生姓名
+        String studentCode = talkStudent.getStudentCode();
+        String studentName = talkStudent.getStudentName();
+        if (StringUtils.isNotEmpty(studentCode) && StringUtils.isNotEmpty(studentName)) {
+            SysUser user = sysUserMapper.selectUserByUserName(studentCode);
+            if (user != null && !studentName.equals(user.getNickName())) {
+                user.setNickName(studentName);
+                sysUserMapper.updateUser(user);
+            }
+        }
+        return rows;
     }
 
     /**
@@ -193,6 +205,16 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 throw new RuntimeException("学生 " + name + " 有 " + recordCount + " 条谈话记录，无法删除。请先处理相关谈话记录。");
             }
         }
+        // 先删除关联的 sys_user（通过学号查找）
+        for (Long studentId : studentIds) {
+            TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
+            if (student != null && StringUtils.isNotEmpty(student.getStudentCode())) {
+                SysUser user = sysUserMapper.selectUserByUserName(student.getStudentCode());
+                if (user != null) {
+                    sysUserMapper.deleteUserPhysically(user.getUserId());
+                }
+            }
+        }
         return talkStudentMapper.deleteTalkStudentByStudentIds(studentIds);
     }
 
@@ -210,6 +232,14 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
             TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
             String name = student != null ? student.getStudentName() : "未知";
             throw new RuntimeException("学生 " + name + " 有 " + recordCount + " 条谈话记录，无法删除。请先处理相关谈话记录。");
+        }
+        // 物理删除关联的 sys_user
+        TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
+        if (student != null && StringUtils.isNotEmpty(student.getStudentCode())) {
+            SysUser user = sysUserMapper.selectUserByUserName(student.getStudentCode());
+            if (user != null) {
+                sysUserMapper.deleteUserPhysically(user.getUserId());
+            }
         }
         return talkStudentMapper.deleteTalkStudentByStudentId(studentId);
     }
@@ -394,8 +424,6 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
             return result;
         }
 
-        Map<String, Long> secretaryRoleCache = new HashMap<>();
-        Map<String, Long> counselorRoleCache = new HashMap<>();
         Map<String, Long> studentRoleCache = new HashMap<>();
         Map<Long, Long> userRoleAssignedCache = new HashMap<>();
 
@@ -484,30 +512,6 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                     continue;
                 }
 
-                // 校验辅导员是否存在
-                String counselor = rowData.get("counselor");
-                if (!StringUtils.isEmpty(counselor)) {
-                    TalkTeacher found = talkTeacherService.findCounselorByStudentDeptAndName(classDeptId,
-                            counselor.trim());
-                    if (found == null) {
-                        skipCount++;
-                        errors.add("第" + rowNum + "行: 学生" + studentName + "（学号" + studentCode + "）无法导入，学院下没有对应姓名的辅导员\""
-                                + counselor.trim() + "\"");
-                        continue;
-                    }
-                    // 关联教师
-                    student.setTeacherId(found.getTeacherId());
-                } else {
-                    // Excel中没有辅导员姓名，检查该学院是否有任何辅导员或书记
-                    List<TalkTeacher> collegeTeachers = talkTeacherService.selectCounselorsByDeptId(collegeDeptId);
-                    if (collegeTeachers == null || collegeTeachers.isEmpty()) {
-                        skipCount++;
-                        errors.add("第" + rowNum + "行: 学生" + studentName + "（学号" + studentCode
-                                + "）的学院没有辅导员/书记，请先导入辅导员/书记。");
-                        continue;
-                    }
-                }
-
                 student.setCreateTime(DateUtils.getNowDate());
                 Long gapId = talkStudentMapper.selectMinAvailableStudentId();
                 if (gapId != null) {
@@ -516,38 +520,9 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 talkStudentMapper.insertTalkStudent(student);
                 successCount++;
 
-                if (createUserIfNotExists(studentCode, classDeptId, STUDENT_ROLE_KEY,
+                if (createUserIfNotExists(studentCode, studentName, classDeptId, STUDENT_ROLE_KEY,
                         studentRoleCache, userRoleAssignedCache)) {
                     userCreatedCount++;
-                }
-
-                String secretary = rowData.get("secretary");
-                String viceSecretary = rowData.get("vice_secretary");
-                String headTeacher = rowData.get("head_teacher");
-
-                if (!StringUtils.isEmpty(secretary)) {
-                    if (createUserIfNotExists(secretary, collegeDeptId, "talk_secretary",
-                            secretaryRoleCache, userRoleAssignedCache)) {
-                        userCreatedCount++;
-                    }
-                }
-                if (!StringUtils.isEmpty(viceSecretary)) {
-                    if (createUserIfNotExists(viceSecretary, collegeDeptId, "talk_secretary",
-                            secretaryRoleCache, userRoleAssignedCache)) {
-                        userCreatedCount++;
-                    }
-                }
-                if (!StringUtils.isEmpty(counselor)) {
-                    if (createUserIfNotExists(counselor, collegeDeptId, "talk_counselor",
-                            counselorRoleCache, userRoleAssignedCache)) {
-                        userCreatedCount++;
-                    }
-                }
-                if (!StringUtils.isEmpty(headTeacher)) {
-                    if (createUserIfNotExists(headTeacher, collegeDeptId, "talk_counselor",
-                            counselorRoleCache, userRoleAssignedCache)) {
-                        userCreatedCount++;
-                    }
                 }
             } catch (Exception e) {
                 log.error("[IMPORT-ERROR] 第{}行导入失败: {}", rowNum, e.getMessage(), e);
@@ -823,11 +798,11 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         return newDept.getDeptId();
     }
 
-    private boolean createUserIfNotExists(String name, Long deptId, String roleKey,
+    private boolean createUserIfNotExists(String userName, String nickName, Long deptId, String roleKey,
             Map<String, Long> roleCache, Map<Long, Long> userRoleAssignedCache) {
-        String userName = name.trim().replaceAll("\\s+", "");
+        String loginName = userName.trim().replaceAll("\\s+", "");
 
-        SysUser existingUser = sysUserMapper.selectUserByUserName(userName);
+        SysUser existingUser = sysUserMapper.selectUserByUserName(loginName);
         if (existingUser != null) {
             Long roleId = resolveRoleId(roleKey, roleCache);
             if (roleId != null && !isUserHasRole(existingUser.getUserId(), roleId)) {
@@ -836,12 +811,17 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 userRole.setRoleId(roleId);
                 sysUserRoleMapper.batchUserRole(List.of(userRole));
             }
+            // 如果用户已存在但昵称不一致（历史数据修复），则更新昵称
+            if (!nickName.equals(existingUser.getNickName())) {
+                existingUser.setNickName(nickName);
+                sysUserMapper.updateUser(existingUser);
+            }
             return false;
         }
 
         SysUser newUser = new SysUser();
-        newUser.setUserName(userName);
-        newUser.setNickName(name.trim());
+        newUser.setUserName(loginName);
+        newUser.setNickName(nickName.trim());
         newUser.setPassword(SecurityUtils.encryptPassword(DEFAULT_PASSWORD));
         newUser.setDeptId(deptId);
         newUser.setStatus("0");
@@ -905,7 +885,26 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     @Override
     @DataScope(deptAlias = "d")
     public List<TalkStudent> selectTalkStudentListWithLastTalk(TalkStudent talkStudent) {
+        applyCounselorFilter(talkStudent);
         return talkStudentMapper.selectTalkStudentListWithLastTalk(talkStudent);
+    }
+
+    /**
+     * 辅导员角色：通过talk_teacher_class表按counselorCode过滤，只显示自己管理班级的学生
+     */
+    private void applyCounselorFilter(TalkStudent talkStudent) {
+        if (SecurityUtils.isAdmin())
+            return;
+        if (!SecurityUtils.hasRole("talk_counselor"))
+            return;
+        String username = SecurityUtils.getUsername();
+        if (username == null)
+            return;
+        try {
+            talkStudent.getParams().put("counselorCode", username);
+        } catch (Exception e) {
+            log.warn("辅导员数据权限过滤失败: username={}", username, e);
+        }
     }
 
     @Override
@@ -916,8 +915,13 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     }
 
     @Override
-    public List<TalkStudent> selectByTeacherId(Long teacherId) {
-        return talkStudentMapper.selectByTeacherId(teacherId);
+    public List<TalkStudent> selectByTeacherCode(String teacherCode) {
+        return talkStudentMapper.selectByTeacherCode(teacherCode);
+    }
+
+    @Override
+    public List<TalkStudent> selectByCollegeDeptId(Long deptId) {
+        return talkStudentMapper.selectByCollegeDeptId(deptId);
     }
 
 }

@@ -93,7 +93,12 @@ public interface TalkStudentMapper {
     public int countRecordsByStudentId(Long studentId);
 
     /**
-     * 按教师ID查询学生列表
+     * 按教师工号查询学生列表（通过班级关联）
      */
-    public List<TalkStudent> selectByTeacherId(@Param("teacherId") Long teacherId);
+    public List<TalkStudent> selectByTeacherCode(@Param("teacherCode") String teacherCode);
+
+    /**
+     * 按学院ID查询学生（含子部门）
+     */
+    public List<TalkStudent> selectByCollegeDeptId(@Param("deptId") Long deptId);
 }

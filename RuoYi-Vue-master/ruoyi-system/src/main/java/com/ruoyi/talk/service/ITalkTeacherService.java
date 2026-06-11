@@ -45,4 +45,7 @@ public interface ITalkTeacherService {
     List<TalkTeacher> selectCounselorsByDeptId(Long deptId);
 
     String importTeacher(List<TalkTeacher> teacherList, boolean updateSupport);
+
+    /** 获取全校所有班级名 */
+    List<String> selectAllClassNames();
 }

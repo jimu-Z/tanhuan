@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.talk.mapper.TalkTeacherClassMapper">
+
+    <resultMap type="TalkTeacherClass" id="TalkTeacherClassResult">
+        <result property="teacherCode" column="teacher_code"/>
+        <result property="className"   column="class_name"/>
+        <result property="createTime"  column="create_time"/>
+    </resultMap>
+
+    <select id="selectByTeacherCode" parameterType="String" resultMap="TalkTeacherClassResult">
+        select teacher_code, class_name, create_time
+        from talk_teacher_class
+        where teacher_code = #{teacherCode}
+        order by class_name
+    </select>
+
+    <select id="selectByClassName" parameterType="String" resultMap="TalkTeacherClassResult">
+        select teacher_code, class_name, create_time
+        from talk_teacher_class
+        where class_name = #{className}
+        order by teacher_code
+    </select>
+
+    <insert id="batchInsert">
+        insert into talk_teacher_class (teacher_code, class_name, create_time) values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.teacherCode}, #{item.className}, now())
+        </foreach>
+    </insert>
+
+    <delete id="deleteByTeacherCode" parameterType="String">
+        delete from talk_teacher_class where teacher_code = #{teacherCode}
+    </delete>
+
+    <delete id="deleteByClassName" parameterType="String">
+        delete from talk_teacher_class where class_name = #{className}
+    </delete>
+
+</mapper>

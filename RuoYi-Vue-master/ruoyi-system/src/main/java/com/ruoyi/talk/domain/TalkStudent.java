@@ -99,9 +99,6 @@ public class TalkStudent extends BaseEntity {
     @Excel(name = "贫困等级认定")
     private String povertyLevel;
 
-    /** 关联的辅导员/班主任ID(talk_teacher.teacher_id) */
-    private Long teacherId;
-
     /** 上次谈话时间（非数据库字段，仅用于查询展示） */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date lastTalkTime;
@@ -276,9 +273,6 @@ public class TalkStudent extends BaseEntity {
     public String getPovertyLevel() {
         return povertyLevel;
     }
-
-    public Long getTeacherId() { return teacherId; }
-    public void setTeacherId(Long teacherId) { this.teacherId = teacherId; }
 
     public void setLastTalkTime(Date lastTalkTime) {
         this.lastTalkTime = lastTalkTime;

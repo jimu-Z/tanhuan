@@ -34,6 +34,11 @@ public interface TalkTeacherMapper {
     TalkTeacher selectByDeptIdAndName(Long deptId, String teacherName);
 
     /**
+     * 回填 user_id 到 talk_teacher 表
+     */
+    int updateTalkTeacherUserId(TalkTeacher teacher);
+
+    /**
      * 检查同学院下是否存在同名但不同岗位的教师（用于兼任判定）
      */
     int countByDeptAndNameExcludePosition(Long deptId, String teacherName, String position);

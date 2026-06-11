@@ -30,7 +30,22 @@ export function getCounselors(deptId) {
   return request({ url: '/talk/teacher/counselors/' + deptId, method: 'get' })
 }
 
-// 获取教师管理的所有学生
+// 获取教师管理的所有学生（按学院查询）
 export function getTeacherStudents(teacherId) {
   return request({ url: '/ruoyi-system/talk/byTeacher/' + teacherId, method: 'get' })
+}
+
+// 获取教师管理的班级名列表
+export function getTeacherClasses(teacherId) {
+  return request({ url: '/talk/teacher/' + teacherId + '/classes', method: 'get' })
+}
+
+// 保存教师管理的班级
+export function saveTeacherClasses(teacherId, classNames) {
+  return request({ url: '/talk/teacher/' + teacherId + '/classes', method: 'put', data: classNames })
+}
+
+// 获取全校所有班级名
+export function getAllClassNames() {
+  return request({ url: '/talk/teacher/allClassNames', method: 'get' })
 }

@@ -127,6 +127,13 @@
           <el-button
             size="mini"
             type="text"
+            icon="el-icon-s-operation"
+            @click="handleManageClasses(scope.row)"
+            v-hasPermi="['talk:teacher:edit']"
+          >管理班级</el-button>
+          <el-button
+            size="mini"
+            type="text"
             icon="el-icon-edit"
             @click="handleUpdate(scope.row)"
             v-hasPermi="['talk:teacher:edit']"
@@ -196,12 +203,25 @@
         <el-table-column label="班级" prop="deptName" min-width="150" />
         <el-table-column label="手机号" prop="phone" width="130" />
         <el-table-column label="心理健康状态" prop="mentalHealthStatus" width="110">
-          <template slot-scope="scope"><dict-tag :options="dict.type.mental_health_status" :value="scope.row.mentalHealthStatus"/></template>
+          <template slot-scope="scope">{{ mentalHealthMap[scope.row.mentalHealthStatus] || scope.row.mentalHealthStatus }}</template>
         </el-table-column>
         <el-table-column label="学籍状态" prop="enrollmentStatus" width="80">
-          <template slot-scope="scope"><dict-tag :options="dict.type.enrollment_status" :value="scope.row.enrollmentStatus"/></template>
+          <template slot-scope="scope">{{ enrollmentMap[scope.row.enrollmentStatus] || scope.row.enrollmentStatus }}</template>
         </el-table-column>
       </el-table>
+    </el-dialog>
+
+    <!-- 管理班级弹窗 -->
+    <el-dialog :title="classDialogTitle" :visible.sync="classDialogOpen" width="500px" append-to-body>
+      <el-checkbox-group v-model="selectedClassNames">
+        <el-checkbox v-for="name in allClassNames" :key="name" :label="name" style="margin-right:20px;margin-bottom:10px;">
+          {{ name }}
+        </el-checkbox>
+      </el-checkbox-group>
+      <div slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="submitClasses">确 定</el-button>
+        <el-button @click="classDialogOpen = false">取 消</el-button>
+      </div>
     </el-dialog>
 
     <!-- 教师导入对话框 -->
@@ -229,7 +249,7 @@
 </template>
 
 <script>
-import { listTeacher, getTeacher, addTeacher, updateTeacher, delTeacher, getTeacherStudents } from "@/api/talk/teacher"
+import { listTeacher, getTeacher, addTeacher, updateTeacher, delTeacher, getTeacherStudents, getTeacherClasses, saveTeacherClasses, getAllClassNames } from "@/api/talk/teacher"
 import { listDept } from "@/api/system/dept"
 import { getToken } from "@/utils/auth"
 import Treeselect from "@riophae/vue-treeselect"
@@ -251,10 +271,10 @@ export default {
       open: false,
       collegeDeptTree: [],
       positionOptions: [
-        { label: "辅导员", value: "counselor" },
-        { label: "班主任", value: "head_teacher" },
-        { label: "副书记", value: "vice_secretary" },
-        { label: "书记", value: "secretary" }
+        { label: "辅导员", value: "辅导员", raw: { listClass: '', cssClass: '' } },
+        { label: "班主任", value: "班主任", raw: { listClass: '', cssClass: '' } },
+        { label: "副书记", value: "副书记", raw: { listClass: '', cssClass: '' } },
+        { label: "书记", value: "书记", raw: { listClass: '', cssClass: '' } }
       ],
       queryParams: {
         pageNum: 1,
@@ -279,6 +299,15 @@ export default {
       studentDialogTitle: '',
       studentList: [],
       studentLoading: false,
+      // 学生弹窗字典映射
+      mentalHealthMap: { '0': '正常', '1': '关注', '2': '重点关注' },
+      enrollmentMap: { '0': '在读', '1': '休学', '2': '退学' },
+      // 管理班级弹窗
+      classDialogOpen: false,
+      classDialogTitle: '',
+      classDialogTeacherId: null,
+      allClassNames: [],
+      selectedClassNames: [],
       rules: {
         teacherCode: [
           { required: true, message: "工号不能为空", trigger: "blur" }
@@ -301,10 +330,10 @@ export default {
   computed: {
     filteredPositionOptions() {
       const roles = this.$store.state.user?.roles || []
-      const isSecretary = roles.some(r => r.roleKey === 'secretary' || r.roleName === '书记')
+      const isSecretary = roles.some(r => r.roleKey === 'talk_secretary' || r.roleName === '书记')
       if (isSecretary) {
         return this.positionOptions.filter(
-          item => item.value === 'counselor' || item.value === 'head_teacher'
+          item => item.value === '辅导员' || item.value === '班主任'
         )
       }
       return this.positionOptions
@@ -329,7 +358,7 @@ export default {
           if (node && d.parentId && map[d.parentId]) {
             map[d.parentId].children.push(node)
           }
-          if (node && (!d.parentId || d.parentId === 0 || d.parentId === 100)) {
+          if (node && (!d.parentId || d.parentId === 0)) {
             tree.push(node)
           }
         })
@@ -450,7 +479,30 @@ export default {
       getTeacherStudents(row.teacherId).then(res => {
         this.studentList = res.rows || []
         this.studentLoading = false
-      }).catch(() => { this.studentLoading = false })
+      }).catch(err => { 
+        this.studentLoading = false
+        console.error('[学生按钮] API error:', err)
+      })
+    },
+    /** 管理班级 */
+    handleManageClasses(row) {
+      this.classDialogTitle = row.teacherName + ' 管理的班级'
+      this.classDialogOpen = true
+      this.classDialogTeacherId = row.teacherId
+      // 加载所有班级和已选班级
+      Promise.all([
+        getAllClassNames(),
+        getTeacherClasses(row.teacherId)
+      ]).then(([allRes, selectedRes]) => {
+        this.allClassNames = allRes.data || []
+        this.selectedClassNames = selectedRes.data || []
+      }).catch(() => { this.$modal.msgError('加载班级列表失败') })
+    },
+    submitClasses() {
+      saveTeacherClasses(this.classDialogTeacherId, this.selectedClassNames).then(() => {
+        this.$modal.msgSuccess('班级管理保存成功')
+        this.classDialogOpen = false
+      }).catch(() => { this.$modal.msgError('保存失败') })
     },
     // 后端未实现导出接口，暂时注释
     // handleExport() {

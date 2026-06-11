@@ -29,7 +29,9 @@ import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.system.service.ISysDeptService;
 import com.ruoyi.talk.domain.TalkStudent;
+import com.ruoyi.talk.domain.TalkTeacher;
 import com.ruoyi.talk.service.ITalkStudentService;
+import com.ruoyi.talk.service.ITalkTeacherService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
 
@@ -44,6 +46,9 @@ import com.ruoyi.common.core.page.TableDataInfo;
 public class TalkStudentController extends BaseController {
     @Autowired
     private ITalkStudentService talkStudentService;
+
+    @Autowired
+    private ITalkTeacherService talkTeacherService;
 
     @Autowired
     private ISysDeptService deptService;
@@ -165,14 +170,34 @@ public class TalkStudentController extends BaseController {
     }
 
     /**
-     * 按教师ID查询其管理的学生
+     * 按教师所属学院查询学生（书记看全院，辅导员看自己工号关联的学生）
      */
     @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
     @GetMapping("/byTeacher/{teacherId}")
     public TableDataInfo listByTeacher(@PathVariable Long teacherId) {
         startPage();
-        List<TalkStudent> list = talkStudentService.selectByTeacherId(teacherId);
-        return getDataTable(list);
+        logger.info("[学生按钮] teacherId={}", teacherId);
+        TalkTeacher teacher = talkTeacherService.selectTalkTeacherById(teacherId);
+        logger.info("[学生按钮] teacher={}, deptId={}, position={}",
+                teacher != null ? teacher.getTeacherName() : "null",
+                teacher != null ? teacher.getDeptId() : "null",
+                teacher != null ? teacher.getPosition() : "null");
+        if (teacher == null || teacher.getDeptId() == null) {
+            logger.info("[学生按钮] no teacher or no deptId, returning empty");
+            return getDataTable(new ArrayList<>());
+        }
+        // 辅导员/班主任：通过talk_teacher_class表查自己管理的班级学生
+        if ("辅导员".equals(teacher.getPosition()) || "班主任".equals(teacher.getPosition())) {
+            List<TalkStudent> students = talkStudentService.selectByTeacherCode(teacher.getTeacherCode());
+            logger.info("[学生按钮] 辅导员模式, teacherCode={}, result size={}",
+                    teacher.getTeacherCode(), students != null ? students.size() : 0);
+            return getDataTable(students);
+        }
+        // 书记/副书记：按学院查全院学生
+        List<TalkStudent> students = talkStudentService.selectByCollegeDeptId(teacher.getDeptId());
+        logger.info("[学生按钮] 书记模式, deptId={}, result size={}",
+                teacher.getDeptId(), students != null ? students.size() : 0);
+        return getDataTable(students);
     }
 
     private void applyDataScope(Map<String, Object> params) {

@@ -122,6 +122,14 @@ public interface SysUserMapper
     public int deleteUserByIds(Long[] userIds);
 
     /**
+     * 物理删除用户（DELETE FROM，非逻辑删除）
+     *
+     * @param userId 用户ID
+     * @return 结果
+     */
+    public int deleteUserPhysically(Long userId);
+
+    /**
      * 校验用户名称是否唯一
      * 
      * @param userName 用户名称

@@ -36,6 +36,11 @@ public class TalkConstants {
         m.put("suspended", "休学");
         m.put("withdrawn", "退学");
         m.put("graduated", "毕业");
+        m.put("在读", "在读");
+        m.put("休学", "休学");
+        m.put("退学", "退学");
+        m.put("毕业", "毕业");
+        m.put("在校", "在校");
         ENROLLMENT_STATUS_LABELS = Collections.unmodifiableMap(m);
     }
 
@@ -45,6 +50,11 @@ public class TalkConstants {
         m.put("normal", "正常");
         m.put("weekly_track", "周跟踪");
         m.put("monthly_track", "月跟踪");
+        m.put("健康", "健康");
+        m.put("正常", "正常");
+        m.put("重点关注", "重点关注");
+        m.put("中度预警", "中度预警");
+        m.put("关注", "关注");
         MENTAL_HEALTH_LABELS = Collections.unmodifiableMap(m);
     }
 
@@ -55,6 +65,11 @@ public class TalkConstants {
         m.put("general", "一般困难");
         m.put("difficult", "困难");
         m.put("severe", "特别困难");
+        m.put("贫困", "贫困");
+        m.put("轻度贫困", "轻度贫困");
+        m.put("无贫困", "无贫困");
+        m.put("一般困难", "一般困难");
+        m.put("困难", "困难");
         POVERTY_LEVEL_LABELS = Collections.unmodifiableMap(m);
     }
 
