@@ -34,10 +34,18 @@
         <include refid="selectTalkAlertVo"/>
         <where>
             <if test="studentId != null"> and a.student_id = #{studentId}</if>
+            <if test="studentName != null and studentName != ''"> and s.student_name like concat('%', #{studentName}, '%')</if>
             <if test="alertType != null and alertType != ''"> and a.alert_type = #{alertType}</if>
             <if test="alertLevel != null and alertLevel != ''"> and a.alert_level = #{alertLevel}</if>
             <if test="alertStatus != null and alertStatus != ''"> and a.alert_status = #{alertStatus}</if>
-            <if test="params.counselorUsername != null and params.counselorUsername != ''"> and a.student_id in (select sr.student_id from talk_student_record sr join talk_session ts on sr.session_id = ts.session_id where ts.create_by = #{params.counselorUsername})</if>
+            <if test="params.counselorUsername != null and params.counselorUsername != ''">
+                and a.student_id in (
+                    select s.student_id from talk_student s
+                    where exists (select 1 from talk_teacher t where t.teacher_code = #{params.counselorUsername} and t.dept_id = s.dept_id)
+                    union
+                    select sr.student_id from talk_student_record sr join talk_session ts on sr.session_id = ts.session_id where ts.create_by = #{params.counselorUsername}
+                )
+            </if>
             <if test="params.secretaryDeptId != null"> and s.dept_id is not null and exists (select 1 from sys_dept d where (d.dept_id = #{params.secretaryDeptId} or find_in_set(#{params.secretaryDeptId}, d.ancestors)) and d.dept_id = s.dept_id)</if>
         </where>
         order by a.create_time desc
@@ -46,6 +54,13 @@
     <select id="selectTalkAlertById" parameterType="Long" resultMap="TalkAlertResult">
         <include refid="selectTalkAlertVo"/>
         where a.alert_id = #{alertId}
+    </select>
+
+    <select id="selectPendingAutoAlertsByStudentId" parameterType="Long" resultMap="TalkAlertResult">
+        <include refid="selectTalkAlertVo"/>
+        where a.student_id = #{studentId}
+          and a.alert_type = 'auto'
+          and a.alert_status in ('pending', 'in_progress')
     </select>
 
     <insert id="insertTalkAlert" parameterType="TalkAlert" useGeneratedKeys="true" keyProperty="alertId">

@@ -40,22 +40,19 @@ public class TalkStudentRecordController extends BaseController {
     private ITalkAlertService talkAlertService;
 
     /**
-     * 查询当前学生自己的谈话记录
+     * 查询当前学生自己的谈话记录（学生视角）或辅导员发起的谈话记录（辅导员视角）
      */
     @GetMapping("/myRecords")
     public TableDataInfo myRecords(TalkStudentRecord talkStudentRecord) {
         String username = SecurityUtils.getUsername();
-        talkStudentRecord.setStudentCode(username);
-        // Also try matching by studentId if user has student info
-        try {
-            if (talkStudentRecord.getStudentId() == null) {
-                com.ruoyi.talk.domain.TalkStudent student = talkStudentRecordService.selectTalkStudentByCode(username);
-                if (student != null) {
-                    talkStudentRecord.setStudentId(student.getStudentId());
-                }
-            }
-        } catch (Exception e) {
-            // Ignore - fallback to studentCode matching only
+        // 先尝试作为学生查询
+        com.ruoyi.talk.domain.TalkStudent student = talkStudentRecordService.selectTalkStudentByCode(username);
+        if (student != null) {
+            talkStudentRecord.setStudentId(student.getStudentId());
+            talkStudentRecord.setStudentCode(username);
+        } else {
+            // 不是学生，作为辅导员查询自己创建的谈话会话中的记录
+            talkStudentRecord.getParams().put("counselorUsername", username);
         }
         startPage();
         List<TalkStudentRecord> list = talkStudentRecordService.selectTalkStudentRecordList(talkStudentRecord);

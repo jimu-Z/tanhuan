@@ -212,12 +212,20 @@
     </el-dialog>
 
     <!-- 管理班级弹窗 -->
-    <el-dialog :title="classDialogTitle" :visible.sync="classDialogOpen" width="500px" append-to-body>
-      <el-checkbox-group v-model="selectedClassNames">
-        <el-checkbox v-for="name in allClassNames" :key="name" :label="name" style="margin-right:20px;margin-bottom:10px;">
-          {{ name }}
-        </el-checkbox>
-      </el-checkbox-group>
+    <el-dialog :title="classDialogTitle" :visible.sync="classDialogOpen" width="850px" append-to-body :z-index="2100">
+      <treeselect
+        v-model="selectedClassNames"
+        :multiple="true"
+        :options="filteredClassDeptTree"
+        :normalizer="classNormalizer"
+        :disable-branch-nodes="true"
+        :searchable="true"
+        placeholder="请选择班级"
+        :maxHeight="300"
+        :appendToBody="true"
+        :zIndex="9999"
+        style="margin-bottom:12px"
+      />
       <div slot="footer" class="dialog-footer">
         <el-button type="primary" @click="submitClasses">确 定</el-button>
         <el-button @click="classDialogOpen = false">取 消</el-button>
@@ -307,6 +315,8 @@ export default {
       classDialogTitle: '',
       classDialogTeacherId: null,
       allClassNames: [],
+      classDeptTree: [],
+      filteredClassDeptTree: [],
       selectedClassNames: [],
       rules: {
         teacherCode: [
@@ -362,9 +372,29 @@ export default {
             tree.push(node)
           }
         })
-        // 只保留根到college的路径
+        // 学院树：只保留根到college的路径
         this.collegeDeptTree = this.filterCollegeBranches(tree, collegeList.map(d => d.deptId))
+        // 班级树：保留学院+年级+班级完整层级
+        this.classDeptTree = this.filterToCollegeDescendants(tree, collegeList.map(d => d.deptId))
       }).catch(() => { this.$modal.msgError('获取学院列表失败') })
+    },
+    filterToCollegeDescendants(nodes, collegeIds) {
+      if (!nodes || nodes.length === 0) return []
+      const result = []
+      nodes.forEach(node => {
+        const children = node.children ? this.filterToCollegeDescendants(node.children, collegeIds) : []
+        const isCollege = collegeIds.includes(node.id)
+        const isClass = node.deptType === 'class'
+        if (isCollege || isClass || children.length > 0) {
+          // 根节点不作为学院树的根，直接返回其子节点
+          if (!node.parentId || node.parentId === 0) {
+            result.push(...children)
+          } else {
+            result.push({ ...node, children })
+          }
+        }
+      })
+      return result
     },
     filterCollegeBranches(nodes, collegeIds) {
       if (!nodes || nodes.length === 0) return []
@@ -380,6 +410,14 @@ export default {
     normalizer(node) {
       return {
         id: node.id,
+        label: node.label,
+        children: node.children && node.children.length ? node.children : undefined
+      }
+    },
+    classNormalizer(node) {
+      // 叶子节点(班级)用班名作value，分支节点用deptId
+      return {
+        id: node.deptType === 'class' ? node.label : node.id,
         label: node.label,
         children: node.children && node.children.length ? node.children : undefined
       }
@@ -489,14 +527,64 @@ export default {
       this.classDialogTitle = row.teacherName + ' 管理的班级'
       this.classDialogOpen = true
       this.classDialogTeacherId = row.teacherId
-      // 加载所有班级和已选班级
-      Promise.all([
-        getAllClassNames(),
-        getTeacherClasses(row.teacherId)
-      ]).then(([allRes, selectedRes]) => {
+      this.selectedClassNames = []
+      // 如果班级树还没加载，先加载
+      const loadTree = this.classDeptTree.length > 0
+        ? Promise.resolve()
+        : new Promise(resolve => {
+            listDept().then(res => {
+              const allList = res.data || []
+              const collegeList = allList.filter(d => d.deptType === 'college')
+              const map = {}
+              const tree = []
+              allList.forEach(d => {
+                map[d.deptId] = { id: d.deptId, label: d.deptName, children: [], deptType: d.deptType, parentId: d.parentId }
+              })
+              allList.forEach(d => {
+                const node = map[d.deptId]
+                if (node && d.parentId && map[d.parentId]) {
+                  map[d.parentId].children.push(node)
+                }
+                if (node && (!d.parentId || d.parentId === 0)) {
+                  tree.push(node)
+                }
+              })
+              this.classDeptTree = this.filterToCollegeDescendants(tree, collegeList.map(d => d.deptId))
+              resolve()
+            }).catch(() => { this.classDeptTree = []; resolve() })
+          })
+      // 加载允许的班级名和已选班级
+      loadTree.then(() => {
+        return Promise.all([
+          getAllClassNames(),
+          getTeacherClasses(row.teacherId)
+        ])
+      }).then(([allRes, selectedRes]) => {
         this.allClassNames = allRes.data || []
         this.selectedClassNames = selectedRes.data || []
+        // 过滤树
+        const allowedNames = this.allClassNames
+        if (allowedNames.length > 0 && this.classDeptTree.length > 0) {
+          this.filteredClassDeptTree = this.pruneTreeByClassNames(
+            JSON.parse(JSON.stringify(this.classDeptTree)),
+            allowedNames
+          )
+        } else {
+          this.filteredClassDeptTree = this.classDeptTree || []
+        }
       }).catch(() => { this.$modal.msgError('加载班级列表失败') })
+    },
+    pruneTreeByClassNames(nodes, allowedNames) {
+      if (!nodes || nodes.length === 0) return []
+      const result = []
+      nodes.forEach(node => {
+        const children = node.children ? this.pruneTreeByClassNames(node.children, allowedNames) : []
+        const isAllowedClass = node.deptType === 'class' && allowedNames.includes(node.label)
+        if (isAllowedClass || children.length > 0 || node.deptType === 'college') {
+          result.push({ ...node, children })
+        }
+      })
+      return result
     },
     submitClasses() {
       saveTeacherClasses(this.classDialogTeacherId, this.selectedClassNames).then(() => {

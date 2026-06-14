@@ -156,6 +156,16 @@ public class TalkTeacherController extends BaseController {
     }
 
     /**
+     * 根据学生班级ID获取所属学院的辅导员/书记等管理人员
+     */
+    @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
+    @GetMapping("/managers/{deptId}")
+    public AjaxResult managers(@PathVariable Long deptId) {
+        List<TalkTeacher> list = teacherService.selectManagersByStudentDeptId(deptId);
+        return success(list);
+    }
+
+    /**
      * 获取教师管理的班级名列表
      */
     @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
@@ -176,16 +186,35 @@ public class TalkTeacherController extends BaseController {
         TalkTeacher teacher = teacherService.selectTalkTeacherById(teacherId);
         if (teacher == null)
             return error("教师不存在");
+        // 书记只能给本学院辅导员分配本学院班级
+        if (!SecurityUtils.isAdmin() && SecurityUtils.hasRole("talk_secretary")) {
+            Long myDeptId = SecurityUtils.getDeptId();
+            if (myDeptId != null && !myDeptId.equals(teacher.getDeptId())) {
+                return error("只能为本学院教师分配班级");
+            }
+        }
         teacherClassService.saveTeacherClasses(teacher.getTeacherCode(), classNames);
         return success();
     }
 
     /**
-     * 获取全校所有班级名列表
+     * 获取班级名列表（管理员看全校，书记只看本学院）
      */
     @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
     @GetMapping("/allClassNames")
     public AjaxResult getAllClassNames() {
-        return success(teacherService.selectAllClassNames());
+        // 管理员看全校
+        if (SecurityUtils.isAdmin()) {
+            return success(teacherService.selectAllClassNames());
+        }
+        // 书记/副书记只看本学院
+        if (SecurityUtils.hasRole("talk_secretary")) {
+            Long deptId = SecurityUtils.getDeptId();
+            if (deptId == null)
+                return error("无法获取所属学院");
+            return success(teacherService.selectClassNamesByCollegeDept(deptId));
+        }
+        // 辅导员/班主任不需要班级分配权限，返回空
+        return success(List.of());
     }
 }

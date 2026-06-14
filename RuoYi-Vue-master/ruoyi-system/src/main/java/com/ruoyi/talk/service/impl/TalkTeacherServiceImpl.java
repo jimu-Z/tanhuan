@@ -145,6 +145,18 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
     }
 
     @Override
+    public List<TalkTeacher> selectManagersByStudentDeptId(Long studentDeptId) {
+        if (studentDeptId == null) {
+            return new java.util.ArrayList<>();
+        }
+        Long collegeId = findCollegeDeptId(studentDeptId);
+        if (collegeId == null) {
+            return new java.util.ArrayList<>();
+        }
+        return teacherMapper.selectCounselorsByDeptId(collegeId);
+    }
+
+    @Override
     @Transactional
     public String importTeacher(List<TalkTeacher> teacherList, boolean updateSupport) {
         if (teacherList == null || teacherList.isEmpty()) {
@@ -411,5 +423,10 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
                 .map(SysDept::getDeptName)
                 .sorted()
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<String> selectClassNamesByCollegeDept(Long deptId) {
+        return teacherMapper.selectClassNamesByCollegeDept(deptId);
     }
 }

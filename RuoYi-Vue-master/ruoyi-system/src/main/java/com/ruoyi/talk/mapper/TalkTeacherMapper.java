@@ -1,6 +1,7 @@
 package com.ruoyi.talk.mapper;
 
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 import com.ruoyi.talk.domain.TalkTeacher;
 
 /**
@@ -42,4 +43,9 @@ public interface TalkTeacherMapper {
      * 检查同学院下是否存在同名但不同岗位的教师（用于兼任判定）
      */
     int countByDeptAndNameExcludePosition(Long deptId, String teacherName, String position);
+
+    /**
+     * 查询指定学院下的所有班级名
+     */
+    List<String> selectClassNamesByCollegeDept(@Param("deptId") Long deptId);
 }

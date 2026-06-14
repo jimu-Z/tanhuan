@@ -15,14 +15,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
+import com.ruoyi.common.config.RuoYiConfig;
+import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.system.mapper.SysDeptMapper;
 import com.ruoyi.talk.constant.TalkConstants;
 import com.ruoyi.talk.domain.TalkSession;
 import com.ruoyi.talk.domain.TalkSessionTag;
 import com.ruoyi.talk.domain.TalkStudent;
+import com.ruoyi.talk.domain.TalkAttachment;
 import com.ruoyi.talk.domain.TalkStudentRecord;
 import com.ruoyi.talk.domain.TalkTag;
+import com.ruoyi.talk.mapper.TalkAttachmentMapper;
 import com.ruoyi.talk.mapper.TalkSessionMapper;
 import com.ruoyi.talk.mapper.TalkSessionTagMapper;
 import com.ruoyi.talk.mapper.TalkStudentMapper;
@@ -49,6 +53,8 @@ public class TalkDocxService {
     private TalkSessionTagMapper talkSessionTagMapper;
     @Autowired
     private TalkTagMapper talkTagMapper;
+    @Autowired
+    private TalkAttachmentMapper talkAttachmentMapper;
     @Autowired
     private SysDeptMapper sysDeptMapper;
 
@@ -99,6 +105,8 @@ public class TalkDocxService {
                 zos.write(b);
                 zos.closeEntry();
             }
+            // 打包附件
+            writeAttachmentsToZip(zos, session.getSessionId());
         }
         return zip.toByteArray();
     }
@@ -134,9 +142,42 @@ public class TalkDocxService {
             for (XWPFFooter f : doc.getFooterList())
                 for (IBodyElement el : f.getBodyElements())
                     process(el, vals);
+
+            // 动态追加附件清单
+            appendAttachmentList(doc, session.getSessionId());
+
             doc.write(bos);
             return bos.toByteArray();
         }
+    }
+
+    private void appendAttachmentList(XWPFDocument doc, Long sessionId) {
+        List<TalkAttachment> attachments = talkAttachmentMapper.selectTalkAttachmentBySessionId(sessionId);
+        if (attachments == null || attachments.isEmpty()) {
+            return;
+        }
+        bl(doc);
+        XWPFParagraph title = doc.createParagraph();
+        XWPFRun tr = title.createRun();
+        tr.setBold(true);
+        tr.setFontSize(12);
+        tr.setText("附件清单");
+        for (TalkAttachment att : attachments) {
+            XWPFParagraph p = doc.createParagraph();
+            XWPFRun r = p.createRun();
+            r.setFontSize(11);
+            r.setText("• " + s(att.getFileName()) + " (" + formatFileSize(att.getFileSize()) + ")");
+        }
+    }
+
+    private String formatFileSize(Long size) {
+        if (size == null)
+            return "未知大小";
+        if (size < 1024)
+            return size + " B";
+        if (size < 1024 * 1024)
+            return String.format("%.1f KB", size / 1024.0);
+        return String.format("%.1f MB", size / (1024.0 * 1024));
     }
 
     private void process(IBodyElement el, Map<String, String> vals) {
@@ -275,9 +316,12 @@ public class TalkDocxService {
 
         if (stu != null) {
             m.put("${enrollment_status}",
-                    TalkConstants.ENROLLMENT_STATUS_LABELS.getOrDefault(stu.getEnrollmentStatus(), s(stu.getEnrollmentStatus())));
-            m.put("${mental_health}", TalkConstants.MENTAL_HEALTH_LABELS.getOrDefault(stu.getMentalHealthStatus(), s(stu.getMentalHealthStatus())));
-            m.put("${poverty_level}", TalkConstants.POVERTY_LEVEL_LABELS.getOrDefault(stu.getPovertyLevel(), s(stu.getPovertyLevel())));
+                    TalkConstants.ENROLLMENT_STATUS_LABELS.getOrDefault(stu.getEnrollmentStatus(),
+                            s(stu.getEnrollmentStatus())));
+            m.put("${mental_health}", TalkConstants.MENTAL_HEALTH_LABELS.getOrDefault(stu.getMentalHealthStatus(),
+                    s(stu.getMentalHealthStatus())));
+            m.put("${poverty_level}",
+                    TalkConstants.POVERTY_LEVEL_LABELS.getOrDefault(stu.getPovertyLevel(), s(stu.getPovertyLevel())));
             m.put("${remark}", s(stu.getRemark()));
         }
 
@@ -466,5 +510,35 @@ public class TalkDocxService {
 
     private void bl(XWPFDocument d) {
         d.createParagraph();
+    }
+
+    public void writeAttachmentsToZip(ZipOutputStream zos, Long sessionId) throws IOException {
+        List<TalkAttachment> attachments = talkAttachmentMapper.selectTalkAttachmentBySessionId(sessionId);
+        if (attachments == null || attachments.isEmpty()) {
+            return;
+        }
+        String profile = RuoYiConfig.getProfile();
+        for (TalkAttachment att : attachments) {
+            String filePath = att.getFilePath();
+            if (filePath == null)
+                continue;
+            String absPath = profile + filePath.replace(Constants.RESOURCE_PREFIX, "");
+            File file = new File(absPath);
+            if (!file.exists()) {
+                log.warn("附件文件不存在: {}", absPath);
+                continue;
+            }
+            try (FileInputStream fis = new FileInputStream(file)) {
+                zos.putNextEntry(new ZipEntry("attachments/" + s(att.getFileName())));
+                byte[] buffer = new byte[8192];
+                int len;
+                while ((len = fis.read(buffer)) > 0) {
+                    zos.write(buffer, 0, len);
+                }
+                zos.closeEntry();
+            } catch (IOException e) {
+                log.warn("打包附件失败 {}: {}", att.getFileName(), e.getMessage());
+            }
+        }
     }
 }

@@ -107,6 +107,19 @@
                 </template>
               </el-table-column>
             </el-table>
+            <!-- 附件列表 -->
+            <div style="margin-top:10px">
+              <div style="margin-bottom:6px;font-weight:bold;font-size:13px">附件</div>
+              <div v-if="scope.row._attachments && scope.row._attachments.length > 0">
+                <div v-for="att in scope.row._attachments" :key="att.attachmentId" style="display:flex;align-items:center;margin-bottom:4px">
+                  <i class="el-icon-document" style="margin-right:6px;color:#909399"></i>
+                  <span style="flex:1;font-size:13px">{{ att.fileName }}</span>
+                  <span style="color:#909399;font-size:12px;margin-right:10px">{{ formatFileSize(att.fileSize) }}</span>
+                  <el-button type="text" size="mini" icon="el-icon-download" @click="downloadAttachment(att)">下载</el-button>
+                </div>
+              </div>
+              <div v-else style="color:#c0c4cc;padding:4px 0">暂无附件</div>
+            </div>
           </div>
         </template>
       </el-table-column>
@@ -227,6 +240,7 @@
 import { listTalksession, getTalksession, delTalksession, addTalksession, updateTalksession, getSessionTags, TAG_LABELS, exportDocx, exportDocxBatch } from "@/api/talk/talkSession"
 import { listTalkrecord } from "@/api/talk/talkStudentRecord"
 import { getTalk } from "@/api/talk/talkStudent"
+import { listAttachment } from "@/api/talk/talkAttachment"
 
 export default {
   name: "Talksession",
@@ -309,6 +323,12 @@ export default {
     handleExpand(row, expanded) {
       if (!expanded || row._students) return
       this.$set(row, '_loadingStudents', true)
+      // 加载附件
+      listAttachment(row.sessionId).then(res => {
+        this.$set(row, '_attachments', res.data || [])
+      }).catch(() => {
+        this.$set(row, '_attachments', [])
+      })
       listTalkrecord({ sessionId: row.sessionId, pageSize: 999 }).then(res => {
         const records = res.rows || []
         Promise.all(records.map(r =>
@@ -324,6 +344,21 @@ export default {
           this.$set(row, '_loadingStudents', false)
         }).catch(() => { this.$set(row, '_loadingStudents', false); this.$modal.msgError('加载学生信息失败') })
       }).catch(() => { this.$set(row, '_loadingStudents', false); this.$modal.msgError('加载学生信息失败') })
+    },
+    formatFileSize(size) {
+      if (!size) return '0 B'
+      if (size < 1024) return size + ' B'
+      if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB'
+      return (size / (1024 * 1024)).toFixed(1) + ' MB'
+    },
+    downloadAttachment(att) {
+      if (!att.filePath) return
+      const link = document.createElement('a')
+      link.href = att.filePath
+      link.download = att.fileName || 'download'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
     },
     // 取消按钮
     cancel() {

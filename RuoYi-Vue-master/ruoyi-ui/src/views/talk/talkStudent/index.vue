@@ -211,7 +211,7 @@
 
     <el-table v-loading="loading" :data="talkList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="学生ID" align="center" prop="studentId" />
+      <el-table-column type="index" label="序号" width="60" align="center" />
       <el-table-column label="学号" align="center" prop="studentCode" />
       <el-table-column label="姓名" align="center" prop="studentName" />
       <el-table-column label="班级" align="center" prop="deptName" :show-overflow-tooltip="true" />
@@ -276,15 +276,15 @@
     />
 
     <!-- 添加或修改学生信息管理对话框 -->
-    <el-dialog :title="title" :visible.sync="open" width="500px" append-to-body>
+    <el-dialog :title="title" :visible.sync="open" width="700px" append-to-body>
       <el-form ref="form" :model="form" :rules="rules" label-width="100px">
         <el-row>
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="学号" prop="studentCode">
               <el-input v-model="form.studentCode" placeholder="请输入学号" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="姓名" prop="studentName">
               <el-input v-model="form.studentName" placeholder="请输入姓名" />
             </el-form-item>
@@ -296,22 +296,62 @@
                 placeholder="请选择班级" clearable style="width:100%" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
-            <el-form-item label="性别" prop="gender">
-              <el-input v-model="form.gender" placeholder="请输入性别" />
+          <el-col :span="12">
+            <el-form-item label="辅导员">
+              <el-input v-model="counselorDisplay" placeholder="选择班级后自动显示" readonly />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col :span="12">
+            <el-form-item label="书记">
+              <el-input v-model="secretaryDisplay" placeholder="选择班级后自动显示" readonly />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="性别" prop="gender">
+              <el-select v-model="form.gender" placeholder="请选择性别" style="width:100%">
+                <el-option v-for="dict in genderOptions" :key="dict.dictValue" :label="dict.dictLabel" :value="dict.dictValue" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="政治面貌" prop="politicalStatus">
+              <el-select v-model="form.politicalStatus" placeholder="请选择政治面貌" style="width:100%">
+                <el-option v-for="dict in politicalStatusOptions" :key="dict.dictValue" :label="dict.dictLabel" :value="dict.dictValue" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="民族" prop="nation">
               <el-input v-model="form.nation" placeholder="请输入民族" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
-            <el-form-item label="本人联系电话" prop="phone">
+          <el-col :span="12">
+            <el-form-item label="学籍状态" prop="enrollmentStatus">
+              <el-select v-model="form.enrollmentStatus" placeholder="请选择学籍状态" style="width:100%">
+                <el-option v-for="dict in enrollmentStatusOptions" :key="dict.dictValue" :label="dict.dictLabel" :value="dict.dictValue" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="心理健康" prop="mentalHealthStatus">
+              <el-select v-model="form.mentalHealthStatus" placeholder="请选择心理健康状态" style="width:100%">
+                <el-option v-for="dict in mentalHealthStatusOptions" :key="dict.dictValue" :label="dict.dictLabel" :value="dict.dictValue" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="贫困等级" prop="povertyLevel">
+              <el-select v-model="form.povertyLevel" placeholder="请选择贫困等级" style="width:100%">
+                <el-option v-for="dict in povertyLevelOptions" :key="dict.dictValue" :label="dict.dictLabel" :value="dict.dictValue" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="本人电话" prop="phone">
               <el-input v-model="form.phone" placeholder="请输入本人联系电话" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="身份证号" prop="idCard">
               <el-input v-model="form.idCard" placeholder="请输入身份证号" />
             </el-form-item>
@@ -321,49 +361,44 @@
               <el-input v-model="form.address" placeholder="请输入家庭住址" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="父亲姓名" prop="fatherName">
               <el-input v-model="form.fatherName" placeholder="请输入父亲姓名" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="父亲电话" prop="fatherPhone">
               <el-input v-model="form.fatherPhone" placeholder="请输入父亲电话" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="母亲姓名" prop="motherName">
               <el-input v-model="form.motherName" placeholder="请输入母亲姓名" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="母亲电话" prop="motherPhone">
               <el-input v-model="form.motherPhone" placeholder="请输入母亲电话" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="班长" prop="classMonitor">
               <el-input v-model="form.classMonitor" placeholder="请输入班长" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="舍长" prop="dormLeader">
               <el-input v-model="form.dormLeader" placeholder="请输入舍长" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="宿舍楼" prop="dormBuilding">
               <el-input v-model="form.dormBuilding" placeholder="请输入宿舍楼" />
             </el-form-item>
           </el-col>
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="宿舍号" prop="dormRoom">
               <el-input v-model="form.dormRoom" placeholder="请输入宿舍号" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="24">
-            <el-form-item label="贫困等级认定" prop="povertyLevel">
-              <el-input v-model="form.povertyLevel" placeholder="请输入贫困等级认定" />
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -446,6 +481,8 @@
 <script>
 import { listTalk, getTalk, delTalk, addTalk, updateTalk, importPreview, importExecute } from "@/api/talk/talkStudent"
 import { listDept } from "@/api/system/dept"
+import { getDicts } from "@/api/system/dict/data"
+import request from "@/utils/request"
 
 export default {
   name: "Talk",
@@ -518,14 +555,30 @@ export default {
       fileList: [],
       importResult: { totalRows: 0, errorCount: 0, warnCount: 0, previewRows: [] },
       importMode: 'skip',
-      deptTree: []
+      deptTree: [],
+      // 辅导员/书记展示
+      counselorDisplay: '',
+      secretaryDisplay: '',
+      // 字典选项
+      genderOptions: [{ dictValue: '0', dictLabel: '男' }, { dictValue: '1', dictLabel: '女' }],
+      politicalStatusOptions: [],
+      enrollmentStatusOptions: [],
+      mentalHealthStatusOptions: [],
+      povertyLevelOptions: []
     }
   },
   created() {
     this.getList()
     this.loadDeptTree()
+    this.loadDicts()
   },
   methods: {
+    loadDicts() {
+      getDicts("political_status").then(res => { this.politicalStatusOptions = res.data || [] })
+      getDicts("enrollment_status").then(res => { this.enrollmentStatusOptions = res.data || [] })
+      getDicts("mental_health_status").then(res => { this.mentalHealthStatusOptions = res.data || [] })
+      getDicts("poverty_level").then(res => { this.povertyLevelOptions = res.data || [] })
+    },
     loadDeptTree() {
       listDept().then(res => {
         this.deptTree = this.buildTree(res.data || [])
@@ -540,6 +593,20 @@ export default {
         else if (!d.parentId || d.parentId === 0 || d.parentId === 100) { tree.push(node) }
       })
       return tree
+    },
+    /** 在部门树中查找从根到目标节点的路径 */
+    findDeptPath(targetId, tree, path = []) {
+      const t = String(targetId)
+      for (const node of tree) {
+        if (String(node.id) === t) {
+          return [...path, node.id]
+        }
+        if (node.children && node.children.length > 0) {
+          const found = this.findDeptPath(targetId, node.children, [...path, node.id])
+          if (found) return found
+        }
+      }
+      return null
     },
     /** 查询学生信息管理列表 */
     maskPhone(phone) {
@@ -593,6 +660,8 @@ export default {
         updateBy: null,
         updateTime: null
       }
+      this.counselorDisplay = ''
+      this.secretaryDisplay = ''
       this.resetForm("form")
     },
     /** 搜索按钮操作 */
@@ -627,6 +696,16 @@ export default {
       const studentId = row ? row.studentId : (this.ids && this.ids.length > 0 ? this.ids[0] : null)
       getTalk(studentId).then(response => {
         this.form = response.data || {}
+        // 将 deptId 转换为级联路径数组以便回显
+        if (this.form.deptId && this.deptTree) {
+          const path = this.findDeptPath(this.form.deptId, this.deptTree)
+          if (path) {
+            this.form.deptId = path
+          }
+        }
+        // 加载辅导员/书记信息
+        const leafDeptId = Array.isArray(this.form.deptId) ? this.form.deptId[this.form.deptId.length - 1] : this.form.deptId
+        this.loadManagers(leafDeptId)
         this.open = true
         this.title = "修改学生信息管理"
       }).catch(() => { this.$modal.msgError('获取学生详情失败') })
@@ -635,14 +714,19 @@ export default {
     submitForm() {
       this.$refs["form"].validate(valid => {
         if (valid) {
-          if (this.form.studentId != null) {
-            updateTalk(this.form).then(response => {
+          const submitData = { ...this.form }
+          // 级联选择器返回的是数组路径，取最后一个叶子节点 id
+          if (Array.isArray(submitData.deptId)) {
+            submitData.deptId = submitData.deptId[submitData.deptId.length - 1]
+          }
+          if (submitData.studentId != null) {
+            updateTalk(submitData).then(response => {
               this.$modal.msgSuccess("修改成功")
               this.open = false
               this.getList()
             }).catch(() => { this.$modal.msgError('修改失败') })
           } else {
-            addTalk(this.form).then(response => {
+            addTalk(submitData).then(response => {
               this.$modal.msgSuccess("新增成功")
               this.open = false
               this.getList()
@@ -721,6 +805,30 @@ export default {
       }).catch(() => {
         this.importLoading = false
       })
+    },
+    /** 根据班级ID加载辅导员/书记 */
+    loadManagers(deptId) {
+      if (!deptId) {
+        this.counselorDisplay = ''
+        this.secretaryDisplay = ''
+        return
+      }
+      request({ url: '/talk/teacher/managers/' + deptId, method: 'get' }).then(res => {
+        const list = res.data || []
+        const counselors = list.filter(t => t.position === '辅导员' || t.position === '班主任')
+        const secretaries = list.filter(t => t.position === '书记' || t.position === '副书记')
+        this.counselorDisplay = counselors.map(t => t.teacherName + (t.phone ? '(' + t.phone + ')' : '')).join('、') || '暂无'
+        this.secretaryDisplay = secretaries.map(t => t.teacherName + (t.phone ? '(' + t.phone + ')' : '')).join('、') || '暂无'
+      }).catch(() => {
+        this.counselorDisplay = ''
+        this.secretaryDisplay = ''
+      })
+    }
+  },
+  watch: {
+    'form.deptId'(val) {
+      const leafDeptId = Array.isArray(val) ? val[val.length - 1] : val
+      this.loadManagers(leafDeptId)
     }
   }
 }

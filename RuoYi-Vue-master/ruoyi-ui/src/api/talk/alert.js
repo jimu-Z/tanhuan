@@ -29,3 +29,8 @@ export function delAlert(alertIds) {
 export function handleAlert(alertId, alertStatus, handleRemark) {
   return request({ url: '/talk/alert/handle/' + alertId, method: 'put', data: { alertStatus, handleRemark } })
 }
+
+// 批量初始化预警（根据学生心理健康状态）
+export function initAlerts() {
+  return request({ url: '/talk/alert/batch-init', method: 'post' })
+}

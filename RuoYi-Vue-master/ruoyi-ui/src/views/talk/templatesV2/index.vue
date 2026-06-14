@@ -114,7 +114,20 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="标签" prop="templateTags">
-              <el-input v-model="form.templateTags" placeholder="请输入标签，多个用逗号分隔" />
+              <el-select
+                v-model="selectedTags"
+                multiple
+                filterable
+                placeholder="请选择标签"
+                style="width:100%"
+              >
+                <el-option
+                  v-for="opt in tagOptions"
+                  :key="opt.value"
+                  :label="opt.label"
+                  :value="opt.value"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -175,10 +188,13 @@
 <script>
 import { listTemplate, getTemplate, addTemplate, updateTemplate, delTemplate } from '@/api/talk/talkTemplate'
 import { TAG_LABELS } from '@/api/talk/talkSession'
+import { getLabels } from '@/api/talk/talkTag'
 
 export default {
   name: 'TemplatesV2',
   data() {
+    // 构建标签选项列表
+    const tagOptions = Object.keys(TAG_LABELS).map(k => ({ value: k, label: TAG_LABELS[k] }))
     return {
       loading: false,
       showSearch: true,
@@ -195,6 +211,8 @@ export default {
         templateType: null
       },
       form: {},
+      tagOptions: tagOptions,
+      selectedTags: [],
       rules: {
         templateName: [
           { required: true, message: '模板名称不能为空', trigger: 'blur' }
@@ -210,8 +228,16 @@ export default {
   },
   created() {
     this.getList()
+    this.loadTagOptions()
   },
   methods: {
+    loadTagOptions() {
+      getLabels().then(res => {
+        if (res.data && Object.keys(res.data).length > 0) {
+          this.tagOptions = Object.keys(res.data).map(k => ({ value: k, label: res.data[k] }))
+        }
+      }).catch(() => {}) // 失败则用兜底 TAG_LABELS
+    },
     getList() {
       this.loading = true
       listTemplate(this.queryParams).then(response => {
@@ -245,6 +271,7 @@ export default {
         templateType: 'personal',
         templateTags: null
       }
+      this.selectedTags = []
       this.resetForm('form')
     },
     handleQuery() {
@@ -270,14 +297,26 @@ export default {
       var templateId = row.templateId
       getTemplate(templateId).then(response => {
         this.form = response.data
+        // 解析标签到多选数组
+        this.selectedTags = this.parseTagValues(this.form.templateTags)
         this.open = true
         this.title = '修改谈话模板'
       }).catch(() => {
         this.$modal.msgError('获取模板信息失败')
       })
     },
+    parseTagValues(tags) {
+      if (!tags) return []
+      try {
+        const parsed = JSON.parse(tags)
+        if (Array.isArray(parsed)) return parsed
+      } catch (e) {}
+      return tags.split(',').map(t => t.trim()).filter(Boolean)
+    },
     submitForm() {
       var self = this
+      // 多选标签拼接为逗号分隔字符串
+      this.form.templateTags = this.selectedTags.join(',')
       this.$refs['form'].validate(function(valid) {
         if (valid) {
           if (self.form.templateId != null) {

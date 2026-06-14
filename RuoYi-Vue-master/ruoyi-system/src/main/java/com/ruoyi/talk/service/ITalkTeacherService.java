@@ -44,8 +44,18 @@ public interface ITalkTeacherService {
      */
     List<TalkTeacher> selectCounselorsByDeptId(Long deptId);
 
+    /**
+     * 通过学生班级ID上溯学院，查询该学院的辅导员/书记等管理人员
+     * @param studentDeptId 学生所在班级ID
+     * @return 教师列表（包含辅导员、书记、副书记、班主任）
+     */
+    List<TalkTeacher> selectManagersByStudentDeptId(Long studentDeptId);
+
     String importTeacher(List<TalkTeacher> teacherList, boolean updateSupport);
 
     /** 获取全校所有班级名 */
     List<String> selectAllClassNames();
+
+    /** 获取指定学院下的班级名 */
+    List<String> selectClassNamesByCollegeDept(Long deptId);
 }

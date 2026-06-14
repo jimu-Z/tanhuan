@@ -41,6 +41,7 @@ import com.ruoyi.talk.domain.TalkTeacher;
 import com.ruoyi.talk.mapper.TalkSessionMapper;
 import com.ruoyi.talk.mapper.TalkStudentMapper;
 import com.ruoyi.talk.mapper.TalkStudentRecordMapper;
+import com.ruoyi.talk.service.ITalkAlertService;
 import com.ruoyi.talk.service.ITalkStudentService;
 import com.ruoyi.talk.service.ITalkTeacherService;
 import java.util.stream.Collectors;
@@ -81,6 +82,9 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
     @Autowired
     private ITalkTeacherService talkTeacherService;
+
+    @Autowired
+    private ITalkAlertService talkAlertService;
 
     private static final Long TOP_DEPT_ID = 100L;
 
@@ -184,6 +188,11 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 user.setNickName(studentName);
                 sysUserMapper.updateUser(user);
             }
+        }
+        // 心理健康状态变化时自动生成预警
+        if (StringUtils.isNotEmpty(talkStudent.getMentalHealthStatus()) && talkStudent.getStudentId() != null) {
+            talkAlertService.autoGenerateAlertForStudent(talkStudent.getStudentId(),
+                    talkStudent.getMentalHealthStatus());
         }
         return rows;
     }
@@ -376,6 +385,16 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                     warnCount++;
                 }
 
+                // 校验Excel中填写的辅导员/书记/班主任/副书记是否存在
+                if ("ok".equals(status) || "warn".equals(status)) {
+                    String teacherError = validateImportTeachers(college, rowData);
+                    if (teacherError != null) {
+                        status = "error";
+                        message = teacherError;
+                        errorCount++;
+                    }
+                }
+
                 if (!StringUtils.isEmpty(studentCode)) {
                     seenCodesInExcel.add(studentCode);
                 }
@@ -466,6 +485,14 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 Long gradeDeptId = findOrCreateDept(grade, collegeDeptId, "grade");
                 Long classDeptId = findOrCreateDept(className, gradeDeptId, "class");
 
+                // 校验Excel中填写的辅导员/书记/班主任/副书记是否存在
+                String teacherError = validateImportTeachersByDeptId(collegeDeptId, rowData);
+                if (teacherError != null) {
+                    skipCount++;
+                    errors.add("第" + rowNum + "行: " + teacherError);
+                    continue;
+                }
+
                 TalkStudent student = new TalkStudent();
                 student.setStudentCode(studentCode);
                 student.setStudentName(studentName);
@@ -502,6 +529,10 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                             student.setCreateTime(existing.getCreateTime());
                             student.setUpdateTime(DateUtils.getNowDate());
                             talkStudentMapper.updateTalkStudent(student);
+                            if (StringUtils.isNotEmpty(student.getMentalHealthStatus())) {
+                                talkAlertService.autoGenerateAlertForStudent(student.getStudentId(),
+                                        student.getMentalHealthStatus());
+                            }
                             successCount++;
                             errors.add("第" + rowNum + "行: 学号" + studentCode + " 已存在，已更新");
                             continue;
@@ -518,6 +549,10 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                     student.setStudentId(gapId);
                 }
                 talkStudentMapper.insertTalkStudent(student);
+                if (StringUtils.isNotEmpty(student.getMentalHealthStatus()) && student.getStudentId() != null) {
+                    talkAlertService.autoGenerateAlertForStudent(student.getStudentId(),
+                            student.getMentalHealthStatus());
+                }
                 successCount++;
 
                 if (createUserIfNotExists(studentCode, studentName, classDeptId, STUDENT_ROLE_KEY,
@@ -753,6 +788,89 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         query.setStudentCode(studentCode);
         List<TalkStudent> list = talkStudentMapper.selectTalkStudentList(query);
         return list != null && !list.isEmpty();
+    }
+
+    /**
+     * 根据学院名称查找学院ID
+     */
+    private Long findCollegeDeptIdByName(String collegeName) {
+        if (StringUtils.isEmpty(collegeName)) {
+            return null;
+        }
+        SysDept query = new SysDept();
+        query.setDeptName(collegeName.trim());
+        List<SysDept> depts = sysDeptMapper.selectDeptList(query);
+        if (depts != null) {
+            for (SysDept d : depts) {
+                if ("college".equals(d.getDeptType()) || ("dept".equals(d.getDeptType()) && (d.getParentId() == null || d.getParentId() == 0 || TOP_DEPT_ID.equals(d.getParentId())))) {
+                    return d.getDeptId();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 校验Excel中填写的辅导员/书记/班主任/副书记是否存在于该学院（预览用）
+     */
+    private String validateImportTeachers(String collegeName, Map<String, String> rowData) {
+        Long collegeId = findCollegeDeptIdByName(collegeName);
+        if (collegeId == null) {
+            return null;
+        }
+        return validateImportTeachersByDeptId(collegeId, rowData);
+    }
+
+    /**
+     * 校验Excel中填写的辅导员/书记/班主任/副书记是否存在于该学院（执行用）
+     */
+    private String validateImportTeachersByDeptId(Long collegeDeptId, Map<String, String> rowData) {
+        if (collegeDeptId == null) {
+            return null;
+        }
+        String counselor = rowData.get("counselor");
+        String headTeacher = rowData.get("head_teacher");
+        String secretary = rowData.get("secretary");
+        String viceSecretary = rowData.get("vice_secretary");
+
+        boolean hasAnyTeacherField = StringUtils.isNotEmpty(counselor) || StringUtils.isNotEmpty(headTeacher)
+                || StringUtils.isNotEmpty(secretary) || StringUtils.isNotEmpty(viceSecretary);
+        if (!hasAnyTeacherField) {
+            return null;
+        }
+
+        List<TalkTeacher> teachers = talkTeacherService.selectCounselorsByDeptId(collegeDeptId);
+        if (teachers == null) {
+            teachers = new ArrayList<>();
+        }
+
+        StringBuilder error = new StringBuilder();
+        if (StringUtils.isNotEmpty(counselor)) {
+            boolean found = teachers.stream().anyMatch(t -> counselor.equals(t.getTeacherName()) && "辅导员".equals(t.getPosition()));
+            if (!found) {
+                error.append("辅导员[").append(counselor).append("]不存在；");
+            }
+        }
+        if (StringUtils.isNotEmpty(headTeacher)) {
+            boolean found = teachers.stream().anyMatch(t -> headTeacher.equals(t.getTeacherName()) && "班主任".equals(t.getPosition()));
+            if (!found) {
+                error.append("班主任[").append(headTeacher).append("]不存在；");
+            }
+        }
+        if (StringUtils.isNotEmpty(secretary)) {
+            boolean found = teachers.stream().anyMatch(t -> secretary.equals(t.getTeacherName()) && "书记".equals(t.getPosition()));
+            if (!found) {
+                error.append("书记[").append(secretary).append("]不存在；");
+            }
+        }
+        if (StringUtils.isNotEmpty(viceSecretary)) {
+            boolean found = teachers.stream().anyMatch(t -> viceSecretary.equals(t.getTeacherName()) && "副书记".equals(t.getPosition()));
+            if (!found) {
+                error.append("副书记[").append(viceSecretary).append("]不存在；");
+            }
+        }
+
+        return error.length() > 0 ? error.toString() : null;
     }
 
     private Long findOrCreateDept(String deptName, Long parentId, String type) {

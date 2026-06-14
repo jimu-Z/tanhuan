@@ -107,4 +107,11 @@
           and status = '0'
     </select>
 
+    <select id="selectClassNamesByCollegeDept" resultType="String">
+        select distinct d.dept_name from sys_dept d
+        where d.dept_type = 'class'
+          and (d.dept_id = #{deptId} or find_in_set(#{deptId}, d.ancestors))
+        order by d.dept_name
+    </select>
+
 </mapper>

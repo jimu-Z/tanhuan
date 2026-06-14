@@ -147,6 +147,16 @@
           v-hasPermi="['talk:alert:remove']"
         >删除</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="warning"
+          plain
+          icon="el-icon-refresh"
+          size="mini"
+          @click="handleInitAlerts"
+          v-hasPermi="['talk:alert:add']"
+        >批量初始化</el-button>
+      </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
@@ -299,7 +309,7 @@
 </template>
 
 <script>
-import { listAlert, getAlert, addAlert, updateAlert, delAlert, handleAlert } from "@/api/talk/alert"
+import { listAlert, getAlert, addAlert, updateAlert, delAlert, handleAlert, initAlerts } from "@/api/talk/alert"
 import { listTalk } from "@/api/talk/talkStudent"
 
 export default {
@@ -508,6 +518,16 @@ export default {
         this.fetchStats()
         this.$modal.msgSuccess("删除成功")
       }).catch(() => { this.$modal.msgError('删除失败') })
+    },
+    /** 批量初始化预警 */
+    handleInitAlerts() {
+      this.$modal.confirm('是否根据学生心理健康状态批量初始化预警？').then(() => {
+        return initAlerts()
+      }).then(res => {
+        this.$modal.msgSuccess(res.msg || '初始化成功')
+        this.getList()
+        this.fetchStats()
+      }).catch(() => {})
     },
     /** 取消按钮 */
     cancel() {

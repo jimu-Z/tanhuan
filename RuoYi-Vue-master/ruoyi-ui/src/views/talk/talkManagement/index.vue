@@ -128,6 +128,20 @@
               </el-table-column>
             </el-table>
             <div v-if="scope.row._records===null" style="text-align:center;color:#c0c4cc;padding:12px">暂无记录，请点击"新增记录"添加</div>
+
+            <!-- 附件列表 -->
+            <div style="margin-top:12px">
+              <div style="margin-bottom:6px;font-weight:bold;font-size:13px">附件</div>
+              <div v-if="scope.row._attachments && scope.row._attachments.length > 0">
+                <div v-for="att in scope.row._attachments" :key="att.attachmentId" style="display:flex;align-items:center;margin-bottom:4px">
+                  <i class="el-icon-document" style="margin-right:6px;color:#909399"></i>
+                  <span style="flex:1;font-size:13px">{{ att.fileName }}</span>
+                  <span style="color:#909399;font-size:12px;margin-right:10px">{{ formatFileSize(att.fileSize) }}</span>
+                  <el-button type="text" size="mini" icon="el-icon-download" @click="downloadAttachment(att)">下载</el-button>
+                </div>
+              </div>
+              <div v-else style="text-align:center;color:#c0c4cc;padding:8px">暂无附件</div>
+            </div>
           </div>
         </template>
       </el-table-column>
@@ -275,6 +289,7 @@ import { listTalksession, getTalksession, delTalksession, addTalksession, update
 import { listTalkrecord, getTalkrecord, delTalkrecord, addTalkrecord, updateTalkrecord } from "@/api/talk/talkStudentRecord"
 import { getTalk } from "@/api/talk/talkStudent"
 import { getLabels } from "@/api/talk/talkTag"
+import { listAttachment } from "@/api/talk/talkAttachment"
 
 export default {
   name: "TalkManagement",
@@ -343,6 +358,11 @@ export default {
         this.loading = false
         this.loadTagsBatch()
         this.loadRecordCounts()
+        // 删除最后一页最后一条数据时回退页码
+        if (this.sessionList.length === 0 && this.queryParams.pageNum > 1) {
+          this.queryParams.pageNum--
+          this.getList()
+        }
       }).catch(() => { this.loading = false; this.$modal.msgError('加载列表失败') })
     },
     loadTagsBatch() {
@@ -373,6 +393,12 @@ export default {
       if (!expanded) return
       if (row._records !== undefined) return
       this.$set(row, '_loadingRecords', true)
+      // 加载附件
+      listAttachment(row.sessionId).then(res => {
+        this.$set(row, '_attachments', res.data || [])
+      }).catch(() => {
+        this.$set(row, '_attachments', [])
+      })
       listTalkrecord({ sessionId: row.sessionId, pageSize: 999 }).then(res => {
         const records = res.rows || []
         if (records.length === 0) {
@@ -427,6 +453,21 @@ export default {
         this.$set(row, '_loadingRecords', false)
         this.$modal.msgError('加载记录失败')
       })
+    },
+    formatFileSize(size) {
+      if (!size) return '0 B'
+      if (size < 1024) return size + ' B'
+      if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB'
+      return (size / (1024 * 1024)).toFixed(1) + ' MB'
+    },
+    downloadAttachment(att) {
+      if (!att.filePath) return
+      const link = document.createElement('a')
+      link.href = att.filePath
+      link.download = att.fileName || 'download'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
     },
     handleQuery() {
       this.queryParams.pageNum = 1
@@ -496,7 +537,11 @@ export default {
       })
     },
     handleDeleteSession(row) {
-      const sessionIds = row.sessionId || this.ids
+      const sessionIds = (row && row.sessionId) ? row.sessionId : this.ids
+      if (!sessionIds || (Array.isArray(sessionIds) && sessionIds.length === 0)) {
+        this.$modal.msgWarning('请选择要删除的会话')
+        return
+      }
       this.$modal.confirm('是否确认删除选中的会话数据项？').then(() => {
         return delTalksession(sessionIds)
       }).then(() => {

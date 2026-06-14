@@ -145,6 +145,8 @@ public class TalkSessionController extends BaseController {
                     zos.putNextEntry(new ZipEntry(name));
                     zos.write(b);
                     zos.closeEntry();
+                    // 打包该会话的附件
+                    talkDocxService.writeAttachmentsToZip(zos, sid);
                 } catch (Exception e) {
                     log.warn("跳过导出失败的会话{}: {}", sid, e.getMessage());
                 }
