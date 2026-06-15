@@ -383,7 +383,7 @@ export default {
         const data = res.data || {}
         const newTagMap = {}
         Object.keys(data).forEach(k => {
-          newTagMap[Number(k)] = (data[k] || []).map(t => TAG_LABELS[t.tagValue] || t.tagValue)
+          newTagMap[Number(k)] = (data[k] || []).map(t => TAG_LABELS[t.tagValue] || t.tagValue || '-')
         })
         this.tagDataMap = newTagMap
       }).catch(() => {

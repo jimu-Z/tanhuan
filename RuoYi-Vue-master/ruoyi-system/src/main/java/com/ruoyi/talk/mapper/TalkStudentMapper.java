@@ -86,7 +86,7 @@ public interface TalkStudentMapper {
      * @param deptId    可选部门ID过滤
      */
     public List<TalkStudent> selectUntalkedStudentsInPeriod(@Param("startTime") String startTime,
-            @Param("endTime") String endTime, @Param("deptId") Long deptId);
+            @Param("endTime") String endTime, @Param("deptId") Long deptId, @Param("params") Map<String, Object> params);
 
     public Long selectMinAvailableStudentId();
 

@@ -217,7 +217,7 @@
       <el-table-column label="班级" align="center" prop="deptName" :show-overflow-tooltip="true" />
       <el-table-column label="性别" align="center" prop="gender">
         <template slot-scope="scope">
-          <span>{{ scope.row.gender === '1' ? '女' : '男' }}</span>
+          <span>{{ scope.row.gender === '1' ? '女' : scope.row.gender === '0' ? '男' : '-' }}</span>
         </template>
       </el-table-column>
       <el-table-column label="政治面貌" align="center" prop="politicalStatus" />
@@ -479,8 +479,7 @@
 </template>
 
 <script>
-import { listTalk, getTalk, delTalk, addTalk, updateTalk, importPreview, importExecute } from "@/api/talk/talkStudent"
-import { listDept } from "@/api/system/dept"
+import { listTalk, getTalk, delTalk, addTalk, updateTalk, importPreview, importExecute, getDeptTree } from "@/api/talk/talkStudent"
 import { getDicts } from "@/api/system/dict/data"
 import request from "@/utils/request"
 
@@ -580,19 +579,18 @@ export default {
       getDicts("poverty_level").then(res => { this.povertyLevelOptions = res.data || [] })
     },
     loadDeptTree() {
-      listDept().then(res => {
-        this.deptTree = this.buildTree(res.data || [])
+      getDeptTree().then(res => {
+        this.deptTree = this.mapDeptTree(res.data || [])
       }).catch(() => { this.$modal.msgError('操作失败') })
     },
-    buildTree(list) {
-      const map = {}, tree = []
-      list.forEach(d => { map[d.deptId] = { id:d.deptId, label:d.deptName, children:[], deptType:d.deptType, parentId:d.parentId } })
-      list.forEach(d => {
-        const node = map[d.deptId]
-        if (d.parentId && map[d.parentId]) { map[d.parentId].children.push(node) }
-        else if (!d.parentId || d.parentId === 0 || d.parentId === 100) { tree.push(node) }
-      })
-      return tree
+    mapDeptTree(nodes) {
+      return nodes.map(n => ({
+        id: n.deptId,
+        label: n.deptName,
+        deptType: n.deptType,
+        parentId: n.parentId,
+        children: n.children ? this.mapDeptTree(n.children) : []
+      }))
     },
     /** 在部门树中查找从根到目标节点的路径 */
     findDeptPath(targetId, tree, path = []) {

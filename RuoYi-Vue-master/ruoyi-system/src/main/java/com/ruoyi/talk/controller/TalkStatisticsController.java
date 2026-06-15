@@ -140,8 +140,17 @@ public class TalkStatisticsController extends BaseController {
 
         List<SysDept> depts = sysDeptMapper.selectDeptList(new SysDept());
         List<Map<String, Object>> collegeRanking = new ArrayList<>();
+        // 数据权限过滤：书记只看本学院，辅导员不看排名（返回空）
+        boolean isCounselor = SecurityUtils.hasRole("talk_counselor");
+        Long secretaryDeptId = scopeParams.containsKey("secretaryDeptId") ? ((Number) scopeParams.get("secretaryDeptId")).longValue() : null;
         for (SysDept d : depts) {
             if (!"college".equals(d.getDeptType()))
+                continue;
+            // 书记只能看到自己学院的数据
+            if (secretaryDeptId != null && !secretaryDeptId.equals(d.getDeptId()))
+                continue;
+            // 辅导员不展示学院排名（权限不足）
+            if (isCounselor && secretaryDeptId == null && !SecurityUtils.isAdmin())
                 continue;
             int count = talkStudentMapper.countStudentsByDeptId(d.getDeptId());
             Map<String, Object> item = new LinkedHashMap<>();
@@ -191,8 +200,21 @@ public class TalkStatisticsController extends BaseController {
         List<SysDept> depts = sysDeptMapper.selectDeptList(new SysDept());
         List<Map<String, Object>> deptCoverage = new ArrayList<>();
         int totalStudents = talkStudentMapper.countTalkStudentsFiltered(scopeParams);
+        // 数据权限过滤：只展示权限范围内的部门
+        boolean isCounselor = SecurityUtils.hasRole("talk_counselor");
+        Long secretaryDeptId = scopeParams.containsKey("secretaryDeptId") ? ((Number) scopeParams.get("secretaryDeptId")).longValue() : null;
         for (SysDept d : depts) {
             if (!"college".equals(d.getDeptType()) && !"class".equals(d.getDeptType()))
+                continue;
+            // 书记只能看到本学院及下属部门
+            if (secretaryDeptId != null) {
+                boolean isDescendant = String.valueOf(secretaryDeptId).equals(d.getAncestors())
+                    || d.getAncestors() != null && d.getAncestors().contains(String.valueOf(secretaryDeptId))
+                    || secretaryDeptId.equals(d.getDeptId());
+                if (!isDescendant) continue;
+            }
+            // 辅导员不展示部门覆盖率（权限不足）
+            if (isCounselor && secretaryDeptId == null && !SecurityUtils.isAdmin())
                 continue;
             int count = talkStudentMapper.countStudentsByDeptId(d.getDeptId());
             if (count > 0) {

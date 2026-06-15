@@ -201,7 +201,7 @@
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="200">
         <template slot-scope="scope">
           <el-button
-            v-hasPermi="['talk:alert:handle']"
+            v-hasPermi="['talk:alert:edit']"
             v-if="scope.row.alertStatus === 'pending'"
             size="mini"
             type="text"
@@ -395,7 +395,7 @@ export default {
         this.stats.todayAlerts = rows.filter(r => {
           return r.createTime && r.createTime.indexOf(today) === 0
         }).length
-      }).catch(() => { this.$modal.msgError('删除失败') })
+      }).catch(() => { this.$modal.msgError('获取统计数据失败') })
     },
     /** 获取今日日期字符串 yyyy-MM-dd */
     getTodayStr() {

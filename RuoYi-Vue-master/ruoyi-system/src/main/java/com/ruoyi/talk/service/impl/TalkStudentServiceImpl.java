@@ -802,7 +802,8 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         List<SysDept> depts = sysDeptMapper.selectDeptList(query);
         if (depts != null) {
             for (SysDept d : depts) {
-                if ("college".equals(d.getDeptType()) || ("dept".equals(d.getDeptType()) && (d.getParentId() == null || d.getParentId() == 0 || TOP_DEPT_ID.equals(d.getParentId())))) {
+                if ("college".equals(d.getDeptType()) || ("dept".equals(d.getDeptType())
+                        && (d.getParentId() == null || d.getParentId() == 0 || TOP_DEPT_ID.equals(d.getParentId())))) {
                     return d.getDeptId();
                 }
             }
@@ -846,25 +847,29 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
         StringBuilder error = new StringBuilder();
         if (StringUtils.isNotEmpty(counselor)) {
-            boolean found = teachers.stream().anyMatch(t -> counselor.equals(t.getTeacherName()) && "辅导员".equals(t.getPosition()));
+            boolean found = teachers.stream()
+                    .anyMatch(t -> counselor.equals(t.getTeacherName()) && "辅导员".equals(t.getPosition()));
             if (!found) {
                 error.append("辅导员[").append(counselor).append("]不存在；");
             }
         }
         if (StringUtils.isNotEmpty(headTeacher)) {
-            boolean found = teachers.stream().anyMatch(t -> headTeacher.equals(t.getTeacherName()) && "班主任".equals(t.getPosition()));
+            boolean found = teachers.stream()
+                    .anyMatch(t -> headTeacher.equals(t.getTeacherName()) && "班主任".equals(t.getPosition()));
             if (!found) {
                 error.append("班主任[").append(headTeacher).append("]不存在；");
             }
         }
         if (StringUtils.isNotEmpty(secretary)) {
-            boolean found = teachers.stream().anyMatch(t -> secretary.equals(t.getTeacherName()) && "书记".equals(t.getPosition()));
+            boolean found = teachers.stream()
+                    .anyMatch(t -> secretary.equals(t.getTeacherName()) && "书记".equals(t.getPosition()));
             if (!found) {
                 error.append("书记[").append(secretary).append("]不存在；");
             }
         }
         if (StringUtils.isNotEmpty(viceSecretary)) {
-            boolean found = teachers.stream().anyMatch(t -> viceSecretary.equals(t.getTeacherName()) && "副书记".equals(t.getPosition()));
+            boolean found = teachers.stream()
+                    .anyMatch(t -> viceSecretary.equals(t.getTeacherName()) && "副书记".equals(t.getPosition()));
             if (!found) {
                 error.append("副书记[").append(viceSecretary).append("]不存在；");
             }
@@ -1008,28 +1013,53 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     }
 
     /**
-     * 辅导员角色：通过talk_teacher_class表按counselorCode过滤，只显示自己管理班级的学生
+     * 数据权限过滤：辅导员按talk_teacher_class表过滤班级，书记按学院及子部门过滤
      */
     private void applyCounselorFilter(TalkStudent talkStudent) {
         if (SecurityUtils.isAdmin())
             return;
-        if (!SecurityUtils.hasRole("talk_counselor"))
-            return;
         String username = SecurityUtils.getUsername();
         if (username == null)
             return;
-        try {
+        if (talkStudent.getParams() == null) {
+            talkStudent.setParams(new HashMap<>());
+        }
+        if (SecurityUtils.hasRole("talk_counselor")) {
+            // 辅导员：只显示自己管理班级的学生
             talkStudent.getParams().put("counselorCode", username);
-        } catch (Exception e) {
-            log.warn("辅导员数据权限过滤失败: username={}", username, e);
+        } else if (SecurityUtils.hasRole("talk_secretary")) {
+            // 书记/副书记：只显示本学院及下属部门的学生
+            Long deptId = SecurityUtils.getDeptId();
+            if (deptId != null) {
+                talkStudent.getParams().put("secretaryDeptId", deptId);
+            }
         }
     }
 
     @Override
-    public List<TalkStudent> selectUntalkedStudentsInPeriod(Date startTime, Date endTime, Long deptId) {
+    public List<TalkStudent> selectUntalkedStudentsInPeriod(Date startTime, Date endTime, Long deptId,
+            Map<String, Object> params) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        // 构建数据权限参数（如果调用方未传入则自动构建）
+        if (params == null) {
+            params = new HashMap<>();
+        }
+        if (!SecurityUtils.isAdmin() && !params.containsKey("counselorUsername")
+                && !params.containsKey("secretaryDeptId")) {
+            String username = SecurityUtils.getUsername();
+            if (username != null) {
+                if (SecurityUtils.hasRole("talk_counselor")) {
+                    params.put("counselorUsername", username);
+                } else if (SecurityUtils.hasRole("talk_secretary")) {
+                    Long secDeptId = SecurityUtils.getDeptId();
+                    if (secDeptId != null) {
+                        params.put("secretaryDeptId", secDeptId);
+                    }
+                }
+            }
+        }
         return talkStudentMapper.selectUntalkedStudentsInPeriod(
-                sdf.format(startTime), sdf.format(endTime), deptId);
+                sdf.format(startTime), sdf.format(endTime), deptId, params);
     }
 
     @Override

@@ -1,160 +1,94 @@
 <template>
-  <div class="home-wrapper">
-    <!-- 1. 欢迎横幅 -->
-    <div class="banner">
-      <div class="banner-inner">
-        <div class="banner-left">
-          <div class="banner-avatar">
-            <span class="banner-avatar-text">{{ userName.charAt(0) }}</span>
-          </div>
-          <div class="banner-greeting">
-            <h1 class="banner-hi">{{ greeting }}，{{ userName }}</h1>
-            <p class="banner-sub">{{ roleLabel }} · {{ dateStr }} · 用心沟通，以情育人</p>
-          </div>
-        </div>
-        <div class="banner-right">
-          <div class="banner-motto">
-            <span class="banner-motto-icon">💬</span>
-            <span>每一次谈话，都是一次心灵的靠近</span>
-          </div>
-        </div>
+  <div class="app-container">
+    <!-- 欢迎横幅 -->
+    <div class="welcome-banner">
+      <div class="welcome-left">
+        <h2>{{ greeting }}，{{ userName }}</h2>
+        <p>{{ roleLabel }} · {{ dateStr }}</p>
       </div>
-      <div class="banner-wave">
-        <svg viewBox="0 0 1200 80" preserveAspectRatio="none">
-          <path d="M0,40 C200,80 400,0 600,40 C800,80 1000,0 1200,40 L1200,80 L0,80 Z" opacity="0.6"/>
-          <path d="M0,50 C200,70 400,20 600,50 C800,80 1000,20 1200,50 L1200,80 L0,80 Z" opacity="0.3"/>
-        </svg>
+      <div class="welcome-right">
+        <span>用心沟通，以情育人</span>
       </div>
     </div>
 
-    <!-- 2. KPI 数据胶囊 -->
-    <div class="kpi-strip">
-      <div class="kpi-capsule" v-for="(kpi, idx) in kpiItems" :key="kpi.key" :style="{ animationDelay: idx * 0.08 + 's' }">
-        <div class="kpi-capsule-icon" :style="{ background: kpi.iconBg }">
-          <i :class="kpi.icon" :style="{ color: kpi.iconColor }"></i>
+    <!-- 核心数据 -->
+    <el-row :gutter="20" class="mb20">
+      <el-col :xs="24" :sm="12" :md="8" :lg="4" v-for="kpi in kpiItems" :key="kpi.key">
+        <div class="kpi-box">
+          <div class="kpi-icon" :style="{ color: kpi.iconColor }">
+            <i :class="kpi.icon"></i>
+          </div>
+          <div class="kpi-info">
+            <div class="kpi-value">{{ kpi.value }}</div>
+            <div class="kpi-label">{{ kpi.label }}</div>
+          </div>
         </div>
-        <div class="kpi-capsule-body">
-          <span class="kpi-capsule-val">{{ kpi.value }}</span>
-          <span class="kpi-capsule-unit">{{ kpi.unit }}</span>
-        </div>
-        <span class="kpi-capsule-label">{{ kpi.label }}</span>
-      </div>
-    </div>
+      </el-col>
+    </el-row>
 
-    <!-- 3. 待办提醒区 -->
-    <div class="alerts-section">
-      <div class="section-header">
-        <h3 class="section-title">
-          <i class="el-icon-bell" style="color: #e6a23c; margin-right: 8px;"></i>待办提醒
-        </h3>
-        <el-tag v-if="totalAlerts > 0" type="warning" effect="plain" size="small">{{ totalAlerts }} 项待处理</el-tag>
-        <el-tag v-else type="success" effect="plain" size="small">全部完成</el-tag>
-      </div>
-      <div class="alerts-cards">
-        <div class="alert-card alert-pending">
-          <div class="alert-card-num">{{ alertsData.pendingFollowups || 0 }}</div>
-          <div class="alert-card-text">
-            <span class="alert-card-title">待跟进谈话</span>
-            <span class="alert-card-desc">需要安排后续跟进</span>
+    <!-- 快捷功能 -->
+    <el-row :gutter="20">
+      <el-col :span="24">
+        <h3 class="section-title">快捷功能</h3>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="card in cards" :key="card.title">
+        <div class="func-box" @click="$router.push(card.path)">
+          <div class="func-icon" :style="{ background: card.gradient }">
+            <i :class="card.icon"></i>
           </div>
-          <div class="alert-card-dot" style="background: #e6a23c;"></div>
+          <div class="func-content">
+            <h4>{{ card.title }}</h4>
+            <p>{{ card.desc }}</p>
+          </div>
+          <i class="el-icon-arrow-right func-arrow"></i>
         </div>
-        <div class="alert-card alert-progress">
-          <div class="alert-card-num">{{ alertsData.inProgressFollowups || 0 }}</div>
-          <div class="alert-card-text">
-            <span class="alert-card-title">跟进中</span>
-            <span class="alert-card-desc">正在处理中的记录</span>
-          </div>
-          <div class="alert-card-dot" style="background: #409eff;"></div>
-        </div>
-        <div class="alert-card alert-feedback" v-if="dashboardData.pendingFeedback > 0">
-          <div class="alert-card-num">{{ dashboardData.pendingFeedback || 0 }}</div>
-          <div class="alert-card-text">
-            <span class="alert-card-title">待查看反馈</span>
-            <span class="alert-card-desc">学生已提交反馈，待教师查看</span>
-          </div>
-          <div class="alert-card-dot" style="background: #67c23a;"></div>
-        </div>
-        <div class="alert-card alert-urgent" v-if="alertsData.pendingFollowups > 0">
-          <div class="alert-card-icon-wrap">
-            <i class="el-icon-warning-outline"></i>
-          </div>
-          <div class="alert-card-text">
-            <span class="alert-card-title">建议优先处理</span>
-            <span class="alert-card-desc">有 {{ alertsData.pendingFollowups }} 位学生等待跟进</span>
-          </div>
-          <div class="alert-card-dot" style="background: #f56c6c;"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 5. 功能快捷入口 -->
-    <div class="func-section">
-      <div class="section-header">
-        <h3 class="section-title">
-          <i class="el-icon-s-grid" style="color: #4facfe; margin-right: 8px;"></i>功能入口
-        </h3>
-      </div>
-      <div class="func-grid">
-        <div class="func-card" v-for="(card, i) in cards" :key="card.title"
-             @click="$router.push(card.path)">
-          <div class="func-card-icon" :style="{ background: card.gradient }">
-            <span class="func-card-num">{{ '0' + (i + 1) }}</span>
-          </div>
-          <div class="func-card-content">
-            <h4 class="func-card-title">{{ card.title }}</h4>
-            <p class="func-card-desc">{{ card.desc }}</p>
-          </div>
-          <i class="el-icon-arrow-right func-card-arrow"></i>
-        </div>
-      </div>
-    </div>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script>
 import auth from '@/plugins/auth'
-import { getDashboard, getAlerts } from '@/api/talk/talkStatistics'
+import { getDashboard } from '@/api/talk/talkStatistics'
 
 const KPI_CONFIG = [
-  { key: 'totalStudents', label: '学生总数', unit: '人', icon: 'el-icon-user', iconBg: 'rgba(79,172,254,0.12)', iconColor: '#4facfe' },
-  { key: 'totalSessions', label: '谈话场次', unit: '场', icon: 'el-icon-s-order', iconBg: 'rgba(0,242,254,0.12)', iconColor: '#00f2fe' },
-  { key: 'totalRecords', label: '记录总数', unit: '条', icon: 'el-icon-document', iconBg: 'rgba(42,111,168,0.12)', iconColor: '#2a6fa8' },
-  { key: 'avgRecordsPerStudent', label: '人均记录', unit: '条/人', icon: 'el-icon-data-analysis', iconBg: 'rgba(79,172,254,0.12)', iconColor: '#4facfe' },
-  { key: 'individualCount', label: '个人谈话', unit: '场', icon: 'el-icon-user-solid', iconBg: 'rgba(26,82,118,0.12)', iconColor: '#1a5276' },
-  { key: 'groupCount', label: '集体谈话', unit: '场', icon: 'el-icon-s-grid', iconBg: 'rgba(0,242,254,0.12)', iconColor: '#00f2fe' }
+  { key: 'totalStudents', label: '学生总数', icon: 'el-icon-user', iconColor: '#409eff' },
+  { key: 'totalSessions', label: '谈话场次', icon: 'el-icon-s-order', iconColor: '#67c23a' },
+  { key: 'totalRecords', label: '记录总数', icon: 'el-icon-document', iconColor: '#e6a23c' },
+  { key: 'individualCount', label: '个人谈话', icon: 'el-icon-user-solid', iconColor: '#f56c6c' },
+  { key: 'groupCount', label: '集体谈话', icon: 'el-icon-s-grid', iconColor: '#909399' },
+  { key: 'avgRecordsPerStudent', label: '人均记录', icon: 'el-icon-data-analysis', iconColor: '#409eff' }
 ]
 
 export default {
   name: 'Index',
   data() {
-    const isSecretary = auth.hasRole('admin') || auth.hasRole('talk_secretary')
-    const roleLabel = isSecretary ? '书记工作台' : '辅导员工作台'
+    const isAdmin = auth.hasRole('admin')
+    const isSecretary = auth.hasRole('talk_secretary')
+    const roleLabel = isAdmin || isSecretary ? '书记工作台' : '辅导员工作台'
+
+    const commonCards = [
+      { title: '发起谈话', desc: '创建个别/集体谈话', path: '/talk/initiate', icon: 'el-icon-plus', gradient: 'linear-gradient(135deg, #409eff, #66b1ff)' },
+      { title: '学生信息管理', desc: '查看与管理学生数据', path: '/talk/student', icon: 'el-icon-user', gradient: 'linear-gradient(135deg, #67c23a, #85ce61)' },
+      { title: '谈话管理', desc: '查看全部谈话记录', path: '/talk/talksession', icon: 'el-icon-s-order', gradient: 'linear-gradient(135deg, #e6a23c, #ebb563)' }
+    ]
 
     const secretaryCards = [
-      { title: '学生信息管理', desc: '导入台账、查看学生信息、管理学生数据', path: '/talk/student', accent: '#4facfe', gradient: 'linear-gradient(135deg, #1a5276, #2a6fa8)' },
-      { title: '发起谈话', desc: '创建个别/集体谈话，选择谈话类型和内容标签', path: '/talk/initiate', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #0f3b5c, #1a5276)' },
-      { title: '数据总览', desc: '一站式查看谈话数据分布、趋势与排名', path: '/talk/dashboard', accent: '#4facfe', gradient: 'linear-gradient(135deg, #2a6fa8, #4facfe)' },
-      { title: '预警提醒', desc: '超期未谈话、心理健康跟踪等自动告警', path: '/talk/alert', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #0a2540, #1a5276)' },
-      { title: '统一查询', desc: '合并会话/记录的多维度条件查询', path: '/talk/query', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)' }
+      ...commonCards,
+      { title: '教师管理', desc: '管理教师信息', path: '/talk/teacher', icon: 'el-icon-s-custom', gradient: 'linear-gradient(135deg, #f56c6c, #f78989)' }
     ]
 
     const counselorCards = [
-      { title: '发起谈话', desc: '创建个别/集体谈话，选择谈话类型和内容标签', path: '/talk/initiate', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #0f3b5c, #1a5276)' },
-      { title: '我的谈话记录', desc: '快速查看自己创建的谈话历史与状态', path: '/talk/myrecords', accent: '#4facfe', gradient: 'linear-gradient(135deg, #1a5276, #2a6fa8)' },
-      { title: '学生信息管理', desc: '查看管辖范围内的学生基本信息', path: '/talk/student', accent: '#4facfe', gradient: 'linear-gradient(135deg, #2a6fa8, #4facfe)' },
-      { title: '预警提醒', desc: '待跟进谈话、异常情况的自动提醒', path: '/talk/alert', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #0a2540, #1a5276)' },
-      { title: '谈话模板库', desc: '使用系统模板快速填充谈话内容', path: '/talk/template', accent: '#4facfe', gradient: 'linear-gradient(135deg, #667eea, #4facfe)' },
-      { title: '谈话跟进', desc: '查看和跟进待处理的谈话记录', path: '/talk/followup', accent: '#00f2fe', gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)' }
+      ...commonCards,
+      { title: '我的谈话记录', desc: '查看自己创建的谈话', path: '/talk/myrecords', icon: 'el-icon-document', gradient: 'linear-gradient(135deg, #909399, #a6a9ad)' }
     ]
 
     return {
       roleLabel,
+      isAdmin,
       isSecretary,
-      cards: isSecretary ? secretaryCards : counselorCards,
-      dashboardData: {},
-      alertsData: {},
-      loading: false
+      cards: isAdmin || isSecretary ? secretaryCards : counselorCards,
+      dashboardData: {}
     }
   },
   computed: {
@@ -180,9 +114,6 @@ export default {
         ...cfg,
         value: d[cfg.key] != null ? d[cfg.key] : '--'
       }))
-    },
-    totalAlerts() {
-      return (this.alertsData.pendingFollowups || 0) + (this.alertsData.inProgressFollowups || 0)
     }
   },
   mounted() {
@@ -190,327 +121,137 @@ export default {
   },
   methods: {
     fetchData() {
-      this.loading = true
-      Promise.all([getDashboard(), getAlerts()])
-        .then(([dashRes, alertsRes]) => {
-          this.dashboardData = dashRes.data || {}
-          this.alertsData = alertsRes.data || {}
+      getDashboard()
+        .then(res => {
+          this.dashboardData = res.data || {}
         })
         .catch(() => {
           this.$message.error('数据加载失败')
-        })
-        .finally(() => {
-          this.loading = false
         })
     }
   }
 }
 </script>
 
-<style lang="scss" scoped>
-.home-wrapper {
-  min-height: calc(100vh - 100px);
-  padding: 0 24px 40px;
-  background: linear-gradient(180deg, #f0f5fa 0%, #f5f8fc 100%);
-  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
-  box-sizing: border-box;
-}
-
-/* ==================== 1. 欢迎横幅 ==================== */
-.banner {
-  background: linear-gradient(160deg, #0a2540 0%, #0f3b5c 40%, #1a5276 100%);
-  border-radius: 20px;
-  margin: 20px 0 24px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: 0 4px 24px rgba(26, 82, 118, 0.12);
-}
-.banner-inner {
+<style scoped>
+.welcome-banner {
+  background: #fff;
+  border-radius: 4px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 32px 36px 24px;
-  position: relative;
-  z-index: 1;
-}
-.banner-left {
-  display: flex;
   align-items: center;
-  gap: 20px;
+  border-left: 4px solid #409eff;
 }
-.banner-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #4facfe, #00f2fe);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 24px rgba(79, 172, 254, 0.3);
-  flex-shrink: 0;
-}
-.banner-avatar-text {
-  font-size: 28px;
-  font-weight: 700;
-  color: #fff;
-}
-.banner-hi {
-  font-size: 26px;
-  font-weight: 700;
-  color: #ffffff;
+.welcome-banner h2 {
   margin: 0 0 6px;
-  letter-spacing: 1px;
+  font-size: 20px;
+  color: #303133;
 }
-.banner-sub {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.75);
+.welcome-banner p {
   margin: 0;
-  letter-spacing: 1px;
+  font-size: 13px;
+  color: #909399;
 }
-.banner-right {
-  text-align: right;
-}
-.banner-motto {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 12px 20px;
+.welcome-right {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(79, 172, 254, 0.2);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.banner-motto-icon {
-  font-size: 18px;
-}
-.banner-wave {
-  height: 40px;
-  position: relative;
-}
-.banner-wave svg {
-  width: 100%;
-  height: 100%;
-}
-.banner-wave svg path:first-child {
-  fill: #f0f5fa;
-  opacity: 0.6;
-}
-.banner-wave svg path:last-child {
-  fill: #f5f8fc;
-  opacity: 0.3;
+  color: #606266;
 }
 
-/* ==================== 2. KPI 数据胶囊 ==================== */
-.kpi-strip {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 14px;
-  margin-bottom: 24px;
-}
-.kpi-capsule {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 18px 16px;
-  text-align: center;
-  border: 1px solid #e4e7ed;
-  box-shadow: 0 2px 12px rgba(26, 82, 118, 0.05);
-  transition: all 0.3s ease;
-  animation: fadeUp 0.5s ease both;
-  position: relative;
-  overflow: hidden;
-}
-.kpi-capsule:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 28px rgba(26, 82, 118, 0.1);
-}
-.kpi-capsule-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 10px;
-  font-size: 18px;
-}
-.kpi-capsule-body {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 2px;
-}
-.kpi-capsule-val {
-  font-size: 26px;
-  font-weight: 700;
-  color: #1a2a3a;
-  line-height: 1;
-}
-.kpi-capsule-unit {
-  font-size: 11px;
-  color: #6b7c8e;
-}
-.kpi-capsule-label {
-  display: block;
-  font-size: 11px;
-  color: #6b7c8e;
-  margin-top: 4px;
-}
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+.mb20 {
+  margin-bottom: 20px;
 }
 
-/* ==================== 3. 待办提醒区 ==================== */
-.alerts-section {
-  margin-bottom: 24px;
-}
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
 .section-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1a2a3a;
-  margin: 0;
-  display: flex;
-  align-items: center;
+  color: #303133;
+  margin: 0 0 16px;
+  padding-left: 8px;
+  border-left: 3px solid #409eff;
 }
-.alerts-cards {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-}
-.alert-card {
-  background: #ffffff;
-  border-radius: 16px;
+
+.kpi-box {
+  background: #fff;
+  border-radius: 4px;
   padding: 20px;
-  border: 1px solid #e4e7ed;
   display: flex;
   align-items: center;
   gap: 16px;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 12px rgba(26, 82, 118, 0.05);
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.04);
+  transition: all 0.3s;
+  margin-bottom: 20px;
 }
-.alert-card:hover {
+.kpi-box:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(26, 82, 118, 0.1);
+  box-shadow: 0 4px 16px 0 rgba(0,0,0,0.08);
 }
-.alert-card-dot {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-.alert-card-num {
-  font-size: 36px;
-  font-weight: 800;
-  color: #1a2a3a;
-  line-height: 1;
-  min-width: 50px;
-}
-.alert-card-icon-wrap {
+.kpi-icon {
   font-size: 28px;
-  color: #f56c6c;
-  min-width: 40px;
-  text-align: center;
-}
-.alert-card-text {
+  width: 48px;
+  height: 48px;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+  border-radius: 8px;
 }
-.alert-card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1a2a3a;
+.kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #303133;
+  line-height: 1;
 }
-.alert-card-desc {
-  font-size: 12px;
-  color: #6b7c8e;
+.kpi-label {
+  font-size: 13px;
+  color: #909399;
+  margin-top: 4px;
 }
 
-/* ==================== 5. 功能快捷入口 ==================== */
-.func-section {
-  margin-bottom: 24px;
-}
-.func-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-}
-.func-card {
-  background: #ffffff;
-  border-radius: 16px;
+.func-box {
+  background: #fff;
+  border-radius: 4px;
   padding: 20px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   cursor: pointer;
-  border: 1px solid #e4e7ed;
-  box-shadow: 0 2px 12px rgba(26, 82, 118, 0.05);
-  transition: all 0.3s ease;
-  position: relative;
+  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.04);
+  transition: all 0.3s;
+  margin-bottom: 20px;
 }
-.func-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 28px rgba(26, 82, 118, 0.1);
+.func-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px 0 rgba(0,0,0,0.08);
 }
-.func-card-icon {
+.func-icon {
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-.func-card-num {
-  font-size: 18px;
-  font-weight: 800;
   color: #fff;
+  font-size: 20px;
 }
-.func-card-content {
+.func-content {
   flex: 1;
   min-width: 0;
 }
-.func-card-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a2a3a;
+.func-content h4 {
   margin: 0 0 4px;
+  font-size: 15px;
+  color: #303133;
 }
-.func-card-desc {
-  font-size: 12px;
-  color: #6b7c8e;
+.func-content p {
   margin: 0;
-  line-height: 1.5;
+  font-size: 12px;
+  color: #909399;
 }
-.func-card-arrow {
-  color: #a0b4c8;
+.func-arrow {
+  color: #c0c4cc;
   font-size: 14px;
-  flex-shrink: 0;
-}
-
-/* ==================== RESPONSIVE ==================== */
-@media (max-width: 1100px) {
-  .kpi-strip { grid-template-columns: repeat(3, 1fr); }
-  .alerts-cards { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 768px) {
-  .banner-inner { flex-direction: column; text-align: center; gap: 16px; }
-  .banner-left { flex-direction: column; }
-  .kpi-strip { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .alerts-cards { grid-template-columns: 1fr; }
-  .func-grid { grid-template-columns: 1fr; }
 }
 </style>

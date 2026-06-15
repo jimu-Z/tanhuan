@@ -69,8 +69,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="enrollmentStatus != null  and enrollmentStatus != ''"> and s.enrollment_status = #{enrollmentStatus}</if>
             <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and s.mental_health_status = #{mentalHealthStatus}</if>
             <if test="povertyLevel != null  and povertyLevel != ''"> and s.poverty_level = #{povertyLevel}</if>
-            ${params.dataScope}
             <if test="params.counselorCode != null"> and d.dept_name in (select class_name from talk_teacher_class where teacher_code = #{params.counselorCode})</if>
+            <if test="params.secretaryDeptId != null"> and (s.dept_id = #{params.secretaryDeptId} or s.dept_id in (select dept_id from sys_dept where find_in_set(#{params.secretaryDeptId}, ancestors)))</if>
         </where>
     </select>
     
@@ -270,35 +270,37 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="enrollmentStatus != null  and enrollmentStatus != ''"> and s.enrollment_status = #{enrollmentStatus}</if>
             <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and s.mental_health_status = #{mentalHealthStatus}</if>
             <if test="povertyLevel != null  and povertyLevel != ''"> and s.poverty_level = #{povertyLevel}</if>
-            ${params.dataScope}
             <if test="params.counselorCode != null"> and d.dept_name in (select class_name from talk_teacher_class where teacher_code = #{params.counselorCode})</if>
+            <if test="params.secretaryDeptId != null"> and (s.dept_id = #{params.secretaryDeptId} or s.dept_id in (select dept_id from sys_dept where find_in_set(#{params.secretaryDeptId}, ancestors)))</if>
         </where>
     </select>
 
     <select id="selectUntalkedStudentsInPeriod" resultMap="TalkStudentResult">
-        select s.student_id, s.student_code, s.student_name, s.dept_id, s.gender, 
-               s.political_status, s.nation, s.phone, s.id_card, s.address, s.father_name, 
-               s.father_phone, s.mother_name, s.mother_phone, s.class_monitor, s.dorm_leader, 
-               s.dorm_building, s.dorm_room, s.enrollment_status, s.mental_health_status, 
+        select s.student_id, s.student_code, s.student_name, s.dept_id, s.gender,
+               s.political_status, s.nation, s.phone, s.id_card, s.address, s.father_name,
+               s.father_phone, s.mother_name, s.mother_phone, s.class_monitor, s.dorm_leader,
+               s.dorm_building, s.dorm_room, s.enrollment_status, s.mental_health_status,
                s.poverty_level, s.remark, s.create_by, s.create_time, s.update_by, s.update_time,
                d.dept_name,
-               (select max(ts.talk_time) 
-                from talk_student_record tsr 
-                join talk_session ts on tsr.session_id = ts.session_id 
+               (select max(ts.talk_time)
+                from talk_student_record tsr
+                join talk_session ts on tsr.session_id = ts.session_id
                 where tsr.student_id = s.student_id) as last_talk_time
         from talk_student s
         left join sys_dept d on s.dept_id = d.dept_id
         <where>
             not exists (
-                select 1 from talk_student_record tsr 
-                join talk_session ts on tsr.session_id = ts.session_id 
-                where tsr.student_id = s.student_id 
+                select 1 from talk_student_record tsr
+                join talk_session ts on tsr.session_id = ts.session_id
+                where tsr.student_id = s.student_id
                 and ts.talk_time between #{startTime} and #{endTime}
             )
             <if test="deptId != null">
                 and s.dept_id in (select d2.dept_id from sys_dept d2 where d2.dept_id = #{deptId}
                     or find_in_set(#{deptId}, d2.ancestors))
             </if>
+            <if test="params != null and params.counselorUsername != null and params.counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{params.counselorUsername})</if>
+            <if test="params != null and params.secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{params.secretaryDeptId} or find_in_set(#{params.secretaryDeptId}, d.ancestors)))</if>
         </where>
         order by s.student_code asc
     </select>

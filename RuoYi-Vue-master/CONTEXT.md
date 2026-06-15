@@ -2,10 +2,70 @@
 
 ## 角色
 
-- **辅导员（Counselor）**：一线谈话执行者，负责大批量日常谈话发起与记录，关心"今天要跟谁谈、还有谁没谈"
-- **书记（Secretary）**：全局管理者，具有完整 CRUD 权限（含新增/修改/删除），关注统计数据、谈话覆盖率与学生管理
-- **管理员（Admin）**：系统运维角色，管理基础数据导入、系统配置，具有标签管理与系统配置的独占权限
-- **学生（Student）**：谈话对象，通过独立学生端登录（学号+初始密码123456），可查看自己的谈话记录、填写反馈，收到新谈话通知
+- **辅导员（Counselor / talk_counselor）**：一线谈话执行者，负责大批量日常谈话发起与记录，关心"今天要跟谁谈、还有谁没谈"。**数据范围：仅自己管理的班级**（通过 `talk_teacher_class` 关联表按班级过滤学生和谈话记录）
+- **书记（Secretary / talk_secretary）**：全局管理者，具有完整 CRUD 权限（含新增/修改/删除），关注统计数据、谈话覆盖率与学生管理。**数据范围：仅本学院及下属部门**（年级→班级，通过 `secretaryDeptId` 过滤）
+- **管理员（Admin）**：系统运维角色，管理基础数据导入、系统配置，具有标签管理与系统配置的独占权限。**数据范围：全校全部**
+- **学生（Student）**：谈话对象，通过独立学生端登录（学号+初始密码123456），可查看自己的谈话记录、填写反馈，收到新谈话通知。**数据范围：仅自己的记录**
+
+### 角色菜单可见性矩阵
+
+| 菜单 | 管理员 | 书记 | 辅导员 | 学生 | 备注 |
+|------|:------:|:----:|:------:|:----:|------|
+| 学生信息管理 (2001) | ✅ | ✅ | ✅ | ❌ | |
+| 谈话管理 (2010) | ✅ | ✅ | ✅ | ❌ | |
+| 发起谈话 (2030) | ✅ | ✅ | ✅ | ❌ | |
+| 我的谈话记录 (2040) | ✅ | ✅ | ✅ | ❌ | |
+| 统计分析 (2050) | ✅ | ✅ | ❌ | ❌ | |
+| 预警提醒 (2055) | ✅ | ✅ | ✅ | ❌ | |
+| 数据大屏 (2065) | ✅ | ✅ | ❌ | ❌ | hidden |
+| 统一查询 (2070) | ✅ | ✅ | ✅ | ❌ | |
+| 教师管理 (2090) | ✅ | ✅ | ❌ | ❌ | |
+| 预约管理 (2100) | ✅ | ❌ | ❌ | ✅ | |
+| 谈话模板库 (2060) | ✅ | ✅ | ✅ | ❌ | |
+| 谈话跟进 (2075) | ✅ | ✅ | ✅ | ❌ | **hidden（菜单隐藏，功能正常）** |
+| 标签管理 (2080) | ✅ | ❌ | ❌ | ❌ | |
+
+## 数据权限架构
+
+系统采用**双层过滤机制**确保角色数据隔离：
+
+### 第一层：业务自定义 applyCounselorFilter() / applySecretaryFilter()
+
+应用于以下 ServiceImpl 的列表查询方法：
+
+| ServiceImpl | 辅导员过滤方式 | 书记过滤方式 |
+|-------------|---------------|-------------|
+| `TalkStudentServiceImpl` | `talk_teacher_class` 关联 → 按 classId 过滤学生 | `sys_dept.ancestors` 包含 secretaryDeptId |
+| `TalkSessionServiceImpl` | `talk_session.create_by = counselorUsername` | 同上 |
+| `TalkStudentRecordServiceImpl` | JOIN `talk_session.create_by` 过滤 | 同上 |
+| `TalkAlertServiceImpl` | JOIN `talk_student.dept_id` 过滤 | 同上 |
+
+### 第二层：RuoYi 框架 @DataScope AOP 切面
+
+通过 `@DataScope(deptAlias = "d", userAlias = "u")` 注解自动注入 SQL WHERE 条件。适用于标准 CRUD 页面的 Mapper XML。
+
+### 第三层：Controller 层防御性过滤（第五轮新增）
+
+针对统计类接口的特殊处理：
+
+| 接口 | 过滤逻辑 |
+|------|---------|
+| `TalkStatisticsController.dashboard()` — collegeRanking | 书记限本学院；辅导员隐藏该卡片；管理员全量 |
+| `TalkStatisticsController.alerts()` — deptCoverage | 书记限本学院及下属部门；辅导员隐藏；管理员全量 |
+| `TalkStudentServiceImpl.selectUntalkedStudentsInPeriod()` | 新增 params 参数支持 counselorUsername + secretaryDeptId 过滤 |
+
+### 数据权限验证清单
+
+```
+[ ] 辅导员登录后只能看到自己管理的班级的学生
+[ ] 辅导员只能看到自己创建的谈话会话
+[ ] 辅导员不能看到其他辅导员的谈话内容
+[ ] 书记只能看到本学院的数据（跨学院不可见）
+[ ] 书记可以管理本学院的辅导员
+[ ] 书记的统计分析只展示本学院排名
+[ ] 管理员可以看到全校所有数据
+[ ] 学生只能看到自己的谈话记录（已脱敏）
+```
 
 ## 首页
 

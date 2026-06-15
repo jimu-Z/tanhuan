@@ -63,7 +63,7 @@ public class TalkStudentController extends BaseController {
         startPage();
         if (dateRange != null && dateRange.size() == 2) {
             List<TalkStudent> list = talkStudentService.selectUntalkedStudentsInPeriod(
-                    dateRange.get(0), dateRange.get(1), talkStudent.getDeptId());
+                    dateRange.get(0), dateRange.get(1), talkStudent.getDeptId(), null);
             return getDataTable(list);
         }
         List<TalkStudent> list = talkStudentService.selectTalkStudentListWithLastTalk(talkStudent);
@@ -77,7 +77,6 @@ public class TalkStudentController extends BaseController {
     @GetMapping("/deptTree")
     public AjaxResult deptTree() {
         SysDept dept = new SysDept();
-        dept.setDeptType("class");
         List<SysDept> depts = deptService.selectDeptList(dept);
         List<Map<String, Object>> tree = buildDeptTree(depts);
         return success(tree);
@@ -165,7 +164,7 @@ public class TalkStudentController extends BaseController {
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") Date endTime,
             @RequestParam(required = false) Long deptId) {
         startPage();
-        List<TalkStudent> list = talkStudentService.selectUntalkedStudentsInPeriod(startTime, endTime, deptId);
+        List<TalkStudent> list = talkStudentService.selectUntalkedStudentsInPeriod(startTime, endTime, deptId, null);
         return getDataTable(list);
     }
 

@@ -111,8 +111,15 @@
         <el-form-item label="学号" prop="studentCode">
           <el-input v-model="form.studentCode" placeholder="请输入学号" />
         </el-form-item>
-        <el-form-item label="预约教师" prop="teacherName">
-          <el-input v-model="form.teacherName" placeholder="请输入预约教师" />
+        <el-form-item label="预约教师" prop="teacherId">
+          <el-select v-model="form.teacherId" placeholder="请选择预约教师" filterable style="width:100%">
+            <el-option
+              v-for="t in teacherOptions"
+              :key="t.teacherId"
+              :label="t.teacherName + ' (' + t.position + ')'"
+              :value="t.teacherId"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="预约时间" prop="appointmentTime">
           <el-date-picker
@@ -158,6 +165,7 @@
 
 <script>
 import { listAppointment, addAppointment, updateAppointment, confirmAppointment, rejectAppointment, cancelAppointment, completeAppointment } from "@/api/talk/appointment"
+import { getCounselors } from "@/api/talk/teacher"
 
 export default {
   name: "TalkAppointment",
@@ -182,6 +190,8 @@ export default {
       rejectForm: {
         rejectReason: ""
       },
+      // 教师列表（用于预约选择）
+      teacherOptions: [],
       rules: {
         studentName: [
           { required: true, message: "学生姓名不能为空", trigger: "blur" }
@@ -189,8 +199,8 @@ export default {
         studentCode: [
           { required: true, message: "学号不能为空", trigger: "blur" }
         ],
-        teacherName: [
-          { required: true, message: "预约教师不能为空", trigger: "blur" }
+        teacherId: [
+          { required: true, message: "请选择预约教师", trigger: "change" }
         ],
         appointmentTime: [
           { required: true, message: "预约时间不能为空", trigger: "change" }
@@ -203,8 +213,19 @@ export default {
   },
   created() {
     this.getList()
+    this.loadTeacherOptions()
   },
   methods: {
+    /** 加载可选教师列表（从学生所属学院获取） */
+    loadTeacherOptions() {
+      // 获取当前用户部门ID，查询该学院的教师
+      const deptId = this.$store.state.user.dept?.deptId
+      if (deptId) {
+        getCounselors(deptId).then(res => {
+          this.teacherOptions = res.data || []
+        }).catch(() => {})
+      }
+    },
     getList() {
       this.loading = true
       listAppointment(this.queryParams).then(response => {
@@ -222,7 +243,7 @@ export default {
         appointmentId: undefined,
         studentName: undefined,
         studentCode: undefined,
-        teacherName: undefined,
+        teacherId: undefined,
         appointmentTime: undefined,
         location: undefined,
         reason: undefined

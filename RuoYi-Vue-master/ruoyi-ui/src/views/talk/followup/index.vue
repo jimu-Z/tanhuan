@@ -124,7 +124,8 @@ export default {
       const now = Date.now()
       return this.records.filter(r => {
         if (r.followupStatus === 'completed' || r.followupStatus === 'none') return false
-        const t = r.updateTime ? new Date(r.updateTime).getTime() : 0
+        const ts = Date.parse(r.updateTime)
+        const t = !isNaN(ts) ? ts : 0
         return t > 0 && (now - t) > FOLLOWUP_OVERDUE_MS
       }).length
     },
@@ -192,7 +193,8 @@ export default {
     },
     isOverdue(rec) {
       if (rec.followupStatus === 'completed' || rec.followupStatus === 'none') return false
-      const t = rec.updateTime ? new Date(rec.updateTime).getTime() : 0
+      const ts = Date.parse(rec.updateTime)
+      const t = !isNaN(ts) ? ts : 0
       return t > 0 && (Date.now() - t) > FOLLOWUP_OVERDUE_MS
     },
   },

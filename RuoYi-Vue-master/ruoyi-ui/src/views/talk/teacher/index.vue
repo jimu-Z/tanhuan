@@ -258,7 +258,7 @@
 
 <script>
 import { listTeacher, getTeacher, addTeacher, updateTeacher, delTeacher, getTeacherStudents, getTeacherClasses, saveTeacherClasses, getAllClassNames } from "@/api/talk/teacher"
-import { listDept } from "@/api/system/dept"
+import { getDeptTree } from "@/api/talk/talkStudent"
 import { getToken } from "@/utils/auth"
 import Treeselect from "@riophae/vue-treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
@@ -355,28 +355,31 @@ export default {
   },
   methods: {
     loadCollegeDeptTree() {
-      listDept().then(res => {
-        const allList = res.data || []
-        const collegeList = allList.filter(d => d.deptType === 'college')
-        const map = {}
-        const tree = []
-        allList.forEach(d => {
-          map[d.deptId] = { id: d.deptId, label: d.deptName, children: [], deptType: d.deptType, parentId: d.parentId }
-        })
-        allList.forEach(d => {
-          const node = map[d.deptId]
-          if (node && d.parentId && map[d.parentId]) {
-            map[d.parentId].children.push(node)
-          }
-          if (node && (!d.parentId || d.parentId === 0)) {
-            tree.push(node)
-          }
-        })
+      getDeptTree().then(res => {
+        const tree = this.mapDeptTree(res.data || [])
+        const collegeIds = this.collectCollegeIds(tree)
         // 学院树：只保留根到college的路径
-        this.collegeDeptTree = this.filterCollegeBranches(tree, collegeList.map(d => d.deptId))
+        this.collegeDeptTree = this.filterCollegeBranches(tree, collegeIds)
         // 班级树：保留学院+年级+班级完整层级
-        this.classDeptTree = this.filterToCollegeDescendants(tree, collegeList.map(d => d.deptId))
+        this.classDeptTree = this.filterToCollegeDescendants(tree, collegeIds)
       }).catch(() => { this.$modal.msgError('获取学院列表失败') })
+    },
+    mapDeptTree(nodes) {
+      return nodes.map(n => ({
+        id: n.deptId,
+        label: n.deptName,
+        deptType: n.deptType,
+        parentId: n.parentId,
+        children: n.children ? this.mapDeptTree(n.children) : []
+      }))
+    },
+    collectCollegeIds(nodes) {
+      let ids = []
+      nodes.forEach(n => {
+        if (n.deptType === 'college') ids.push(n.id)
+        if (n.children) ids = ids.concat(this.collectCollegeIds(n.children))
+      })
+      return ids
     },
     filterToCollegeDescendants(nodes, collegeIds) {
       if (!nodes || nodes.length === 0) return []
@@ -517,9 +520,9 @@ export default {
       getTeacherStudents(row.teacherId).then(res => {
         this.studentList = res.rows || []
         this.studentLoading = false
-      }).catch(err => { 
+      }).catch(err => {
         this.studentLoading = false
-        console.error('[学生按钮] API error:', err)
+        this.$modal.msgError('加载学生列表失败')
       })
     },
     /** 管理班级 */
@@ -532,24 +535,10 @@ export default {
       const loadTree = this.classDeptTree.length > 0
         ? Promise.resolve()
         : new Promise(resolve => {
-            listDept().then(res => {
-              const allList = res.data || []
-              const collegeList = allList.filter(d => d.deptType === 'college')
-              const map = {}
-              const tree = []
-              allList.forEach(d => {
-                map[d.deptId] = { id: d.deptId, label: d.deptName, children: [], deptType: d.deptType, parentId: d.parentId }
-              })
-              allList.forEach(d => {
-                const node = map[d.deptId]
-                if (node && d.parentId && map[d.parentId]) {
-                  map[d.parentId].children.push(node)
-                }
-                if (node && (!d.parentId || d.parentId === 0)) {
-                  tree.push(node)
-                }
-              })
-              this.classDeptTree = this.filterToCollegeDescendants(tree, collegeList.map(d => d.deptId))
+            getDeptTree().then(res => {
+              const tree = this.mapDeptTree(res.data || [])
+              const collegeIds = this.collectCollegeIds(tree)
+              this.classDeptTree = this.filterToCollegeDescendants(tree, collegeIds)
               resolve()
             }).catch(() => { this.classDeptTree = []; resolve() })
           })

@@ -97,7 +97,7 @@ public interface ITalkStudentService {
      * @param deptId 可选部门ID过滤
      * @return 学生集合
      */
-    public List<TalkStudent> selectUntalkedStudentsInPeriod(Date startTime, Date endTime, Long deptId);
+    public List<TalkStudent> selectUntalkedStudentsInPeriod(Date startTime, Date endTime, Long deptId, Map<String, Object> params);
 
     /**
      * 按教师工号查询学生列表（通过班级关联）
