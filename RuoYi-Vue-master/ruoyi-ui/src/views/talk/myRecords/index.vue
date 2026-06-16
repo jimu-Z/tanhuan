@@ -19,28 +19,12 @@
         <template slot-scope="scope">{{ scope.row.talkTime ? scope.row.talkTime.substring(0,10) : '' }}</template>
       </el-table-column>
       <el-table-column label="谈话地点" prop="talkLocation" min-width="120" align="center" show-overflow-tooltip />
-      <el-table-column label="谈话内容" prop="talkContent" min-width="200" align="center" show-overflow-tooltip />
+      <el-table-column label="谈话内容" prop="talkContent" min-width="300" align="center" show-overflow-tooltip />
       <el-table-column label="谈话人" prop="talkPerson" width="100" align="center" />
       <el-table-column label="我的反馈" align="center" min-width="150" show-overflow-tooltip>
         <template slot-scope="scope">
           <span v-if="scope.row.studentFeedback" style="color:#666">{{ scope.row.studentFeedback }}</span>
           <span v-else style="color:#ccc">未填写</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="跟进状态" align="center" width="100">
-        <template slot-scope="scope">
-          <el-tag v-if="scope.row.followupStatus === 'pending'" type="info" size="small">待跟进</el-tag>
-          <el-tag v-else-if="scope.row.followupStatus === 'in_progress'" type="warning" size="small">跟进中</el-tag>
-          <el-tag v-else-if="scope.row.followupStatus === 'completed'" type="success" size="small">已完成</el-tag>
-          <el-tag v-else-if="scope.row.followupStatus === 'none'" size="small">无需跟进</el-tag>
-          <span v-else>-</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="教师已读" align="center" width="90">
-        <template slot-scope="scope">
-          <el-tag v-if="scope.row.teacherNotified === 1" type="success" size="small">已读</el-tag>
-          <el-tag v-else-if="scope.row.studentFeedback" type="warning" size="small">未读</el-tag>
-          <span v-else style="color:#ccc">-</span>
         </template>
       </el-table-column>
       <el-table-column label="操作" align="center" width="180">

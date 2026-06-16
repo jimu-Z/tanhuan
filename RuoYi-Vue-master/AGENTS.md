@@ -14,7 +14,7 @@ Default five-role labels: `needs-triage`, `needs-info`, `ready-for-agent`, `read
 
 Single-context layout: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
-## 权限模型（第六轮修复后）
+## 权限模型（第八轮修复后）
 
 ### 角色定义
 

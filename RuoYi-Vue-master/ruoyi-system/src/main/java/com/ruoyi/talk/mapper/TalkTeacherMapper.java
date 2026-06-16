@@ -48,4 +48,9 @@ public interface TalkTeacherMapper {
      * 查询指定学院下的所有班级名
      */
     List<String> selectClassNamesByCollegeDept(@Param("deptId") Long deptId);
+
+    /**
+     * 根据工号精确查询教师
+     */
+    TalkTeacher selectByTeacherCode(String teacherCode);
 }

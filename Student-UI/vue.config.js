@@ -14,18 +14,18 @@ module.exports = {
   productionSourceMap: false,
   devServer: {
     host: '0.0.0.0',
-    port: 8082,
+    port: 6090,
     open: true,
     proxy: {
       [process.env.VUE_APP_BASE_API]: {
-        target: 'http://localhost:8080',
+        target: 'http://211.64.39.248:6060',
         changeOrigin: true,
         pathRewrite: {
           ['^' + process.env.VUE_APP_BASE_API]: ''
         }
       },
       '^/ruoyi-system': {
-        target: 'http://localhost:8080',
+        target: 'http://211.64.39.248:6060',
         changeOrigin: true
       }
     },

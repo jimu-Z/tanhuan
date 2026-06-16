@@ -40,14 +40,6 @@
       <el-form-item v-if="queryMode === 'records'" label="谈话人">
         <el-input v-model="queryParams.talkPerson" placeholder="谈话人" clearable style="width:140px" />
       </el-form-item>
-      <el-form-item v-if="queryMode === 'records'" label="跟进状态">
-        <el-select v-model="queryParams.followupStatus" placeholder="全部" clearable style="width:130px">
-          <el-option label="待跟进" value="pending" />
-          <el-option label="跟进中" value="in_progress" />
-          <el-option label="已完成" value="completed" />
-          <el-option label="无需跟进" value="none" />
-        </el-select>
-      </el-form-item>
       <el-form-item v-if="queryMode === 'untalked'" label="班级">
         <el-cascader
           v-model="selectedDeptPath"
@@ -108,15 +100,7 @@
           <span>{{ scope.row.talkTime ? scope.row.talkTime.substring(0, 10) : '-' }}</span>
         </template>
       </el-table-column>
-      <el-table-column v-if="queryMode === 'records'" label="跟进状态" align="center" width="100">
-        <template slot-scope="scope">
-          <el-tag v-if="scope.row.followupStatus === 'pending'" type="warning" size="mini">待跟进</el-tag>
-          <el-tag v-else-if="scope.row.followupStatus === 'in_progress'" type="primary" size="mini">跟进中</el-tag>
-          <el-tag v-else-if="scope.row.followupStatus === 'completed'" type="success" size="mini">已完成</el-tag>
-          <el-tag v-else-if="scope.row.followupStatus === 'none'" type="info" size="mini">无需跟进</el-tag>
-          <span v-else style="color:#c0c4cc">-</span>
-        </template>
-      </el-table-column>
+      <el-table-column v-if="queryMode === 'records'" label="谈话人" align="center" prop="talkPerson" width="100" />
       <el-table-column v-if="queryMode === 'records'" label="谈话内容" align="center" prop="talkContent" min-width="200" show-overflow-tooltip />
       <el-table-column v-if="queryMode === 'records'" label="内容标签" align="center" width="180">
         <template slot-scope="scope">
@@ -194,8 +178,7 @@ export default {
         keyword: '',
         talkType: '',
         tags: [],
-        talkPerson: '',
-        followupStatus: ''
+        talkPerson: ''
       },
 
       tagOptions: Object.keys(TAG_LABELS).map(k => ({ value: k, label: TAG_LABELS[k] }))
@@ -383,7 +366,17 @@ export default {
         const data = res.data || {}
         const newTagMap = {}
         Object.keys(data).forEach(k => {
-          newTagMap[Number(k)] = (data[k] || []).map(t => TAG_LABELS[t.tagValue] || t.tagValue || '-')
+          newTagMap[Number(k)] = (data[k] || []).map(t => {
+            const val = t.tagValue
+            if (!val) return '-'
+            // 兼容 tagValue 可能是 JSON 数组字符串
+            let parsed = val
+            try { parsed = JSON.parse(val) } catch (e) { /* not JSON */ }
+            if (Array.isArray(parsed)) {
+              return parsed.map(v => TAG_LABELS[v] || v).join('、')
+            }
+            return TAG_LABELS[parsed] || parsed
+          })
         })
         this.tagDataMap = newTagMap
       }).catch(() => {
@@ -411,10 +404,6 @@ export default {
       if (this.queryParams.talkPerson) {
         const tp = this.queryParams.talkPerson.toLowerCase()
         data = data.filter(row => (row.talkPerson || '').toLowerCase().indexOf(tp) > -1)
-      }
-
-      if (this.queryParams.followupStatus) {
-        data = data.filter(row => row.followupStatus === this.queryParams.followupStatus)
       }
 
       if (this.queryParams.tags && this.queryParams.tags.length > 0) {
@@ -453,8 +442,7 @@ export default {
         keyword: '',
         talkType: '',
         tags: [],
-        talkPerson: '',
-        followupStatus: ''
+        talkPerson: ''
       }
       this.talkTypeFilter = 'all'
       this.selectedDeptPath = []

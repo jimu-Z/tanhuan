@@ -37,6 +37,7 @@
             <if test="deptId != null"> and t.dept_id = #{deptId}</if>
             <if test="position != null and position != ''"> and t.position = #{position}</if>
             <if test="status != null and status != ''"> and t.status = #{status}</if>
+            ${params.dataScope}
         </where>
         order by t.dept_id, t.teacher_code
     </select>
@@ -112,6 +113,12 @@
         where d.dept_type = 'class'
           and (d.dept_id = #{deptId} or find_in_set(#{deptId}, d.ancestors))
         order by d.dept_name
+    </select>
+
+    <select id="selectByTeacherCode" parameterType="String" resultMap="TalkTeacherResult">
+        <include refid="selectTalkTeacherVo"/>
+        where t.teacher_code = #{teacherCode}
+        limit 1
     </select>
 
 </mapper>

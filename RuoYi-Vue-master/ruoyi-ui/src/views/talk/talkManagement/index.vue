@@ -171,10 +171,10 @@
       <el-table-column label="谈话地点" align="center" prop="talkLocation" width="120" />
       <el-table-column label="谈话人" align="center" prop="talkPerson" width="100" />
       <el-table-column label="谈话内容" align="center" prop="talkContent" min-width="200" show-overflow-tooltip />
-      <el-table-column label="内容标签" align="center" width="110">
+      <el-table-column label="内容标签" align="center" width="160">
         <template slot-scope="scope">
-          <span v-if="tagMap[scope.row.sessionId]" style="font-size:12px;color:#666">
-            {{ tagMap[scope.row.sessionId].map(t => getTagLabel(t.tagValue)).join('、') || '-' }}
+          <span v-if="tagMap[scope.row.sessionId] && tagMap[scope.row.sessionId].length > 0" style="font-size:12px;color:#666">
+            {{ tagMap[scope.row.sessionId].map(t => getTagLabel(t.tagValue)).join('、') }}
           </span>
           <span v-else style="color:#ccc">-</span>
         </template>
@@ -387,7 +387,14 @@ export default {
       ))
     },
     getTagLabel(value) {
-      return this.tagLabels[value] || value
+      if (!value) return value
+      // 兼容 tagValue 可能是 JSON 数组字符串如 '["mental_health"]'
+      let parsed = value
+      try { parsed = JSON.parse(value) } catch (e) { /* not JSON, use as-is */ }
+      if (Array.isArray(parsed)) {
+        return parsed.map(v => this.tagLabels[v] || v).join('、')
+      }
+      return this.tagLabels[parsed] || parsed
     },
     handleExpand(row, expanded) {
       if (!expanded) return

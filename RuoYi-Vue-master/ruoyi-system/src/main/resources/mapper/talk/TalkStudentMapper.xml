@@ -320,4 +320,46 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by s.student_code
     </select>
 
+    <select id="countByMentalHealthFiltered" parameterType="map" resultType="java.util.HashMap">
+        select s.mental_health_status as status, count(*) as cnt
+        from talk_student s
+        <where>
+            s.mental_health_status is not null and s.mental_health_status != '' and s.mental_health_status != 'normal' and s.mental_health_status != '正常' and s.mental_health_status != '健康'
+            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
+            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+        </where>
+        group by s.mental_health_status
+    </select>
+
+    <select id="countByPovertyLevelFiltered" parameterType="map" resultType="java.util.HashMap">
+        select s.poverty_level as level, count(*) as cnt
+        from talk_student s
+        <where>
+            s.poverty_level is not null and s.poverty_level != '' and s.poverty_level != 'none' and s.poverty_level != '无贫困' and s.poverty_level != '无'
+            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
+            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+        </where>
+        group by s.poverty_level
+    </select>
+
+    <select id="countByEnrollmentStatusFiltered" parameterType="map" resultType="java.util.HashMap">
+        select s.enrollment_status as status, count(*) as cnt
+        from talk_student s
+        <where>
+            s.enrollment_status is not null and s.enrollment_status != '' and s.enrollment_status != 'active' and s.enrollment_status != '在读' and s.enrollment_status != '在校' and s.enrollment_status != '毕业'
+            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
+            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+        </where>
+        group by s.enrollment_status
+    </select>
+
+    <select id="countUntalkedStudentsFiltered" parameterType="map" resultType="int">
+        select count(*) from talk_student s
+        <where>
+            not exists (select 1 from talk_student_record tsr where tsr.student_id = s.student_id)
+            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr2.student_id from talk_student_record tsr2 join talk_session ts on tsr2.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
+            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+        </where>
+    </select>
+
 </mapper>

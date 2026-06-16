@@ -68,7 +68,7 @@
     <el-table v-loading="loading" :data="tagList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="标签ID" align="center" prop="tagId" />
-      <el-table-column label="标签标识" align="center" prop="tagKey" />
+      <el-table-column label="标签标识" align="center" prop="tagName" />
       <el-table-column label="标签名称" align="center" prop="tagName" />
       <el-table-column label="排序" align="center" prop="sortOrder" />
       <el-table-column label="状态" align="center" prop="status">

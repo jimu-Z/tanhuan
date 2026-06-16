@@ -74,4 +74,6 @@ public interface TalkStudentRecordMapper
     public int countRecordsFiltered(Map<String, Object> params);
     public List<java.util.HashMap<String, Object>> countRecordsByFollowupStatusFiltered(Map<String, Object> params);
     public int countPendingFeedback(Map<String, Object> params);
+
+    public List<TalkStudentRecord> selectRecentRecordsFiltered(Map<String, Object> params);
 }

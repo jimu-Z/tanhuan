@@ -9,7 +9,7 @@ const CompressionPlugin = require('compression-webpack-plugin')
 
 const name = process.env.VUE_APP_TITLE || '学生谈心谈话系统' // 网页标题
 
-const baseUrl = 'http://localhost:6060' // 后端接口
+const baseUrl = 'http://211.64.39.248:6060' // 后端接口
 
 const port = process.env.port || process.env.npm_config_port || 6080 // 端口
 

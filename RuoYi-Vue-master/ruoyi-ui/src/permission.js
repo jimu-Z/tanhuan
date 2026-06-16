@@ -9,7 +9,7 @@ import { isRelogin } from '@/utils/request'
 
 NProgress.configure({ showSpinner: false })
 
-const whiteList = ['/login', '/register', '/talk/dashboard-v2', '/talk/alerts-v2', '/talk/templates-v2', '/talk/unified-query']
+const whiteList = ['/login', '/register', '/talk/dashboard-v2', '/talk/alerts-v2', '/talk/templates-v2', '/talk/unifiedQuery']
 
 const isWhiteList = (path) => {
   return whiteList.some(pattern => isPathMatch(pattern, path))

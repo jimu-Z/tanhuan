@@ -60,6 +60,25 @@
 
 ## BUG 修复历史
 
+### 第八轮修复 — 2026-06-16（生产部署+导入BUG+权限+仪表盘重构）
+
+> 触发条件：部署到 211.64.39.248 后，教师/学生导入失败、系统管理员无权限、仪表盘排名竞争性
+
+| # | 严重度 | 问题 | 修复方案 | 文件 |
+|---|:------:|------|---------|------|
+| 1 | CRITICAL | `SysDeptMapper.xml` insertDept 缺少 `useGeneratedKeys`，导致新建部门后 deptId 返回 null | 添加 `useGeneratedKeys="true" keyProperty="deptId"` | SysDeptMapper.xml |
+| 2 | CRITICAL | 教师导入"所属学院不能为空"：getOrCreateCollegeDept 用 like 模糊匹配 | 改用精确匹配(deptName+parentId=100) + 二次确认 | TalkTeacherServiceImpl.java |
+| 3 | CRITICAL | 学生导入"dept_id doesn't have default value"：findOrCreateDept 返回 null | 增加主键回填安全检查 + 参数校验 | TalkStudentServiceImpl.java |
+| 4 | CRITICAL | 学生导入创建 parent_id=0 的脏部门数据 | findOrCreateDept 增加 null 结果跳过 | TalkStudentServiceImpl.java |
+| 5 | HIGH | 系统管理员角色看不到教师管理数据：自定义 applyDataScopeFilter 只判 isAdmin | 删除自定义过滤，改用 @DataScope(deptAlias="d") 注解 | TalkTeacherServiceImpl.java, TalkTeacherMapper.xml |
+| 6 | HIGH | 统一查询页面 403：talk:record:list 权限不存在 | 新增菜单2026并分配给角色3/4/5 | 数据库SQL |
+| 7 | MEDIUM | 仪表盘"各学院谈话排名"具有竞争性 | 替换为：工作提醒+预警概览+最近谈话动态 | TalkStatisticsController, dashboardV2/index.vue |
+| 8 | MEDIUM | 前端标签显示 ["mental_health"] 而非中文 | getTagLabel 增加 JSON 数组字符串解析兼容 | talkManagement, talkSession, unifiedQuery |
+| 9 | MEDIUM | 我的谈话记录：跟进状态+教师已读列对学生无意义 | 删除两列，谈话内容列拉长 | myRecords/index.vue |
+| 10 | MEDIUM | 统一查询：跟进状态列和搜索条件多余 | 删除跟进状态列和搜索，添加谈话人列 | unifiedQuery/index.vue |
+| 11 | LOW | 标签管理标签标识列显示英文key | 改为显示 tagName（中文） | talkTag/index.vue |
+| 12 | LOW | Student-UI 端口非60系 + 代理指向localhost | 端口改6090，代理改211.64.39.248:6060 | Student-UI/vue.config.js, .env.production |
+
 ### 第七轮修复 — 2026-06-15（书记/辅导员页面403权限错误）
 
 > 触发条件：书记/辅导员登录后，多个页面弹"当前操作没有权限"

@@ -31,32 +31,83 @@
     </div>
 
     <div class="dashboard-bottom">
-      <div class="dashboard-chart-box dashboard-chart-full">
-        <div class="dashboard-chart-header">
-          <i class="el-icon-s-data"></i> 各学院谈话排名
-        </div>
-        <div ref="collegeBarChart" class="dashboard-chart-body" style="height:360px"></div>
-      </div>
+      <!-- 工作提醒 -->
       <div class="dashboard-chart-box">
         <div class="dashboard-chart-header">
-          <i class="el-icon-pie-chart"></i> 谈话类型占比
+          <i class="el-icon-bell"></i> 工作提醒
         </div>
-        <div class="dashboard-ratio-wrap">
-          <div v-if="individualCount + groupCount > 0" class="dashboard-ratio-content">
-            <div class="dashboard-ratio-item">
-              <div class="dashboard-ratio-label">个别谈话</div>
-              <el-progress :percentage="individualPercent" color="#667eea" :stroke-width="18" :text-inside="true">
-                {{ individualCount }} 次
-              </el-progress>
-            </div>
-            <div class="dashboard-ratio-item">
-              <div class="dashboard-ratio-label">集体谈话</div>
-              <el-progress :percentage="groupPercent" color="#e6a23c" :stroke-width="18" :text-inside="true">
-                {{ groupCount }} 次
-              </el-progress>
+        <div class="dashboard-todo-wrap">
+          <div v-if="todoItems.length > 0" class="dashboard-todo-list">
+            <div v-for="item in todoItems" :key="item.type" class="dashboard-todo-item" @click="handleTodoClick(item)">
+              <div class="dashboard-todo-icon" :style="{ background: item.color + '18', color: item.color }">
+                <i :class="item.icon"></i>
+              </div>
+              <div class="dashboard-todo-info">
+                <span class="dashboard-todo-label">{{ item.label }}</span>
+                <span class="dashboard-todo-count" :style="{ color: item.color }">{{ item.count }}</span>
+              </div>
+              <i class="el-icon-arrow-right dashboard-todo-arrow"></i>
             </div>
           </div>
-          <div v-else class="dashboard-empty">暂无数据</div>
+          <div v-else class="dashboard-empty">
+            <i class="el-icon-circle-check" style="font-size:28px;color:#67c23a;margin-bottom:8px;display:block"></i>
+            暂无待处理事项
+          </div>
+        </div>
+      </div>
+
+      <!-- 预警概览 -->
+      <div class="dashboard-chart-box">
+        <div class="dashboard-chart-header">
+          <i class="el-icon-warning"></i> 预警概览
+        </div>
+        <div class="dashboard-alert-wrap">
+          <div v-if="alertItems.length > 0" class="dashboard-alert-list">
+            <div v-for="item in alertItems" :key="item.type" class="dashboard-alert-item">
+              <div class="dashboard-alert-header">
+                <span class="dashboard-alert-dot" :style="{ background: item.color }"></span>
+                <span class="dashboard-alert-label">{{ item.label }}</span>
+                <span class="dashboard-alert-count" :style="{ color: item.color }">{{ item.count }}人</span>
+              </div>
+              <div class="dashboard-alert-detail">
+                <span v-for="d in formatAlertDetail(item)" :key="d.label" class="dashboard-alert-tag">
+                  {{ d.label }} {{ d.count }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div v-else class="dashboard-empty">
+            <i class="el-icon-circle-check" style="font-size:28px;color:#67c23a;margin-bottom:8px;display:block"></i>
+            暂无预警信息
+          </div>
+        </div>
+      </div>
+
+      <!-- 最近动态 -->
+      <div class="dashboard-chart-box">
+        <div class="dashboard-chart-header">
+          <i class="el-icon-time"></i> 最近谈话动态
+        </div>
+        <div class="dashboard-recent-wrap">
+          <div v-if="recentActivities.length > 0" class="dashboard-recent-list">
+            <div v-for="(act, idx) in recentActivities" :key="idx" class="dashboard-recent-item">
+              <div class="dashboard-recent-dot" :class="act.talkType === 'group' ? 'dot-group' : 'dot-individual'"></div>
+              <div class="dashboard-recent-info">
+                <div class="dashboard-recent-top">
+                  <span class="dashboard-recent-name">{{ act.studentName }}</span>
+                  <el-tag :type="act.talkType === 'group' ? 'warning' : 'primary'" size="mini" effect="plain">
+                    {{ act.talkType === 'group' ? '集体' : '个别' }}
+                  </el-tag>
+                  <el-tag v-if="act.followupStatus === 'pending'" type="danger" size="mini" effect="plain">待跟进</el-tag>
+                </div>
+                <div class="dashboard-recent-meta">
+                  <span v-if="act.talkPerson">{{ act.talkPerson }}</span>
+                  <span v-if="act.talkTime">{{ formatDate(act.talkTime) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="dashboard-empty">暂无谈话记录</div>
         </div>
       </div>
     </div>
@@ -80,6 +131,10 @@ const KPI_CONFIG = [
 
 const TAG_COLORS = ['#667eea','#764ba2','#11998e','#38ef7d','#ee5a6f','#f7ba2a','#409eff','#a18cd1']
 
+const MENTAL_LABELS = { 'weekly_track': '周跟踪', 'monthly_track': '月跟踪', '重点关注': '重点关注', '中度预警': '中度预警', '关注': '关注' }
+const POVERTY_LABELS = { 'general': '一般困难', 'difficult': '困难', 'severe': '特别困难', '贫困': '贫困', '轻度贫困': '轻度贫困', '一般困难': '一般困难' }
+const ENROLLMENT_LABELS = { 'suspended': '休学', 'withdrawn': '退学', '休学': '休学', '退学': '退学' }
+
 export default {
   name: 'DashboardV2',
   data() {
@@ -89,23 +144,15 @@ export default {
       dashboardData: {},
       tagDistribution: [],
       monthlyTrend: [],
-      collegeRanking: [],
-      individualCount: 0,
-      groupCount: 0
+      todoItems: [],
+      alertItems: [],
+      recentActivities: []
     }
   },
   computed: {
     kpiData() {
       const d = this.dashboardData
       return KPI_CONFIG.map(k => ({ ...k, value: d[k.key] != null ? d[k.key] : 0 }))
-    },
-    individualPercent() {
-      const t = this.individualCount + this.groupCount
-      return t > 0 ? Math.round(this.individualCount / t * 100) : 0
-    },
-    groupPercent() {
-      const t = this.individualCount + this.groupCount
-      return t > 0 ? Math.round(this.groupCount / t * 100) : 0
     }
   },
   mounted() {
@@ -125,9 +172,9 @@ export default {
           this.dashboardData = data
           this.tagDistribution = data.tagDistribution || []
           this.monthlyTrend = data.monthlyTrend || []
-          this.collegeRanking = data.collegeRanking || []
-          this.individualCount = data.individualCount || 0
-          this.groupCount = data.groupCount || 0
+          this.todoItems = data.todoItems || []
+          this.alertItems = data.alertItems || []
+          this.recentActivities = data.recentActivities || []
 
           this.$nextTick(() => this.renderAllCharts())
         })
@@ -137,6 +184,35 @@ export default {
         .finally(() => {
           this.loading = false
         })
+    },
+
+    formatDate(dateStr) {
+      if (!dateStr) return ''
+      const d = new Date(dateStr)
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      const h = String(d.getHours()).padStart(2, '0')
+      const min = String(d.getMinutes()).padStart(2, '0')
+      return m + '-' + day + ' ' + h + ':' + min
+    },
+
+    formatAlertDetail(item) {
+      if (!item.detail) return []
+      const labelMap = item.type === 'mental' ? MENTAL_LABELS : item.type === 'poverty' ? POVERTY_LABELS : ENROLLMENT_LABELS
+      return item.detail.map(d => ({
+        label: labelMap[d.status || d.level] || d.status || d.level,
+        count: d.cnt + '人'
+      }))
+    },
+
+    handleTodoClick(item) {
+      if (item.type === 'feedback') {
+        this.$router.push('/talk/record?hasNoFeedback=true')
+      } else if (item.type === 'followup') {
+        this.$router.push('/talk/record?followupStatus=pending')
+      } else if (item.type === 'untalked') {
+        this.$router.push('/talk/student?untalked=true')
+      }
     },
 
     handleResize() {
@@ -168,7 +244,6 @@ export default {
     renderAllCharts() {
       this.renderTagPieChart()
       this.renderMonthlyBarChart()
-      this.renderCollegeBarChart()
     },
 
     renderTagPieChart() {
@@ -204,23 +279,6 @@ export default {
         yAxis: { type: 'value', axisLabel: { fontSize: 10 }, splitLine: { lineStyle: { color: '#f2f3f5', type: 'dashed' } } },
         series: [{ type: 'bar', barWidth: 18, data: counts, itemStyle: { borderRadius: [6,6,0,0], color: new echarts.graphic.LinearGradient(0,0,0,1,[{ offset:0, color:'#667eea' },{ offset:0.5, color:'#764ba2' },{ offset:1, color:'#a18cd1' }]) } }]
       }, true)
-    },
-
-    renderCollegeBarChart() {
-      const chart = this.initChart('collegeBarChart')
-      if (!chart) return
-      const data = this.collegeRanking
-      if (!data.length) {
-        chart.setOption({ title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#909399', fontSize: 14 } } }, true)
-        return
-      }
-      chart.setOption({
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-        grid: { top: 10, left: 120, right: 50, bottom: 10, containLabel: true },
-        xAxis: { type: 'value', axisLabel: { fontSize: 11 } },
-        yAxis: { type: 'category', data: data.map(d => d.name), axisLabel: { fontSize: 11 }, inverse: true },
-        series: [{ type: 'bar', barWidth: 16, data: data.map(v => ({ value: v.count, itemStyle: { borderRadius: [0,6,6,0], color: new echarts.graphic.LinearGradient(0,0,1,0,[{ offset:0, color:'#667eea' },{ offset:1, color:'#764ba2' }]) } })), label: { show: true, position: 'right', fontSize: 11, fontWeight: 'bold' } }]
-      }, true)
     }
   }
 }
@@ -241,18 +299,46 @@ export default {
 .dashboard-kpi-unit { font-size: 11px; color: #909399; }
 
 .dashboard-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 0 24px 20px; }
-.dashboard-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 0 24px; }
+.dashboard-bottom { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; padding: 0 24px; }
 
 .dashboard-chart-box { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); overflow: hidden; }
-.dashboard-chart-full { grid-column: 1 / -1; }
 .dashboard-chart-header { font-size: 14px; font-weight: 600; color: #1a1a2e; padding: 14px 20px; border-bottom: 1px solid #f0f2f5; display: flex; align-items: center; gap: 6px; }
 .dashboard-chart-body { width: 100%; height: 340px; }
 
-.dashboard-ratio-wrap { padding: 20px 24px; }
-.dashboard-ratio-content { display: flex; flex-direction: column; gap: 24px; }
-.dashboard-ratio-item { display: flex; align-items: center; gap: 16px; }
-.dashboard-ratio-label { font-size: 13px; color: #606266; white-space: nowrap; width: 70px; }
-.dashboard-ratio-item ::v-deep .el-progress { flex: 1; }
-
 .dashboard-empty { text-align: center; color: #909399; padding: 40px; font-size: 13px; }
+
+/* 工作提醒 */
+.dashboard-todo-wrap { padding: 16px 20px; }
+.dashboard-todo-list { display: flex; flex-direction: column; gap: 12px; }
+.dashboard-todo-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: #f8f9fc; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+.dashboard-todo-item:hover { background: #f0f2f5; transform: translateX(4px); }
+.dashboard-todo-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.dashboard-todo-info { flex: 1; display: flex; align-items: center; justify-content: space-between; }
+.dashboard-todo-label { font-size: 14px; color: #303133; }
+.dashboard-todo-count { font-size: 20px; font-weight: 700; }
+.dashboard-todo-arrow { color: #c0c4cc; font-size: 14px; }
+
+/* 预警概览 */
+.dashboard-alert-wrap { padding: 16px 20px; }
+.dashboard-alert-list { display: flex; flex-direction: column; gap: 16px; }
+.dashboard-alert-item { padding: 14px 16px; background: #f8f9fc; border-radius: 10px; }
+.dashboard-alert-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.dashboard-alert-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dashboard-alert-label { font-size: 14px; color: #303133; flex: 1; }
+.dashboard-alert-count { font-size: 16px; font-weight: 700; }
+.dashboard-alert-detail { display: flex; flex-wrap: wrap; gap: 8px; padding-left: 16px; }
+.dashboard-alert-tag { font-size: 12px; color: #606266; background: #fff; padding: 4px 10px; border-radius: 6px; border: 1px solid #ebeef5; }
+
+/* 最近动态 */
+.dashboard-recent-wrap { padding: 16px 20px; }
+.dashboard-recent-list { display: flex; flex-direction: column; }
+.dashboard-recent-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f5f7fa; }
+.dashboard-recent-item:last-child { border-bottom: none; }
+.dashboard-recent-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
+.dot-individual { background: #409eff; }
+.dot-group { background: #e6a23c; }
+.dashboard-recent-info { flex: 1; min-width: 0; }
+.dashboard-recent-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.dashboard-recent-name { font-size: 13px; color: #303133; font-weight: 500; }
+.dashboard-recent-meta { font-size: 12px; color: #909399; display: flex; gap: 12px; }
 </style>

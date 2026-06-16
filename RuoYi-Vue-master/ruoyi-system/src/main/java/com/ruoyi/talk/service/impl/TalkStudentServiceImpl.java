@@ -482,8 +482,23 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 }
 
                 Long collegeDeptId = findOrCreateDept(college, TOP_DEPT_ID, "college");
+                if (collegeDeptId == null) {
+                    skipCount++;
+                    errors.add("第" + rowNum + "行: 学院[" + college + "]创建失败");
+                    continue;
+                }
                 Long gradeDeptId = findOrCreateDept(grade, collegeDeptId, "grade");
+                if (gradeDeptId == null) {
+                    skipCount++;
+                    errors.add("第" + rowNum + "行: 年级[" + grade + "]创建失败");
+                    continue;
+                }
                 Long classDeptId = findOrCreateDept(className, gradeDeptId, "class");
+                if (classDeptId == null) {
+                    skipCount++;
+                    errors.add("第" + rowNum + "行: 班级[" + className + "]创建失败");
+                    continue;
+                }
 
                 // 校验Excel中填写的辅导员/书记/班主任/副书记是否存在
                 String teacherError = validateImportTeachersByDeptId(collegeDeptId, rowData);
@@ -880,6 +895,11 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
     private Long findOrCreateDept(String deptName, Long parentId, String type) {
         log.debug("[IMPORT-DEBUG] findOrCreateDept: name={}, parentId={}, type={}", deptName, parentId, type);
+        if (StringUtils.isEmpty(deptName) || parentId == null) {
+            log.error("[IMPORT-ERROR] findOrCreateDept 参数无效: name={}, parentId={}", deptName, parentId);
+            return null;
+        }
+        // 精确查找：deptName + parentId，避免模糊匹配导致重复创建
         SysDept query = new SysDept();
         query.setDeptName(deptName.trim());
         query.setParentId(parentId);
@@ -896,6 +916,16 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                     return d.getDeptId();
                 }
             }
+        }
+
+        // 不存在则创建，但先二次确认防止并发重复创建
+        SysDept checkAgain = sysDeptMapper.checkDeptNameUnique(deptName.trim(), parentId);
+        if (checkAgain != null) {
+            if (checkAgain.getDeptType() == null) {
+                checkAgain.setDeptType(type);
+                sysDeptMapper.updateDept(checkAgain);
+            }
+            return checkAgain.getDeptId();
         }
 
         String ancestors;
@@ -917,7 +947,19 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         newDept.setCreateBy(SecurityUtils.getUsername());
         newDept.setCreateTime(new Date());
         sysDeptMapper.insertDept(newDept);
-        log.info("[IMPORT-CREATE] 创建部门 {} deptType={} parentId={}", deptName.trim(), type, parentId);
+        // 安全检查：如果主键未回填，用查询获取
+        if (newDept.getDeptId() == null) {
+            SysDept created = sysDeptMapper.checkDeptNameUnique(deptName.trim(), parentId);
+            if (created != null) {
+                log.info("[IMPORT-CREATE] 创建部门 {} deptType={} parentId={} (回查获取ID={})", deptName.trim(), type, parentId,
+                        created.getDeptId());
+                return created.getDeptId();
+            }
+            log.error("[IMPORT-ERROR] 创建部门失败: name={}, parentId={}", deptName, parentId);
+            return null;
+        }
+        log.info("[IMPORT-CREATE] 创建部门 {} deptType={} parentId={} id={}", deptName.trim(), type, parentId,
+                newDept.getDeptId());
         return newDept.getDeptId();
     }
 

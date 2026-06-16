@@ -8,10 +8,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ruoyi.common.annotation.DataScope;
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.utils.SecurityUtils;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.SysUserRole;
 import com.ruoyi.system.mapper.SysDeptMapper;
 import com.ruoyi.system.mapper.SysRoleMapper;
@@ -56,22 +58,9 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
     }
 
     @Override
+    @DataScope(deptAlias = "d")
     public List<TalkTeacher> selectTalkTeacherList(TalkTeacher teacher) {
-        applyDataScopeFilter(teacher);
         return teacherMapper.selectTalkTeacherList(teacher);
-    }
-
-    /**
-     * 数据权限过滤：非管理员只能看到自己学院的教师
-     */
-    private void applyDataScopeFilter(TalkTeacher teacher) {
-        if (SecurityUtils.isAdmin()) {
-            return;
-        }
-        Long deptId = SecurityUtils.getDeptId();
-        if (deptId != null) {
-            teacher.setDeptId(deptId);
-        }
     }
 
     @Override
@@ -157,13 +146,13 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
     }
 
     @Override
-    @Transactional
     public String importTeacher(List<TalkTeacher> teacherList, boolean updateSupport) {
         if (teacherList == null || teacherList.isEmpty()) {
             return "导入数据为空";
         }
         int successCount = 0;
         int failCount = 0;
+        int updateCount = 0;
         StringBuilder failMsg = new StringBuilder();
 
         for (TalkTeacher teacher : teacherList) {
@@ -177,6 +166,55 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
                 if (teacher.getDeptId() == null && teacher.getDeptName() != null) {
                     Long deptId = getOrCreateCollegeDept(teacher.getDeptName());
                     teacher.setDeptId(deptId);
+                }
+
+                // 检查工号是否已存在
+                String teacherCode = teacher.getTeacherCode();
+                if (StringUtils.isNotEmpty(teacherCode)) {
+                    TalkTeacher existing = teacherMapper.selectByTeacherCode(teacherCode);
+                    if (existing != null) {
+                        if (updateSupport) {
+                            // 更新模式：更新已有教师信息
+                            teacher.setTeacherId(existing.getTeacherId());
+                            teacher.setCreateBy(existing.getCreateBy());
+                            teacher.setCreateTime(existing.getCreateTime());
+                            teacher.setUpdateBy(SecurityUtils.getUsername());
+                            teacher.setUpdateTime(new Date());
+                            teacherMapper.updateTalkTeacher(teacher);
+                            updateCount++;
+                            successCount++;
+                            continue;
+                        } else {
+                            failCount++;
+                            failMsg.append(teacher.getTeacherName() != null ? teacher.getTeacherName() : teacherCode)
+                                    .append("(工号已存在); ");
+                            continue;
+                        }
+                    }
+                    // 兼任判定：检查是否有加工号前缀的版本
+                    String resolvedCode = resolveTeacherCode(teacher);
+                    if (!resolvedCode.equals(teacherCode)) {
+                        TalkTeacher existingPrefixed = teacherMapper.selectByTeacherCode(resolvedCode);
+                        if (existingPrefixed != null) {
+                            if (updateSupport) {
+                                teacher.setTeacherId(existingPrefixed.getTeacherId());
+                                teacher.setCreateBy(existingPrefixed.getCreateBy());
+                                teacher.setCreateTime(existingPrefixed.getCreateTime());
+                                teacher.setUpdateBy(SecurityUtils.getUsername());
+                                teacher.setUpdateTime(new Date());
+                                teacherMapper.updateTalkTeacher(teacher);
+                                updateCount++;
+                                successCount++;
+                                continue;
+                            } else {
+                                failCount++;
+                                failMsg.append(
+                                        teacher.getTeacherName() != null ? teacher.getTeacherName() : resolvedCode)
+                                        .append("(工号已存在); ");
+                                continue;
+                            }
+                        }
+                    }
                 }
 
                 teacher.setCreateBy(SecurityUtils.getUsername());
@@ -194,6 +232,9 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
         }
 
         String message = "成功导入 " + successCount + " 条";
+        if (updateCount > 0) {
+            message += "（其中更新 " + updateCount + " 条）";
+        }
         if (failCount > 0) {
             message += "，失败 " + failCount + " 条: " + failMsg;
         }
@@ -301,18 +342,38 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
 
     /**
      * 获取或创建学院部门
+     * 使用精确匹配（deptName + parentId + deptType）避免模糊匹配导致重复创建
      */
     private Long getOrCreateCollegeDept(String deptName) {
-        // 查找是否已存在
+        // 精确查找：名称 + 父部门 + deptType
         SysDept query = new SysDept();
-        query.setDeptName(deptName);
+        query.setDeptName(deptName.trim());
+        query.setParentId(100L);
         List<SysDept> depts = deptMapper.selectDeptList(query);
-        if (!depts.isEmpty()) {
-            return depts.get(0).getDeptId();
+        if (depts != null) {
+            for (SysDept d : depts) {
+                if (d.getDeptName().equals(deptName.trim()) && d.getParentId().equals(100L)) {
+                    // 补齐缺失的 deptType
+                    if (d.getDeptType() == null) {
+                        d.setDeptType("college");
+                        deptMapper.updateDept(d);
+                    }
+                    return d.getDeptId();
+                }
+            }
+        }
+        // 二次确认防止并发重复创建
+        SysDept checkAgain = deptMapper.checkDeptNameUnique(deptName.trim(), 100L);
+        if (checkAgain != null) {
+            if (checkAgain.getDeptType() == null) {
+                checkAgain.setDeptType("college");
+                deptMapper.updateDept(checkAgain);
+            }
+            return checkAgain.getDeptId();
         }
         // 创建学院
         SysDept newDept = new SysDept();
-        newDept.setDeptName(deptName);
+        newDept.setDeptName(deptName.trim());
         newDept.setParentId(100L); // 顶级部门
         newDept.setAncestors("0,100");
         newDept.setDeptType("college");
@@ -321,6 +382,14 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
         newDept.setCreateBy(SecurityUtils.getUsername());
         newDept.setCreateTime(new Date());
         deptMapper.insertDept(newDept);
+        // 安全检查：如果主键未回填，用查询获取
+        if (newDept.getDeptId() == null) {
+            SysDept created = deptMapper.checkDeptNameUnique(deptName.trim(), 100L);
+            if (created != null) {
+                return created.getDeptId();
+            }
+            throw new RuntimeException("创建学院部门失败: " + deptName);
+        }
         return newDept.getDeptId();
     }
 

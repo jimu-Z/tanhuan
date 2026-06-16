@@ -176,4 +176,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="secretaryDeptId != null"> and tsr.student_id in (select stu.student_id from talk_student stu join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
         </where>
     </select>
+
+    <select id="selectRecentRecordsFiltered" parameterType="map" resultMap="TalkStudentRecordResult">
+        <include refid="selectTalkStudentRecordVo"/>
+        <where>
+            <if test="counselorUsername != null and counselorUsername != ''"> and tsr.session_id in (select ts2.session_id from talk_session ts2 where ts2.create_by = #{counselorUsername})</if>
+            <if test="secretaryDeptId != null"> and tsr.student_id in (select stu.student_id from talk_student stu join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+        </where>
+        order by tsr.create_time desc
+        limit 8
+    </select>
 </mapper>

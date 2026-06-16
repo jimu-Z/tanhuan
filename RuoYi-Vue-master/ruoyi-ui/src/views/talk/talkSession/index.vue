@@ -318,7 +318,13 @@ export default {
       })
     },
     getTagLabel(value) {
-      return TAG_LABELS[value] || value
+      if (!value) return value
+      let parsed = value
+      try { parsed = JSON.parse(value) } catch (e) { /* not JSON, use as-is */ }
+      if (Array.isArray(parsed)) {
+        return parsed.map(v => TAG_LABELS[v] || v).join('、')
+      }
+      return TAG_LABELS[parsed] || parsed
     },
     handleExpand(row, expanded) {
       if (!expanded || row._students) return

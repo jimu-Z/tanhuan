@@ -101,4 +101,9 @@ public interface TalkStudentMapper {
      * 按学院ID查询学生（含子部门）
      */
     public List<TalkStudent> selectByCollegeDeptId(@Param("deptId") Long deptId);
+
+    public List<java.util.HashMap<String, Object>> countByMentalHealthFiltered(Map<String, Object> params);
+    public List<java.util.HashMap<String, Object>> countByPovertyLevelFiltered(Map<String, Object> params);
+    public List<java.util.HashMap<String, Object>> countByEnrollmentStatusFiltered(Map<String, Object> params);
+    public int countUntalkedStudentsFiltered(Map<String, Object> params);
 }
