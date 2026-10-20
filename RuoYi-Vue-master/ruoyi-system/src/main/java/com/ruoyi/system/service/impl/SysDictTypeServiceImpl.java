@@ -1,5 +1,6 @@
 package com.ruoyi.system.service.impl;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -117,8 +118,10 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService
      * @param dictIds 需要删除的字典ID
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteDictTypeByIds(Long[] dictIds)
     {
+        List<SysDictType> dictTypes = new ArrayList<>();
         for (Long dictId : dictIds)
         {
             SysDictType dictType = selectDictTypeById(dictId);
@@ -126,7 +129,11 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService
             {
                 throw new ServiceException(String.format("%1$s已分配,不能删除", dictType.getDictName()));
             }
-            dictTypeMapper.deleteDictTypeById(dictId);
+            dictTypes.add(dictType);
+        }
+        for (SysDictType dictType : dictTypes)
+        {
+            dictTypeMapper.deleteDictTypeById(dictType.getDictId());
             DictUtils.removeDictCache(dictType.getDictType());
         }
     }

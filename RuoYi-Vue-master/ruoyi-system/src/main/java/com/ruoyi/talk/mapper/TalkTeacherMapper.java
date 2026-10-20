@@ -53,4 +53,6 @@ public interface TalkTeacherMapper {
      * 根据工号精确查询教师
      */
     TalkTeacher selectByTeacherCode(String teacherCode);
+
+    int countActiveCollegeAdminsByDeptId(@Param("deptId") Long deptId);
 }

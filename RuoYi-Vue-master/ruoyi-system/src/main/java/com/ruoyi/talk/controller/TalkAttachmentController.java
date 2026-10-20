@@ -13,6 +13,7 @@ import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.file.FileUploadUtils;
 import com.ruoyi.talk.domain.TalkAttachment;
 import com.ruoyi.talk.service.ITalkAttachmentService;
+import com.ruoyi.talk.utils.AttachmentFileValidator;
 
 @RestController
 @RequestMapping("/ruoyi-system/talkattachment")
@@ -61,6 +62,12 @@ public class TalkAttachmentController extends BaseController
             return error("文件大小超过限制（50MB）");
         }
 
+        if (!AttachmentFileValidator.hasExpectedContent(file, contentType))
+        {
+            return error("文件内容与声明类型不匹配");
+        }
+
+        talkAttachmentService.checkWriteAccess(sessionId);
         String filePath = FileUploadUtils.upload(file);
         TalkAttachment attachment = new TalkAttachment();
         attachment.setSessionId(sessionId);

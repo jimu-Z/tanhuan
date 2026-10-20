@@ -43,7 +43,7 @@ public class TalkStudentRecord extends BaseEntity {
     private String followupPlan;
 
     /** 跟进状态 */
-    @Excel(name = "跟进状态")
+    @Excel(name = "跟进状态", handler = com.ruoyi.talk.util.TalkExcelLabelHandler.class, args = { "followup_status" })
     private String followupStatus;
 
     private Integer notified;
@@ -71,6 +71,18 @@ public class TalkStudentRecord extends BaseEntity {
 
     /** 谈话人 */
     private String talkPerson;
+
+    /** 统一查询关键词（学号或姓名，非数据库字段） */
+    private String keyword;
+
+    /** 统一查询开始时间（非数据库字段） */
+    private String beginTalkTime;
+
+    /** 统一查询结束时间（非数据库字段） */
+    private String endTalkTime;
+
+    /** 统一查询标签值，支持逗号分隔（非数据库字段） */
+    private String tagValues;
 
     public void setRecordId(Long recordId) {
         this.recordId = recordId;
@@ -201,6 +213,38 @@ public class TalkStudentRecord extends BaseEntity {
 
     public String getTalkPerson() {
         return talkPerson;
+    }
+
+    public String getKeyword() {
+        return keyword;
+    }
+
+    public void setKeyword(String keyword) {
+        this.keyword = keyword;
+    }
+
+    public String getBeginTalkTime() {
+        return beginTalkTime;
+    }
+
+    public void setBeginTalkTime(String beginTalkTime) {
+        this.beginTalkTime = beginTalkTime;
+    }
+
+    public String getEndTalkTime() {
+        return endTalkTime;
+    }
+
+    public void setEndTalkTime(String endTalkTime) {
+        this.endTalkTime = endTalkTime;
+    }
+
+    public String getTagValues() {
+        return tagValues;
+    }
+
+    public void setTagValues(String tagValues) {
+        this.tagValues = tagValues;
     }
 
     @Override

@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.filter.CorsFilter;
 import com.ruoyi.framework.config.properties.PermitAllUrlProperties;
 import com.ruoyi.framework.security.filter.JwtAuthenticationTokenFilter;
+import com.ruoyi.framework.security.filter.ProfileResourceSecurityFilter;
 import com.ruoyi.framework.security.handle.AuthenticationEntryPointImpl;
 import com.ruoyi.framework.security.handle.LogoutSuccessHandlerImpl;
 
@@ -45,6 +46,9 @@ public class SecurityConfig
      */
     @Autowired
     private JwtAuthenticationTokenFilter authenticationTokenFilter;
+
+    @Autowired
+    private ProfileResourceSecurityFilter profileResourceSecurityFilter;
     
     /**
      * 跨域过滤器
@@ -101,9 +105,11 @@ public class SecurityConfig
                 permitAllUrl.getUrls().forEach(url -> requests.requestMatchers(url).permitAll());
                 // 对于登录login 注册register 验证码captchaImage 允许匿名访问
                 requests.requestMatchers("/login", "/register", "/captchaImage").permitAll()
+                    // Public uploads must never be executable web resources in the admin origin.
+                    .requestMatchers(HttpMethod.GET, "/profile/**.html", "/profile/**.htm", "/profile/**.xhtml",
+                            "/profile/**.svg", "/profile/**.js", "/profile/**.mjs").denyAll()
                     // 静态资源，可匿名访问
                     .requestMatchers(HttpMethod.GET, "/", "/*.html", "/**.html", "/**.css", "/**.js", "/profile/**").permitAll()
-                    .requestMatchers("/swagger-ui.html", "/v3/api-docs/**", "/swagger-ui/**", "/druid/**").permitAll()
                     // 除上面外的所有请求全部需要鉴权认证
                     .anyRequest().authenticated();
             })
@@ -111,6 +117,8 @@ public class SecurityConfig
             .logout(logout -> logout.logoutUrl("/logout").logoutSuccessHandler(logoutSuccessHandler))
             // 添加JWT filter
             .addFilterBefore(authenticationTokenFilter, UsernamePasswordAuthenticationFilter.class)
+            // Uploaded files are public but must never be executable in this origin.
+            .addFilterBefore(profileResourceSecurityFilter, JwtAuthenticationTokenFilter.class)
             // 添加CORS filter
             .addFilterBefore(corsFilter, JwtAuthenticationTokenFilter.class)
             .addFilterBefore(corsFilter, LogoutFilter.class)

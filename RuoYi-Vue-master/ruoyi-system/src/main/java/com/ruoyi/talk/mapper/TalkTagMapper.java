@@ -7,7 +7,7 @@ public interface TalkTagMapper
 {
     public List<TalkTag> selectTalkTagList(TalkTag tag);
     public TalkTag selectTalkTagById(Long tagId);
-    public List<TalkTag> selectActiveTags();
+    public List<TalkTag> selectActiveTags(TalkTag tag);
     public int insertTalkTag(TalkTag tag);
     public int updateTalkTag(TalkTag tag);
     public int deleteTalkTagById(Long tagId);

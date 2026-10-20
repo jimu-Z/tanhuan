@@ -1,8 +1,11 @@
 package com.ruoyi.talk.controller;
 
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import jakarta.servlet.http.HttpServletResponse;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Log;
@@ -30,6 +34,7 @@ import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.talk.domain.TalkTeacher;
+import com.ruoyi.talk.security.TalkPermissionUtils;
 import com.ruoyi.talk.service.ITalkTeacherService;
 import com.ruoyi.talk.service.ITalkTeacherClassService;
 
@@ -88,6 +93,14 @@ public class TalkTeacherController extends BaseController {
         return toAjax(teacherService.deleteTalkTeacherByIds(teacherIds));
     }
 
+    @PreAuthorize("@ss.hasPermi('talk:teacher:edit')")
+    @Log(title = "院管理员角色调整", businessType = BusinessType.GRANT)
+    @PutMapping("/{teacherId}/collegeAdminRole")
+    public AjaxResult changeCollegeAdminRole(@PathVariable Long teacherId,
+            @RequestParam boolean promote) {
+        return toAjax(teacherService.changeCollegeAdminRole(teacherId, promote));
+    }
+
     @PreAuthorize("@ss.hasPermi('talk:teacher:import')")
     @Log(title = "教师管理", businessType = BusinessType.IMPORT)
     @PostMapping("/importData")
@@ -141,8 +154,26 @@ public class TalkTeacherController extends BaseController {
     @PreAuthorize("@ss.hasPermi('talk:teacher:import')")
     @PostMapping("/importTemplate")
     public void importTemplate(HttpServletResponse response) {
-        ExcelUtil<TalkTeacher> util = new ExcelUtil<>(TalkTeacher.class);
-        util.importTemplateExcel(response, "教师数据");
+        try (InputStream is = getClass().getClassLoader()
+                .getResourceAsStream("template/teacher_import_template.xlsx")) {
+            if (is == null) {
+                throw new RuntimeException("模板文件不存在");
+            }
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition",
+                    "attachment;filename=" + java.net.URLEncoder.encode("德州学院教师管理台账模板.xlsx", "UTF-8"));
+            try (OutputStream os = response.getOutputStream()) {
+                byte[] buffer = new byte[4096];
+                int len;
+                while ((len = is.read(buffer)) != -1) {
+                    os.write(buffer, 0, len);
+                }
+                os.flush();
+            }
+        } catch (Exception e) {
+            logger.error("下载教师导入模板失败", e);
+            throw new RuntimeException("下载模板失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -186,12 +217,13 @@ public class TalkTeacherController extends BaseController {
         TalkTeacher teacher = teacherService.selectTalkTeacherById(teacherId);
         if (teacher == null)
             return error("教师不存在");
-        // 书记只能给本学院辅导员分配本学院班级
-        if (!SecurityUtils.isAdmin() && SecurityUtils.hasRole("talk_secretary")) {
-            Long myDeptId = SecurityUtils.getDeptId();
-            if (myDeptId != null && !myDeptId.equals(teacher.getDeptId())) {
-                return error("只能为本学院教师分配班级");
+        TalkPermissionUtils.requireCollegeManager();
+        if (classNames != null && !classNames.isEmpty()) {
+            List<String> allowedNames = teacherService.selectClassNamesByCollegeDept(teacher.getDeptId());
+            if (allowedNames == null || classNames.stream().anyMatch(name -> name == null || !allowedNames.contains(name))) {
+                return error("只能选择教师所属学院的有效班级");
             }
+            classNames = new ArrayList<>(new LinkedHashSet<>(classNames));
         }
         teacherClassService.saveTeacherClasses(teacher.getTeacherCode(), classNames);
         return success();
@@ -203,18 +235,9 @@ public class TalkTeacherController extends BaseController {
     @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
     @GetMapping("/allClassNames")
     public AjaxResult getAllClassNames() {
-        // 管理员看全校
-        if (SecurityUtils.isAdmin()) {
+        if (TalkPermissionUtils.isGlobalAdmin()) {
             return success(teacherService.selectAllClassNames());
         }
-        // 书记/副书记只看本学院
-        if (SecurityUtils.hasRole("talk_secretary")) {
-            Long deptId = SecurityUtils.getDeptId();
-            if (deptId == null)
-                return error("无法获取所属学院");
-            return success(teacherService.selectClassNamesByCollegeDept(deptId));
-        }
-        // 辅导员/班主任不需要班级分配权限，返回空
-        return success(List.of());
+        return success(teacherService.selectClassNamesByCollegeDept(TalkPermissionUtils.currentCollegeId()));
     }
 }

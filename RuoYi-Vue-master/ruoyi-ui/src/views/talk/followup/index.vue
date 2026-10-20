@@ -189,7 +189,7 @@ export default {
       return { none:'info', pending:'info', in_progress:'warning', completed:'success' }[v] || ''
     },
     statusLabel(v) {
-      return { none:'无需跟进', pending:'待跟进', in_progress:'跟进中', completed:'已完成' }[v] || v
+      return this.$talkLabel('followupStatus', v)
     },
     isOverdue(rec) {
       if (rec.followupStatus === 'completed' || rec.followupStatus === 'none') return false

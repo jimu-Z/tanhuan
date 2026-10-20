@@ -11,7 +11,7 @@
           <el-tag v-else-if="scope.row.followupStatus === 'pending'" type="warning">待跟进</el-tag>
           <el-tag v-else-if="scope.row.followupStatus === 'in_progress'" type="primary">跟进中</el-tag>
           <el-tag v-else-if="scope.row.followupStatus === 'completed'" type="success">已完成</el-tag>
-          <span v-else>{{ scope.row.followupStatus || '-' }}</span>
+          <span v-else>{{ scope.row.followupStatus ? '未知状态' : '未设置' }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="followupPlan" label="跟进计划" min-width="200" show-overflow-tooltip />

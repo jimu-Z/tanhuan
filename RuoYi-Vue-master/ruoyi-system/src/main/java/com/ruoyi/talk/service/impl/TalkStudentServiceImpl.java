@@ -22,18 +22,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.ruoyi.common.annotation.DataScope;
 import com.ruoyi.common.core.domain.entity.SysDept;
-import com.ruoyi.common.core.domain.entity.SysRole;
-import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.utils.DateUtils;
+import com.ruoyi.common.utils.DictUtils;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
-import com.ruoyi.system.domain.SysUserRole;
 import com.ruoyi.system.mapper.SysDeptMapper;
-import com.ruoyi.system.mapper.SysRoleMapper;
-import com.ruoyi.system.mapper.SysUserMapper;
-import com.ruoyi.system.mapper.SysUserRoleMapper;
 import com.ruoyi.talk.domain.TalkStudent;
 import com.ruoyi.talk.domain.TalkSession;
 import com.ruoyi.talk.domain.TalkStudentRecord;
@@ -44,6 +38,8 @@ import com.ruoyi.talk.mapper.TalkStudentRecordMapper;
 import com.ruoyi.talk.service.ITalkAlertService;
 import com.ruoyi.talk.service.ITalkStudentService;
 import com.ruoyi.talk.service.ITalkTeacherService;
+import com.ruoyi.talk.security.TalkPermissionUtils;
+import com.ruoyi.common.exception.ServiceException;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -66,15 +62,6 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     private SysDeptMapper sysDeptMapper;
 
     @Autowired
-    private SysUserMapper sysUserMapper;
-
-    @Autowired
-    private SysRoleMapper sysRoleMapper;
-
-    @Autowired
-    private SysUserRoleMapper sysUserRoleMapper;
-
-    @Autowired
     private TalkStudentRecordMapper talkStudentRecordMapper;
 
     @Autowired
@@ -88,10 +75,6 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
     private static final Long TOP_DEPT_ID = 100L;
 
-    private static final String DEFAULT_PASSWORD = "123456";
-
-    private static final String STUDENT_ROLE_KEY = "talk_student";
-
     /**
      * 查询学生信息管理
      * 
@@ -100,7 +83,9 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
      */
     @Override
     public TalkStudent selectTalkStudentByStudentId(Long studentId) {
-        return talkStudentMapper.selectTalkStudentByStudentId(studentId);
+        TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
+        requireStudentAccess(student);
+        return student;
     }
 
     /**
@@ -110,9 +95,8 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
      * @return 学生信息管理
      */
     @Override
-    @DataScope(deptAlias = "d")
     public List<TalkStudent> selectTalkStudentList(TalkStudent talkStudent) {
-        applyCounselorFilter(talkStudent);
+        applyCollegeFilter(talkStudent);
         return talkStudentMapper.selectTalkStudentList(talkStudent);
     }
 
@@ -124,48 +108,15 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
      */
     @Override
     public int insertTalkStudent(TalkStudent talkStudent) {
+        requireClassDepartment(talkStudent.getDeptId());
+        TalkPermissionUtils.requireCollegeAccess(resolveCollegeDeptId(talkStudent.getDeptId()));
         talkStudent.setCreateBy(SecurityUtils.getUsername());
         talkStudent.setCreateTime(DateUtils.getNowDate());
         Long gapId = talkStudentMapper.selectMinAvailableStudentId();
         if (gapId != null) {
             talkStudent.setStudentId(gapId);
         }
-        int rows = talkStudentMapper.insertTalkStudent(talkStudent);
-
-        try {
-            String studentCode = talkStudent.getStudentCode();
-            String studentName = talkStudent.getStudentName();
-            Long deptId = talkStudent.getDeptId();
-            if (StringUtils.isNotEmpty(studentCode) && deptId != null) {
-                SysUser existingUser = sysUserMapper.selectUserByUserName(studentCode);
-                if (existingUser == null) {
-                    SysUser newUser = new SysUser();
-                    newUser.setUserName(studentCode);
-                    newUser.setNickName(StringUtils.isNotEmpty(studentName) ? studentName : studentCode);
-                    newUser.setPassword(SecurityUtils.encryptPassword(DEFAULT_PASSWORD));
-                    newUser.setDeptId(deptId);
-                    newUser.setStatus("0");
-                    newUser.setDelFlag("0");
-                    newUser.setCreateBy(SecurityUtils.getUsername());
-                    newUser.setCreateTime(new Date());
-                    sysUserMapper.insertUser(newUser);
-
-                    SysRole query = new SysRole();
-                    query.setRoleKey(STUDENT_ROLE_KEY);
-                    List<SysRole> roles = sysRoleMapper.selectRoleList(query);
-                    if (!roles.isEmpty()) {
-                        SysUserRole userRole = new SysUserRole();
-                        userRole.setUserId(newUser.getUserId());
-                        userRole.setRoleId(roles.get(0).getRoleId());
-                        sysUserRoleMapper.batchUserRole(List.of(userRole));
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("为学生创建用户失败: studentCode={}", talkStudent.getStudentCode(), e);
-        }
-
-        return rows;
+        return talkStudentMapper.insertTalkStudent(talkStudent);
     }
 
     /**
@@ -176,19 +127,15 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
      */
     @Override
     public int updateTalkStudent(TalkStudent talkStudent) {
+        TalkStudent existing = talkStudentMapper.selectTalkStudentByStudentId(talkStudent.getStudentId());
+        requireStudentAccess(existing);
+        if (talkStudent.getDeptId() != null) {
+            requireClassDepartment(talkStudent.getDeptId());
+            TalkPermissionUtils.requireCollegeAccess(resolveCollegeDeptId(talkStudent.getDeptId()));
+        }
         talkStudent.setUpdateBy(SecurityUtils.getUsername());
         talkStudent.setUpdateTime(DateUtils.getNowDate());
         int rows = talkStudentMapper.updateTalkStudent(talkStudent);
-        // 同步更新 sys_user 的昵称为学生姓名
-        String studentCode = talkStudent.getStudentCode();
-        String studentName = talkStudent.getStudentName();
-        if (StringUtils.isNotEmpty(studentCode) && StringUtils.isNotEmpty(studentName)) {
-            SysUser user = sysUserMapper.selectUserByUserName(studentCode);
-            if (user != null && !studentName.equals(user.getNickName())) {
-                user.setNickName(studentName);
-                sysUserMapper.updateUser(user);
-            }
-        }
         // 心理健康状态变化时自动生成预警
         if (StringUtils.isNotEmpty(talkStudent.getMentalHealthStatus()) && talkStudent.getStudentId() != null) {
             talkAlertService.autoGenerateAlertForStudent(talkStudent.getStudentId(),
@@ -206,22 +153,14 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     @Override
     @Transactional
     public int deleteTalkStudentByStudentIds(Long[] studentIds) {
+        TalkPermissionUtils.requireCollegeManager();
         for (Long studentId : studentIds) {
+            requireStudentAccess(talkStudentMapper.selectTalkStudentByStudentId(studentId));
             int recordCount = talkStudentMapper.countRecordsByStudentId(studentId);
             if (recordCount > 0) {
                 TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
                 String name = student != null ? student.getStudentName() : "未知";
-                throw new RuntimeException("学生 " + name + " 有 " + recordCount + " 条谈话记录，无法删除。请先处理相关谈话记录。");
-            }
-        }
-        // 先删除关联的 sys_user（通过学号查找）
-        for (Long studentId : studentIds) {
-            TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
-            if (student != null && StringUtils.isNotEmpty(student.getStudentCode())) {
-                SysUser user = sysUserMapper.selectUserByUserName(student.getStudentCode());
-                if (user != null) {
-                    sysUserMapper.deleteUserPhysically(user.getUserId());
-                }
+                throw new ServiceException("学生 " + name + " 有 " + recordCount + " 条谈话记录，无法删除。请先处理相关谈话记录。");
             }
         }
         return talkStudentMapper.deleteTalkStudentByStudentIds(studentIds);
@@ -236,19 +175,13 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     @Override
     @Transactional
     public int deleteTalkStudentByStudentId(Long studentId) {
+        TalkPermissionUtils.requireCollegeManager();
+        requireStudentAccess(talkStudentMapper.selectTalkStudentByStudentId(studentId));
         int recordCount = talkStudentMapper.countRecordsByStudentId(studentId);
         if (recordCount > 0) {
             TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
             String name = student != null ? student.getStudentName() : "未知";
-            throw new RuntimeException("学生 " + name + " 有 " + recordCount + " 条谈话记录，无法删除。请先处理相关谈话记录。");
-        }
-        // 物理删除关联的 sys_user
-        TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
-        if (student != null && StringUtils.isNotEmpty(student.getStudentCode())) {
-            SysUser user = sysUserMapper.selectUserByUserName(student.getStudentCode());
-            if (user != null) {
-                sysUserMapper.deleteUserPhysically(user.getUserId());
-            }
+            throw new ServiceException("学生 " + name + " 有 " + recordCount + " 条谈话记录，无法删除。请先处理相关谈话记录。");
         }
         return talkStudentMapper.deleteTalkStudentByStudentId(studentId);
     }
@@ -257,6 +190,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
     public Map<String, Object> getStudentDetail(Long studentId) {
         Map<String, Object> result = new LinkedHashMap<>();
         TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
+        requireStudentAccess(student);
         if (student == null) {
             result.put("student", null);
             result.put("history", new ArrayList<>());
@@ -363,6 +297,10 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                     status = "error";
                     message = "学号为空";
                     errorCount++;
+                } else if (StringUtils.isEmpty(studentName)) {
+                    status = "error";
+                    message = "姓名为空";
+                    errorCount++;
                 } else if (StringUtils.isEmpty(college)) {
                     status = "error";
                     message = "学院为空";
@@ -381,8 +319,17 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                     warnCount++;
                 } else if (isStudentCodeExists(studentCode)) {
                     status = "warn";
-                    message = "学号已存在，将跳过此条记录";
+                    message = "学号已存在：跳过模式将跳过，覆盖模式将更新";
                     warnCount++;
+                }
+
+                if ("ok".equals(status) || "warn".equals(status)) {
+                    String scopeError = validateImportScope(college, grade, className);
+                    if (scopeError != null) {
+                        status = "error";
+                        message = scopeError;
+                        errorCount++;
+                    }
                 }
 
                 // 校验Excel中填写的辅导员/书记/班主任/副书记是否存在
@@ -431,7 +378,6 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         Map<String, Object> result = new LinkedHashMap<>();
         int successCount = 0;
         int skipCount = 0;
-        int userCreatedCount = 0;
         List<String> errors = new ArrayList<>();
 
         if (confirmedRows == null || confirmedRows.isEmpty()) {
@@ -443,9 +389,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
             return result;
         }
 
-        Map<String, Long> studentRoleCache = new HashMap<>();
-        Map<Long, Long> userRoleAssignedCache = new HashMap<>();
-
+        Set<String> seenCodesInImport = new HashSet<>();
         for (int rowIdx = 0; rowIdx < confirmedRows.size(); rowIdx++) {
             Map<String, Object> rowMap = confirmedRows.get(rowIdx);
             int rowNum = rowIdx + 1;
@@ -454,6 +398,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 for (Map.Entry<String, Object> entry : rowMap.entrySet()) {
                     rowData.put(entry.getKey(), entry.getValue() != null ? entry.getValue().toString() : "");
                 }
+                normalizeImportEnums(rowData);
                 log.debug("[IMPORT-DEBUG] Execute row {}: code={}, name={}, college={}",
                         rowNum, rowData.get("student_code"), rowData.get("student_name"), rowData.get("college"));
                 String studentCode = rowData.get("student_code");
@@ -465,6 +410,12 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 if (StringUtils.isEmpty(studentCode) || StringUtils.isEmpty(studentName)) {
                     skipCount++;
                     errors.add("第" + rowNum + "行: 学号或姓名为空，已跳过");
+                    continue;
+                }
+
+                if (!seenCodesInImport.add(studentCode)) {
+                    skipCount++;
+                    errors.add("第" + rowNum + "行: 学号" + studentCode + " 在Excel中重复，已跳过");
                     continue;
                 }
 
@@ -481,22 +432,22 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                     continue;
                 }
 
-                Long collegeDeptId = findOrCreateDept(college, TOP_DEPT_ID, "college");
+                Long collegeDeptId = resolveImportCollege(college);
                 if (collegeDeptId == null) {
                     skipCount++;
-                    errors.add("第" + rowNum + "行: 学院[" + college + "]创建失败");
+                    errors.add("第" + rowNum + "行: 学院[" + college + "]不存在或不在当前账号管理范围");
                     continue;
                 }
-                Long gradeDeptId = findOrCreateDept(grade, collegeDeptId, "grade");
+                Long gradeDeptId = resolveImportDept(grade, collegeDeptId, "grade");
                 if (gradeDeptId == null) {
                     skipCount++;
-                    errors.add("第" + rowNum + "行: 年级[" + grade + "]创建失败");
+                    errors.add("第" + rowNum + "行: 年级[" + grade + "]不存在；老师不能创建年级或班级");
                     continue;
                 }
-                Long classDeptId = findOrCreateDept(className, gradeDeptId, "class");
+                Long classDeptId = resolveImportDept(className, gradeDeptId, "class");
                 if (classDeptId == null) {
                     skipCount++;
-                    errors.add("第" + rowNum + "行: 班级[" + className + "]创建失败");
+                    errors.add("第" + rowNum + "行: 班级[" + className + "]不存在；老师不能创建年级或班级");
                     continue;
                 }
 
@@ -539,6 +490,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                         TalkStudent existing = existingList != null && !existingList.isEmpty() ? existingList.get(0)
                                 : null;
                         if (existing != null) {
+                            requireStudentAccess(existing);
                             student.setStudentId(existing.getStudentId());
                             student.setCreateBy(existing.getCreateBy());
                             student.setCreateTime(existing.getCreateTime());
@@ -570,10 +522,6 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
                 }
                 successCount++;
 
-                if (createUserIfNotExists(studentCode, studentName, classDeptId, STUDENT_ROLE_KEY,
-                        studentRoleCache, userRoleAssignedCache)) {
-                    userCreatedCount++;
-                }
             } catch (Exception e) {
                 log.error("[IMPORT-ERROR] 第{}行导入失败: {}", rowNum, e.getMessage(), e);
                 errors.add("第" + rowNum + "行: 导入失败 - " + e.getMessage());
@@ -582,7 +530,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
         result.put("successCount", successCount);
         result.put("skipCount", skipCount);
-        result.put("userCreatedCount", userCreatedCount);
+        result.put("userCreatedCount", 0);
         result.put("errorCount", errors.size());
         result.put("errors", errors);
         return result;
@@ -749,7 +697,27 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
             }
         }
 
+        normalizeImportEnums(data);
         return data;
+    }
+
+    /** 中文模板与旧编码模板均转换为系统存储值；使用当前字典而非固定标签。 */
+    private void normalizeImportEnums(Map<String, String> data) {
+        String gender = data.get("gender");
+        if (gender != null) {
+            gender = gender.trim();
+            data.put("gender", Map.of("男", "0", "女", "1", "未知", "2").getOrDefault(gender, gender));
+        }
+        for (String field : List.of("political_status", "enrollment_status", "mental_health_status", "poverty_level")) {
+            String value = data.get(field);
+            if (value == null) continue;
+            value = value.trim();
+            data.put(field, value);
+            if (value.codePoints().anyMatch(ch -> ch >= 0x3400 && ch <= 0x9fff)) {
+                String code = DictUtils.getDictValue(field, value);
+                if (StringUtils.isNotEmpty(code)) data.put(field, code);
+            }
+        }
     }
 
     private List<String> readRowCells(Row row) {
@@ -801,6 +769,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
             return false;
         TalkStudent query = new TalkStudent();
         query.setStudentCode(studentCode);
+        applyCollegeFilter(query);
         List<TalkStudent> list = talkStudentMapper.selectTalkStudentList(query);
         return list != null && !list.isEmpty();
     }
@@ -826,6 +795,24 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         return null;
     }
 
+    private String validateImportScope(String collegeName, String gradeName, String className) {
+        if (TalkPermissionUtils.isGlobalAdmin()) {
+            return null;
+        }
+        Long collegeId = TalkPermissionUtils.currentCollegeId();
+        SysDept college = sysDeptMapper.selectDeptById(collegeId);
+        if (college == null || !college.getDeptName().equals(collegeName.trim())) {
+            return "只能导入本学院学生";
+        }
+        if (TalkPermissionUtils.isTeacher()) {
+            Long gradeId = findDept(gradeName, collegeId);
+            if (gradeId == null || findDept(className, gradeId) == null) {
+                return "年级或班级不存在；老师不能创建年级或班级";
+            }
+        }
+        return null;
+    }
+
     /**
      * 校验Excel中填写的辅导员/书记/班主任/副书记是否存在于该学院（预览用）
      */
@@ -837,8 +824,14 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         return validateImportTeachersByDeptId(collegeId, rowData);
     }
 
+    /** 辅导员/班主任岗位组（仅用于教师资料展示，不参与权限判断） */
+    private static final Set<String> COUNSELOR_POSITIONS = Set.of("辅导员", "班主任");
+    /** 书记/副书记岗位组（仅用于教师资料展示，不参与权限判断） */
+    private static final Set<String> SECRETARY_POSITIONS = Set.of("书记", "副书记");
+
     /**
      * 校验Excel中填写的辅导员/书记/班主任/副书记是否存在于该学院（执行用）
+     * 按岗位组匹配：辅导员列可匹配辅导员或班主任，书记列可匹配书记或副书记
      */
     private String validateImportTeachersByDeptId(Long collegeDeptId, Map<String, String> rowData) {
         if (collegeDeptId == null) {
@@ -863,28 +856,28 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         StringBuilder error = new StringBuilder();
         if (StringUtils.isNotEmpty(counselor)) {
             boolean found = teachers.stream()
-                    .anyMatch(t -> counselor.equals(t.getTeacherName()) && "辅导员".equals(t.getPosition()));
+                    .anyMatch(t -> counselor.equals(t.getTeacherName()) && COUNSELOR_POSITIONS.contains(t.getPosition()));
             if (!found) {
                 error.append("辅导员[").append(counselor).append("]不存在；");
             }
         }
         if (StringUtils.isNotEmpty(headTeacher)) {
             boolean found = teachers.stream()
-                    .anyMatch(t -> headTeacher.equals(t.getTeacherName()) && "班主任".equals(t.getPosition()));
+                    .anyMatch(t -> headTeacher.equals(t.getTeacherName()) && COUNSELOR_POSITIONS.contains(t.getPosition()));
             if (!found) {
                 error.append("班主任[").append(headTeacher).append("]不存在；");
             }
         }
         if (StringUtils.isNotEmpty(secretary)) {
             boolean found = teachers.stream()
-                    .anyMatch(t -> secretary.equals(t.getTeacherName()) && "书记".equals(t.getPosition()));
+                    .anyMatch(t -> secretary.equals(t.getTeacherName()) && SECRETARY_POSITIONS.contains(t.getPosition()));
             if (!found) {
                 error.append("书记[").append(secretary).append("]不存在；");
             }
         }
         if (StringUtils.isNotEmpty(viceSecretary)) {
             boolean found = teachers.stream()
-                    .anyMatch(t -> viceSecretary.equals(t.getTeacherName()) && "副书记".equals(t.getPosition()));
+                    .anyMatch(t -> viceSecretary.equals(t.getTeacherName()) && SECRETARY_POSITIONS.contains(t.getPosition()));
             if (!found) {
                 error.append("副书记[").append(viceSecretary).append("]不存在；");
             }
@@ -963,70 +956,6 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         return newDept.getDeptId();
     }
 
-    private boolean createUserIfNotExists(String userName, String nickName, Long deptId, String roleKey,
-            Map<String, Long> roleCache, Map<Long, Long> userRoleAssignedCache) {
-        String loginName = userName.trim().replaceAll("\\s+", "");
-
-        SysUser existingUser = sysUserMapper.selectUserByUserName(loginName);
-        if (existingUser != null) {
-            Long roleId = resolveRoleId(roleKey, roleCache);
-            if (roleId != null && !isUserHasRole(existingUser.getUserId(), roleId)) {
-                SysUserRole userRole = new SysUserRole();
-                userRole.setUserId(existingUser.getUserId());
-                userRole.setRoleId(roleId);
-                sysUserRoleMapper.batchUserRole(List.of(userRole));
-            }
-            // 如果用户已存在但昵称不一致（历史数据修复），则更新昵称
-            if (!nickName.equals(existingUser.getNickName())) {
-                existingUser.setNickName(nickName);
-                sysUserMapper.updateUser(existingUser);
-            }
-            return false;
-        }
-
-        SysUser newUser = new SysUser();
-        newUser.setUserName(loginName);
-        newUser.setNickName(nickName.trim());
-        newUser.setPassword(SecurityUtils.encryptPassword(DEFAULT_PASSWORD));
-        newUser.setDeptId(deptId);
-        newUser.setStatus("0");
-        newUser.setDelFlag("0");
-        newUser.setCreateBy(SecurityUtils.getUsername());
-        newUser.setCreateTime(new Date());
-        sysUserMapper.insertUser(newUser);
-
-        Long roleId = resolveRoleId(roleKey, roleCache);
-        if (roleId != null) {
-            SysUserRole userRole = new SysUserRole();
-            userRole.setUserId(newUser.getUserId());
-            userRole.setRoleId(roleId);
-            sysUserRoleMapper.batchUserRole(List.of(userRole));
-        }
-
-        return true;
-    }
-
-    private Long resolveRoleId(String roleKey, Map<String, Long> roleCache) {
-        if (roleCache.containsKey(roleKey)) {
-            return roleCache.get(roleKey);
-        }
-        SysRole query = new SysRole();
-        query.setRoleKey(roleKey);
-        List<SysRole> roles = sysRoleMapper.selectRoleList(query);
-        if (roles != null && !roles.isEmpty()) {
-            Long roleId = roles.get(0).getRoleId();
-            roleCache.put(roleKey, roleId);
-            return roleId;
-        }
-        roleCache.put(roleKey, null);
-        return null;
-    }
-
-    private boolean isUserHasRole(Long userId, Long roleId) {
-        List<Long> roleIds = sysRoleMapper.selectRoleListByUserId(userId);
-        return roleIds != null && roleIds.contains(roleId);
-    }
-
     private String getString(Map<String, String> map, String key) {
         String val = map.get(key);
         return val != null ? val : "";
@@ -1039,66 +968,61 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
     @Override
     public int countStudentsByDeptId(Long deptId) {
+        if (!TalkPermissionUtils.isGlobalAdmin()) {
+            TalkPermissionUtils.requireCollegeAccess(resolveCollegeDeptId(deptId));
+        }
         return talkStudentMapper.countStudentsByDeptId(deptId);
     }
 
     @Override
     public List<TalkStudent> selectUntalkedStudents(Map<String, Object> params) {
+        if (params == null) {
+            params = new HashMap<>();
+        }
+        if (!TalkPermissionUtils.isGlobalAdmin()) {
+            params.put("collegeDeptId", TalkPermissionUtils.currentCollegeId());
+        }
         return talkStudentMapper.selectUntalkedStudents(params);
     }
 
     @Override
-    @DataScope(deptAlias = "d")
     public List<TalkStudent> selectTalkStudentListWithLastTalk(TalkStudent talkStudent) {
-        applyCounselorFilter(talkStudent);
+        applyCollegeFilter(talkStudent);
         return talkStudentMapper.selectTalkStudentListWithLastTalk(talkStudent);
     }
 
-    /**
-     * 数据权限过滤：辅导员按talk_teacher_class表过滤班级，书记按学院及子部门过滤
-     */
-    private void applyCounselorFilter(TalkStudent talkStudent) {
-        if (SecurityUtils.isAdmin())
-            return;
-        String username = SecurityUtils.getUsername();
-        if (username == null)
-            return;
-        if (talkStudent.getParams() == null) {
-            talkStudent.setParams(new HashMap<>());
+    private void applyCollegeFilter(TalkStudent talkStudent) {
+        TalkPermissionUtils.applyCollegeScope(talkStudent);
+        Map<String, Object> params = talkStudent.getParams();
+        params.remove("genderLabel");
+        String gender = talkStudent.getGender();
+        if (gender != null) {
+            String label = Map.of("0", "男", "1", "女", "2", "未知").get(gender);
+            if (label != null) params.put("genderLabel", label);
         }
-        if (SecurityUtils.hasRole("talk_counselor")) {
-            // 辅导员：只显示自己管理班级的学生
-            talkStudent.getParams().put("counselorCode", username);
-        } else if (SecurityUtils.hasRole("talk_secretary")) {
-            // 书记/副书记：只显示本学院及下属部门的学生
-            Long deptId = SecurityUtils.getDeptId();
-            if (deptId != null) {
-                talkStudent.getParams().put("secretaryDeptId", deptId);
-            }
-        }
+        addLegacyFilterLabel(params, "politicalStatusLabel", "political_status", talkStudent.getPoliticalStatus());
+        addLegacyFilterLabel(params, "enrollmentStatusLabel", "enrollment_status", talkStudent.getEnrollmentStatus());
+        addLegacyFilterLabel(params, "mentalHealthStatusLabel", "mental_health_status", talkStudent.getMentalHealthStatus());
+        addLegacyFilterLabel(params, "povertyLevelLabel", "poverty_level", talkStudent.getPovertyLevel());
+    }
+
+    /** 查询同时兼容旧导入的中文原值；别名仅由服务端当前字典生成。 */
+    private void addLegacyFilterLabel(Map<String, Object> params, String key, String dictType, String value) {
+        params.remove(key);
+        if (StringUtils.isEmpty(value)) return;
+        String label = DictUtils.getDictLabel(dictType, value);
+        if (StringUtils.isNotEmpty(label)) params.put(key, label);
     }
 
     @Override
     public List<TalkStudent> selectUntalkedStudentsInPeriod(Date startTime, Date endTime, Long deptId,
             Map<String, Object> params) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        // 构建数据权限参数（如果调用方未传入则自动构建）
         if (params == null) {
             params = new HashMap<>();
         }
-        if (!SecurityUtils.isAdmin() && !params.containsKey("counselorUsername")
-                && !params.containsKey("secretaryDeptId")) {
-            String username = SecurityUtils.getUsername();
-            if (username != null) {
-                if (SecurityUtils.hasRole("talk_counselor")) {
-                    params.put("counselorUsername", username);
-                } else if (SecurityUtils.hasRole("talk_secretary")) {
-                    Long secDeptId = SecurityUtils.getDeptId();
-                    if (secDeptId != null) {
-                        params.put("secretaryDeptId", secDeptId);
-                    }
-                }
-            }
+        if (!TalkPermissionUtils.isGlobalAdmin()) {
+            params.put("collegeDeptId", TalkPermissionUtils.currentCollegeId());
         }
         return talkStudentMapper.selectUntalkedStudentsInPeriod(
                 sdf.format(startTime), sdf.format(endTime), deptId, params);
@@ -1106,12 +1030,88 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
     @Override
     public List<TalkStudent> selectByTeacherCode(String teacherCode) {
+        TalkTeacher query = new TalkTeacher();
+        query.setTeacherCode(teacherCode);
+        List<TalkTeacher> teachers = talkTeacherService.selectTalkTeacherList(query);
+        if (teachers == null || teachers.isEmpty()) {
+            throw new ServiceException("教师不存在");
+        }
         return talkStudentMapper.selectByTeacherCode(teacherCode);
     }
 
     @Override
     public List<TalkStudent> selectByCollegeDeptId(Long deptId) {
+        TalkPermissionUtils.requireCollegeAccess(deptId);
         return talkStudentMapper.selectByCollegeDeptId(deptId);
+    }
+
+    private void requireStudentAccess(TalkStudent student) {
+        if (student == null) {
+            throw new ServiceException("学生不存在");
+        }
+        if (!TalkPermissionUtils.isGlobalAdmin()) {
+            TalkPermissionUtils.requireCollegeAccess(resolveCollegeDeptId(student.getDeptId()));
+        }
+    }
+
+    private void requireClassDepartment(Long deptId) {
+        SysDept department = deptId == null ? null : sysDeptMapper.selectDeptById(deptId);
+        if (department == null || !"class".equals(department.getDeptType())) {
+            throw new ServiceException("请选择有效班级，不能将学院或年级作为学生班级");
+        }
+    }
+
+    private Long resolveCollegeDeptId(Long deptId) {
+        Long currentId = deptId;
+        for (int depth = 0; currentId != null && currentId > 0 && depth < 12; depth++) {
+            SysDept dept = sysDeptMapper.selectDeptById(currentId);
+            if (dept == null) {
+                break;
+            }
+            if ("college".equals(dept.getDeptType())) {
+                return dept.getDeptId();
+            }
+            currentId = dept.getParentId();
+        }
+        throw new ServiceException("学生所属部门未归属学院");
+    }
+
+    private Long resolveImportCollege(String collegeName) {
+        if (TalkPermissionUtils.isGlobalAdmin()) {
+            return findOrCreateDept(collegeName, TOP_DEPT_ID, "college");
+        }
+        Long currentCollegeId = TalkPermissionUtils.currentCollegeId();
+        SysDept currentCollege = sysDeptMapper.selectDeptById(currentCollegeId);
+        if (currentCollege == null || !currentCollege.getDeptName().equals(collegeName.trim())) {
+            return null;
+        }
+        return currentCollegeId;
+    }
+
+    private Long resolveImportDept(String deptName, Long parentId, String type) {
+        Long existing = findDept(deptName, parentId);
+        if (existing != null) {
+            return existing;
+        }
+        if (TalkPermissionUtils.isTeacher()) {
+            return null;
+        }
+        return findOrCreateDept(deptName, parentId, type);
+    }
+
+    private Long findDept(String deptName, Long parentId) {
+        SysDept query = new SysDept();
+        query.setDeptName(deptName.trim());
+        query.setParentId(parentId);
+        List<SysDept> depts = sysDeptMapper.selectDeptList(query);
+        if (depts != null) {
+            for (SysDept dept : depts) {
+                if (deptName.trim().equals(dept.getDeptName()) && parentId.equals(dept.getParentId())) {
+                    return dept.getDeptId();
+                }
+            }
+        }
+        return null;
     }
 
 }

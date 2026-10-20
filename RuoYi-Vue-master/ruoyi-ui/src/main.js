@@ -13,6 +13,7 @@ import router from './router'
 import directive from './directive' // directive
 import plugins from './plugins' // plugins
 import { download } from '@/utils/request'
+import { talkLabel, talkTagLabels } from '@/utils/talkLabels'
 
 import './assets/icons' // icon
 import './permission' // permission control
@@ -46,6 +47,8 @@ Vue.prototype.selectDictLabel = selectDictLabel
 Vue.prototype.selectDictLabels = selectDictLabels
 Vue.prototype.download = download
 Vue.prototype.handleTree = handleTree
+Vue.prototype.$talkLabel = talkLabel
+Vue.prototype.$talkTags = talkTagLabels
 
 // 全局组件挂载
 Vue.component('DictTag', DictTag)

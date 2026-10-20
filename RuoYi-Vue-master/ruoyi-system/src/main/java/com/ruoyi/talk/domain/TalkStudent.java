@@ -28,15 +28,18 @@ public class TalkStudent extends BaseEntity {
     private String studentName;
 
     /** 部门ID(班级) */
-    @Excel(name = "部门ID(班级)")
     private Long deptId;
 
+    /** 班级名称（非数据库字段，用于展示及导出） */
+    @Excel(name = "班级")
+    private String deptName;
+
     /** 性别（0男 1女） */
-    @Excel(name = "性别", readConverterExp = "0=男,1=女")
+    @Excel(name = "性别", handler = com.ruoyi.talk.util.TalkExcelLabelHandler.class, args = { "gender" })
     private String gender;
 
     /** 政治面貌 */
-    @Excel(name = "政治面貌")
+    @Excel(name = "政治面貌", handler = com.ruoyi.talk.util.TalkExcelLabelHandler.class, args = { "political_status" })
     private String politicalStatus;
 
     /** 民族 */
@@ -88,23 +91,20 @@ public class TalkStudent extends BaseEntity {
     private String dormRoom;
 
     /** 学籍状态 */
-    @Excel(name = "学籍状态")
+    @Excel(name = "学籍状态", handler = com.ruoyi.talk.util.TalkExcelLabelHandler.class, args = { "enrollment_status" })
     private String enrollmentStatus;
 
     /** 心理健康状态 */
-    @Excel(name = "心理健康状态")
+    @Excel(name = "心理健康状态", handler = com.ruoyi.talk.util.TalkExcelLabelHandler.class, args = { "mental_health_status" })
     private String mentalHealthStatus;
 
     /** 贫困等级认定 */
-    @Excel(name = "贫困等级认定")
+    @Excel(name = "贫困等级认定", handler = com.ruoyi.talk.util.TalkExcelLabelHandler.class, args = { "poverty_level" })
     private String povertyLevel;
 
     /** 上次谈话时间（非数据库字段，仅用于查询展示） */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date lastTalkTime;
-
-    /** 班级名称（非数据库字段，仅用于查询展示） */
-    private String deptName;
 
     public void setStudentId(Long studentId) {
         this.studentId = studentId;

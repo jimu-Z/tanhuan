@@ -111,42 +111,46 @@
 
       <!-- Step 3: 填写内容 -->
       <div v-if="step === 2" class="ti-step-content ti-step-form">
+        <el-alert v-if="savedSessionId" title="谈话已保存，附件尚未全部上传。可移除失败文件后重试附件上传。"
+                  type="warning" :closable="false" show-icon style="margin-bottom:12px" />
         <el-form :model="form" :rules="rules" ref="talkForm" label-width="90px" size="small">
           <el-row :gutter="16">
             <el-col :span="8">
               <el-form-item label="谈话时间" prop="talkTime">
                 <el-date-picker v-model="form.talkTime" type="date" value-format="yyyy-MM-dd"
+                                :disabled="!!savedSessionId || submitting"
                                 placeholder="选择日期" style="width:100%" />
               </el-form-item>
             </el-col>
             <el-col :span="8">
               <el-form-item label="谈话地点" prop="talkLocation">
-                <el-input v-model="form.talkLocation" placeholder="如：学院会议室301" />
+                <el-input v-model="form.talkLocation" :disabled="!!savedSessionId || submitting" placeholder="如：学院会议室301" />
               </el-form-item>
             </el-col>
             <el-col :span="8">
               <el-form-item label="谈话人" prop="talkPerson">
-                <el-input v-model="form.talkPerson" placeholder="默认当前登录用户" />
+                <el-input v-model="form.talkPerson" :disabled="!!savedSessionId || submitting" placeholder="默认当前登录用户" />
               </el-form-item>
             </el-col>
           </el-row>
           <el-form-item label="谈话内容" prop="talkContent">
             <div class="ti-content-area">
               <div class="ti-content-toolbar">
-                <el-button type="primary" size="mini" icon="el-icon-document-copy" @click="openTemplateDialog">
+                <el-button type="primary" size="mini" icon="el-icon-document-copy" @click="openTemplateDialog" :disabled="!!savedSessionId || submitting">
                   从模板库选择
                 </el-button>
                 <el-button type="warning" size="mini" icon="el-icon-delete" @click="clearContent"
-                           :disabled="!form.talkContent">
+                           :disabled="!form.talkContent || !!savedSessionId || submitting">
                   清空内容
                 </el-button>
               </div>
               <el-input v-model="form.talkContent" type="textarea" :rows="6"
+                        :disabled="!!savedSessionId || submitting"
                         :placeholder="form.talkType === 'group' ? '此内容将共享给所有参与学生。可点击上方「从模板库选择」快速填充内容' : '输入谈话内容，可点击上方「从模板库选择」快速填充'" />
             </div>
           </el-form-item>
           <el-form-item label="内容标签">
-            <el-select v-model="form.tags" multiple placeholder="请选择谈话主题标签" style="width:100%">
+            <el-select v-model="form.tags" multiple filterable :disabled="!!savedSessionId || submitting" placeholder="请选择谈话主题标签" style="width:100%">
               <el-option v-for="t in tagOptions" :key="t.value" :label="t.label" :value="t.value" />
             </el-select>
           </el-form-item>
@@ -154,7 +158,7 @@
             <el-upload ref="upload" :file-list="fileList" :auto-upload="false"
                        :on-remove="handleFileRemove" :on-change="handleFileChange"
                        :before-upload="() => false" action="" multiple>
-              <el-button size="small" type="primary" icon="el-icon-upload2">选择文件</el-button>
+              <el-button size="small" type="primary" icon="el-icon-upload2" :disabled="submitting">选择文件</el-button>
               <div slot="tip" class="el-upload__tip">支持图片、PDF、Word等格式</div>
             </el-upload>
           </el-form-item>
@@ -174,19 +178,20 @@
             <el-row :gutter="12">
               <el-col :span="12">
                 <div class="ti-field-label">学生反馈</div>
-                <el-input v-model="stu._feedback" type="textarea" :rows="2" placeholder="学生反馈" />
+                <el-input v-model="stu._feedback" :disabled="!!savedSessionId || submitting" type="textarea" :rows="2" placeholder="学生反馈" />
               </el-col>
               <el-col :span="12">
                 <div class="ti-field-label">跟进计划</div>
-                <el-input v-model="stu._plan" type="textarea" :rows="2" placeholder="跟进计划" />
+                <el-input v-model="stu._plan" :disabled="!!savedSessionId || submitting" type="textarea" :rows="2" placeholder="跟进计划" />
               </el-col>
             </el-row>
           </el-collapse-item>
         </el-collapse>
 
         <div class="ti-step-actions">
-          <el-button @click="step = 1">上一步</el-button>
-          <el-button type="primary" @click="submitForm" :loading="submitting">保存谈话</el-button>
+          <el-button v-if="savedSessionId || submitting" key="locked-previous" disabled>上一步</el-button>
+          <el-button v-else key="editable-previous" @click="backToStudents">上一步</el-button>
+          <el-button type="primary" @click="submitForm" :loading="submitting">{{ savedSessionId ? '重试附件上传' : '保存谈话' }}</el-button>
         </div>
       </div>
 
@@ -200,13 +205,13 @@
                 <div class="ti-tpl-name">{{ tpl.templateName }}</div>
                 <div class="ti-tpl-preview">{{ tpl.templateContent.substring(0, 80) }}...</div>
                 <div class="ti-tpl-tags">
-                  <el-tag v-for="tag in (tpl.templateTags||'').split(',').filter(Boolean)" :key="tag" size="mini" type="info">{{ getTagLabel(tag) }}</el-tag>
+                  <el-tag v-for="tag in parseTemplateTags(tpl.templateTags)" :key="tag" size="mini" type="info">{{ getTagLabel(tag) }}</el-tag>
                 </div>
               </div>
               <div v-if="systemTemplates.length === 0" class="ti-empty">暂无系统模板</div>
             </div>
           </el-tab-pane>
-          <el-tab-pane label="我的模板" name="personal">
+          <el-tab-pane label="学院模板" name="personal">
             <div class="ti-template-grid">
               <div v-for="tpl in personalTemplates" :key="tpl.templateId" class="ti-template-card"
                    :class="{ selected: selectedTemplateId === tpl.templateId }"
@@ -229,6 +234,7 @@
 </template>
 
 <script>
+import { getLabels } from '@/api/talk/talkTag'
 import { listTalk, getDeptTree } from '@/api/talk/talkStudent'
 import { createTalk } from '@/api/talk/talkInitiate'
 import { listSystemTemplate, listTemplate } from '@/api/talk/talkTemplate'
@@ -252,6 +258,7 @@ export default {
       activeCollapse: [],
       allStudents: [],
       selectedStudents: [],
+      requestedStudentId: null,
       deptTree: [],
       treeProps: { children: 'children', label: 'deptName' },
       treeFilter: '',
@@ -260,6 +267,8 @@ export default {
       currentDeptId: null,
       fileList: [],
       pendingFiles: [],
+      savedSessionId: null,
+      uploadedFileUids: [],
       form: {
         talkType: 'group',
         talkTime: '',
@@ -290,21 +299,43 @@ export default {
       const k = this.searchKey.toLowerCase()
       if (!k) return this.availableStudents
       return this.availableStudents.filter(s =>
-        s.studentCode.includes(k) || s.studentName.toLowerCase().includes(k)
+        s.studentCode.toLowerCase().includes(k) || s.studentName.toLowerCase().includes(k)
       )
     }
   },
   watch: {
+    '$route.query.studentId'(studentId) {
+      if (this.$route.path !== '/talk/initiate') return
+      this.requestedStudentId = studentId || null
+      if (!this.studentLoading) this.applyRequestedStudent()
+    },
     treeFilter(val) {
       this.$refs.deptTree.filter(val)
     }
   },
   created() {
+    this.requestedStudentId = this.$route.query.studentId || null
+    getLabels().then(res => {
+      const labels = { ...TAG_LABELS, ...(res.data || {}) }
+      this.tagOptions = Object.keys(labels).map(value => ({ value, label: labels[value] }))
+    }).catch(() => {})
     this.loadStudents()
     this.loadDeptTree()
   },
   methods: {
     parseTime,
+    applyRequestedStudent() {
+      if (!this.requestedStudentId || this.savedSessionId || this.submitting) return
+      const studentId = String(this.requestedStudentId)
+      this.requestedStudentId = null
+      const student = this.allStudents.find(s => String(s.studentId) === studentId)
+      if (!student) {
+        this.$modal.msgError('该学生不存在或不在当前可选范围内')
+        return
+      }
+      this.selectedStudents = [{ ...student, _feedback: '', _plan: '' }]
+      this.step = 1
+    },
     onDateChange() {
       this.$nextTick(() => { this.loadStudents() })
     },
@@ -326,6 +357,7 @@ export default {
       }
       listTalk(params).then(res => {
         this.allStudents = res.rows || []
+        this.applyRequestedStudent()
       }).catch(() => { this.$modal.msgError('操作失败') }).finally(() => {
         this.studentLoading = false
       })
@@ -386,7 +418,7 @@ export default {
     },
     loadTemplates() {
       listSystemTemplate().then(res => { this.systemTemplates = res.rows || res.data || [] }).catch(() => { this.$modal.msgError('加载系统模板失败') })
-      listTemplate({ templateType: 'personal' }).then(res => { this.personalTemplates = res.rows || [] }).catch(() => { this.$modal.msgError('加载个人模板失败') })
+      listTemplate({ templateType: 'personal' }).then(res => { this.personalTemplates = res.rows || [] }).catch(() => { this.$modal.msgError('加载学院模板失败') })
     },
     clearContent() {
       this.$confirm('确认清空谈话内容？', '提示', { type: 'warning' }).then(() => {
@@ -419,28 +451,43 @@ export default {
         this.form.talkContent = tpl.templateContent
       }
       if (tpl.templateTags) {
-        const tags = tpl.templateTags.split(',').map(t => t.trim()).filter(Boolean)
+        const tags = this.parseTemplateTags(tpl.templateTags)
         const existing = this.form.tags || []
         tags.forEach(t => { if (!existing.includes(t)) existing.push(t) })
         this.form.tags = [...existing]
       }
       this.templateDialogVisible = false
+      this.$nextTick(() => {
+        if (this.$refs.talkForm) this.$refs.talkForm.validateField('talkContent')
+      })
       this.$message.success(append ? '模板内容已追加' : '模板内容已替换')
     },
     getTagLabel(value) {
-      return TAG_LABELS[value] || value
+      return this.$talkTags(value, this.tagOptions.reduce((labels, item) => { labels[item.value] = item.label; return labels }, {}))
     },
-    uploadFiles(sessionId) {
-      if (this.pendingFiles.length === 0) return Promise.resolve()
-      const promises = this.pendingFiles.map(file => {
+    parseTemplateTags(tags) {
+      if (!tags) return []
+      try {
+        var parsed = JSON.parse(tags)
+        if (Array.isArray(parsed)) return parsed
+      } catch (e) {}
+      return tags.split(',').map(t => t.trim()).filter(Boolean)
+    },
+    backToStudents() {
+      if (!this.savedSessionId && !this.submitting) this.step = 1
+    },
+    async uploadFiles(sessionId) {
+      for (const file of [...this.pendingFiles]) {
+        if (this.uploadedFileUids.includes(file.uid)) continue
         const formData = new FormData()
         formData.append('sessionId', sessionId)
         formData.append('file', file.raw)
-        return uploadAttachment(formData)
-      })
-      return Promise.all(promises)
+        await uploadAttachment(formData)
+        this.uploadedFileUids.push(file.uid)
+      }
     },
     submitForm() {
+      if (this.submitting) return
       this.$refs.talkForm.validate(valid => {
         if (!valid) return
         this.submitting = true
@@ -459,15 +506,16 @@ export default {
             followupStatus: 'pending'
           }))
         }
-        createTalk(data).then(res => {
+        const sessionPromise = this.savedSessionId ? Promise.resolve(this.savedSessionId) : createTalk(data).then(res => {
           const sessionId = res.data?.sessionId || res.sessionId
-          if (sessionId && this.pendingFiles.length > 0) {
-            return this.uploadFiles(sessionId).then(() => {
-              this.$modal.msgSuccess('谈话记录保存成功')
-            })
-          }
+          if (!sessionId) throw new Error('未获取到已保存谈话，请到谈话管理核查')
+          this.savedSessionId = sessionId
+          return sessionId
+        })
+        sessionPromise.then(sessionId => this.uploadFiles(sessionId)).then(() => {
           this.$modal.msgSuccess('谈话记录保存成功')
-        }).then(() => {
+          this.savedSessionId = null
+          this.uploadedFileUids = []
           this.selectedStudents = []
           this.step = 0
           this.currentDeptId = null
@@ -487,7 +535,8 @@ export default {
           this.$refs.upload && this.$refs.upload.clearFiles()
           this.$refs.talkForm && this.$refs.talkForm.resetFields()
         }).catch(err => {
-          this.$modal.msgError(err.message || err.msg || '操作失败')
+          const message = err.message || err.msg || '操作失败'
+          this.$modal.msgError(this.savedSessionId ? '谈话已保存，附件上传失败：' + message : message)
         }).finally(() => {
           this.submitting = false
         })

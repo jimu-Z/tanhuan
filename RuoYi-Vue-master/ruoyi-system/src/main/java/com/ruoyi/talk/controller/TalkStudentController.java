@@ -1,5 +1,7 @@
 package com.ruoyi.talk.controller;
 
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -88,18 +90,26 @@ public class TalkStudentController extends BaseController {
         List<Map<String, Object>> roots = new ArrayList<>();
 
         for (SysDept d : depts) {
+            int studentCount;
+            try {
+                studentCount = talkStudentService.countStudentsByDeptId(d.getDeptId());
+            } catch (com.ruoyi.common.exception.ServiceException e) {
+                // An invalid or inaccessible branch must not block the valid college tree.
+                continue;
+            }
             Map<String, Object> node = new LinkedHashMap<>();
             node.put("deptId", d.getDeptId());
             node.put("deptName", d.getDeptName());
             node.put("parentId", d.getParentId());
             node.put("deptType", d.getDeptType());
-            node.put("studentCount", talkStudentService.countStudentsByDeptId(d.getDeptId()));
+            node.put("studentCount", studentCount);
             node.put("children", new ArrayList<Map<String, Object>>());
             nodeMap.put(d.getDeptId(), node);
         }
 
         for (SysDept d : depts) {
             Map<String, Object> node = nodeMap.get(d.getDeptId());
+            if (node == null) continue;
             if (d.getParentId() == null || d.getParentId() == 0 || !nodeMap.containsKey(d.getParentId())) {
                 if (node != null)
                     roots.add(node);
@@ -140,7 +150,8 @@ public class TalkStudentController extends BaseController {
     public TableDataInfo untalked(
             @RequestParam(required = false) Long deptId,
             @RequestParam(required = false) String beginDate,
-            @RequestParam(required = false) String endDate) {
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String keyword) {
         startPage();
         Map<String, Object> params = new HashMap<>();
         if (deptId != null)
@@ -149,7 +160,8 @@ public class TalkStudentController extends BaseController {
             params.put("beginDate", beginDate);
         if (endDate != null)
             params.put("endDate", endDate);
-        applyDataScope(params);
+        if (keyword != null && !keyword.isBlank())
+            params.put("keyword", keyword.trim());
         List<TalkStudent> list = talkStudentService.selectUntalkedStudents(params);
         return getDataTable(list);
     }
@@ -168,9 +180,7 @@ public class TalkStudentController extends BaseController {
         return getDataTable(list);
     }
 
-    /**
-     * 按教师所属学院查询学生（书记看全院，辅导员看自己工号关联的学生）
-     */
+    /** 按教师所属学院查询学生。岗位只用于展示，不参与授权。 */
     @PreAuthorize("@ss.hasPermi('talk:teacher:list')")
     @GetMapping("/byTeacher/{teacherId}")
     public TableDataInfo listByTeacher(@PathVariable Long teacherId) {
@@ -185,34 +195,10 @@ public class TalkStudentController extends BaseController {
             logger.info("[学生按钮] no teacher or no deptId, returning empty");
             return getDataTable(new ArrayList<>());
         }
-        // 辅导员/班主任：通过talk_teacher_class表查自己管理的班级学生
-        if ("辅导员".equals(teacher.getPosition()) || "班主任".equals(teacher.getPosition())) {
-            List<TalkStudent> students = talkStudentService.selectByTeacherCode(teacher.getTeacherCode());
-            logger.info("[学生按钮] 辅导员模式, teacherCode={}, result size={}",
-                    teacher.getTeacherCode(), students != null ? students.size() : 0);
-            return getDataTable(students);
-        }
-        // 书记/副书记：按学院查全院学生
         List<TalkStudent> students = talkStudentService.selectByCollegeDeptId(teacher.getDeptId());
-        logger.info("[学生按钮] 书记模式, deptId={}, result size={}",
+        logger.info("[学生按钮] 学院模式, deptId={}, result size={}",
                 teacher.getDeptId(), students != null ? students.size() : 0);
         return getDataTable(students);
-    }
-
-    private void applyDataScope(Map<String, Object> params) {
-        if (SecurityUtils.isAdmin())
-            return;
-        String username = SecurityUtils.getUsername();
-        if (username == null)
-            return;
-        if (SecurityUtils.hasRole("talk_counselor")) {
-            params.put("counselorUsername", username);
-        } else if (SecurityUtils.hasRole("talk_secretary")) {
-            Long deptId = SecurityUtils.getDeptId();
-            if (deptId != null) {
-                params.put("secretaryDeptId", deptId);
-            }
-        }
     }
 
     /**
@@ -297,5 +283,33 @@ public class TalkStudentController extends BaseController {
     public AjaxResult importExecute(@RequestBody List<Map<String, Object>> confirmedRows,
             @RequestParam(defaultValue = "skip") String importMode) {
         return success(talkStudentService.importExecute(confirmedRows, importMode));
+    }
+
+    /**
+     * 下载学生导入模板
+     */
+    @PreAuthorize("@ss.hasPermi('talk:student:import')")
+    @PostMapping("/importTemplate")
+    public void importTemplate(HttpServletResponse response) {
+        try (InputStream is = getClass().getClassLoader()
+                .getResourceAsStream("template/student_import_template.xlsx")) {
+            if (is == null) {
+                throw new RuntimeException("模板文件不存在");
+            }
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setHeader("Content-Disposition",
+                    "attachment;filename=" + java.net.URLEncoder.encode("德州学院学生教育管理台账模板.xlsx", "UTF-8"));
+            try (OutputStream os = response.getOutputStream()) {
+                byte[] buffer = new byte[4096];
+                int len;
+                while ((len = is.read(buffer)) != -1) {
+                    os.write(buffer, 0, len);
+                }
+                os.flush();
+            }
+        } catch (Exception e) {
+            logger.error("下载学生导入模板失败", e);
+            throw new RuntimeException("下载模板失败: " + e.getMessage());
+        }
     }
 }

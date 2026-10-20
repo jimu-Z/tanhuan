@@ -12,7 +12,7 @@
       <el-form-item label="模板类型" prop="templateType">
         <el-select v-model="queryParams.templateType" placeholder="请选择模板类型" clearable>
           <el-option label="系统预置" value="system" />
-          <el-option label="个人模板" value="personal" />
+          <el-option label="学院模板" value="personal" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -41,7 +41,7 @@
       <el-table-column label="模板类型" align="center" prop="templateType" width="100">
         <template slot-scope="scope">
           <el-tag :type="scope.row.templateType === 'system' ? 'primary' : 'success'" size="small">
-            {{ scope.row.templateType === 'system' ? '系统预置' : '个人模板' }}
+            {{ $talkLabel('templateType', scope.row.templateType) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -74,6 +74,7 @@
             size="mini"
             type="text"
             icon="el-icon-edit"
+            v-if="canManageDefinition(scope.row)"
             @click="handleUpdate(scope.row)"
             v-hasPermi="['talk:template:edit']"
           >修改</el-button>
@@ -81,6 +82,7 @@
             size="mini"
             type="text"
             icon="el-icon-delete"
+            v-if="canManageDefinition(scope.row)"
             @click="handleDelete(scope.row)"
             v-hasPermi="['talk:template:remove']"
           >删除</el-button>
@@ -106,9 +108,16 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="模板类型" prop="templateType">
-              <el-select v-model="form.templateType" placeholder="请选择模板类型" style="width:100%">
-                <el-option label="个人模板" value="personal" />
-                <el-option label="系统预置" value="system" />
+              <el-select v-model="form.templateType" placeholder="请选择模板类型" :disabled="form.templateId != null" style="width:100%" @change="handleTemplateTypeChange">
+                <el-option label="学院模板" value="personal" />
+                <el-option v-if="isGlobalAdmin" label="系统预置" value="system" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col v-if="isGlobalAdmin && form.templateType === 'personal'" :span="24">
+            <el-form-item label="所属学院" prop="collegeDeptId">
+              <el-select v-model="form.collegeDeptId" placeholder="请选择所属学院" filterable :disabled="form.templateId != null" style="width:100%">
+                <el-option v-for="college in collegeOptions" :key="college.value" :label="college.label" :value="college.value" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -156,7 +165,7 @@
         <div style="margin-bottom: 10px;">
           <span style="font-weight: bold;">模板类型：</span>
           <el-tag :type="previewTemplate.templateType === 'system' ? 'primary' : 'success'" size="small">
-            {{ previewTemplate.templateType === 'system' ? '系统预置' : '个人模板' }}
+            {{ $talkLabel('templateType', previewTemplate.templateType) }}
           </el-tag>
         </div>
         <div style="margin-bottom: 10px;">
@@ -189,6 +198,7 @@
 import { listTemplate, getTemplate, addTemplate, updateTemplate, delTemplate } from '@/api/talk/talkTemplate'
 import { TAG_LABELS } from '@/api/talk/talkSession'
 import { getLabels } from '@/api/talk/talkTag'
+import { getDeptTree } from '@/api/talk/talkStudent'
 
 export default {
   name: 'TemplatesV2',
@@ -213,6 +223,7 @@ export default {
       form: {},
       tagOptions: tagOptions,
       selectedTags: [],
+      collegeOptions: [],
       rules: {
         templateName: [
           { required: true, message: '模板名称不能为空', trigger: 'blur' }
@@ -222,15 +233,51 @@ export default {
         ],
         templateType: [
           { required: true, message: '模板类型不能为空', trigger: 'change' }
-        ]
+        ],
+        collegeDeptId: [{
+          validator: (rule, value, callback) => {
+            if (this.isGlobalAdmin && this.form.templateType === 'personal' && (value == null || value === '')) {
+              callback(new Error('请选择所属学院'))
+            } else {
+              callback()
+            }
+          },
+          trigger: 'change'
+        }]
       }
     }
   },
   created() {
     this.getList()
     this.loadTagOptions()
+    if (this.isGlobalAdmin) this.loadCollegeOptions()
+  },
+  computed: {
+    isGlobalAdmin() {
+      return this.$auth.hasRoleOr(['admin', 'school_admin'])
+    }
   },
   methods: {
+    canManageDefinition(row) {
+      return row.templateType !== 'system' || this.isGlobalAdmin
+    },
+    loadCollegeOptions() {
+      getDeptTree().then(res => {
+        const options = []
+        const visit = nodes => nodes.forEach(node => {
+          if (node.deptType === 'college') options.push({ value: node.deptId, label: node.deptName })
+          if (node.children && node.children.length) visit(node.children)
+        })
+        visit(res.data || [])
+        this.collegeOptions = options
+      }).catch(() => this.$modal.msgError('加载学院列表失败'))
+    },
+    handleTemplateTypeChange(type) {
+      if (type === 'system') this.form.collegeDeptId = null
+      this.$nextTick(() => {
+        if (this.$refs.form) this.$refs.form.clearValidate('collegeDeptId')
+      })
+    },
     loadTagOptions() {
       getLabels().then(res => {
         if (res.data && Object.keys(res.data).length > 0) {
@@ -251,7 +298,8 @@ export default {
     },
     parseTags(tags) {
       if (!tags) return []
-      function toLabel(t) { return TAG_LABELS[t] || t }
+      const labels = this.tagOptions.reduce((map, item) => { map[item.value] = item.label; return map }, {})
+      const toLabel = t => this.$talkTags(t, labels)
       try {
         var parsed = JSON.parse(tags)
         if (Array.isArray(parsed)) return parsed.map(toLabel)
@@ -268,7 +316,8 @@ export default {
         templateId: null,
         templateName: null,
         templateContent: null,
-        templateType: 'personal',
+        templateType: this.isGlobalAdmin ? 'system' : 'personal',
+        collegeDeptId: null,
         templateTags: null
       }
       this.selectedTags = []

@@ -12,6 +12,7 @@
         <result property="phone"       column="phone"        />
         <result property="userId"      column="user_id"      />
         <result property="status"      column="status"       />
+        <result property="roleKey"     column="role_key"     />
         <result property="remark"      column="remark"       />
         <result property="createBy"    column="create_by"    />
         <result property="createTime"  column="create_time"  />
@@ -24,7 +25,11 @@
         select t.teacher_id, t.teacher_code, t.teacher_name, t.dept_id, t.position,
                t.phone, t.user_id, t.status,
                t.remark, t.create_by, t.create_time, t.update_by, t.update_time,
-               d.dept_name
+               d.dept_name,
+               (select r.role_key from sys_user_role ur join sys_role r on r.role_id = ur.role_id
+                where ur.user_id = t.user_id and r.role_key in ('school_admin', 'college_admin', 'talk_teacher')
+                order by case when r.role_key = 'school_admin' then 0
+                              when r.role_key = 'college_admin' then 1 else 2 end limit 1) as role_key
         from talk_teacher t
         left join sys_dept d on t.dept_id = d.dept_id
     </sql>
@@ -37,7 +42,6 @@
             <if test="deptId != null"> and t.dept_id = #{deptId}</if>
             <if test="position != null and position != ''"> and t.position = #{position}</if>
             <if test="status != null and status != ''"> and t.status = #{status}</if>
-            ${params.dataScope}
         </where>
         order by t.dept_id, t.teacher_code
     </select>
@@ -111,6 +115,7 @@
     <select id="selectClassNamesByCollegeDept" resultType="String">
         select distinct d.dept_name from sys_dept d
         where d.dept_type = 'class'
+          and d.del_flag = '0'
           and (d.dept_id = #{deptId} or find_in_set(#{deptId}, d.ancestors))
         order by d.dept_name
     </select>
@@ -119,6 +124,15 @@
         <include refid="selectTalkTeacherVo"/>
         where t.teacher_code = #{teacherCode}
         limit 1
+    </select>
+
+    <select id="countActiveCollegeAdminsByDeptId" resultType="int">
+        select count(distinct u.user_id)
+        from talk_teacher t
+        join sys_user u on u.user_id = t.user_id and u.status = '0' and u.del_flag = '0'
+        join sys_user_role ur on ur.user_id = u.user_id
+        join sys_role r on r.role_id = ur.role_id and r.role_key = 'college_admin' and r.status = '0'
+        where t.dept_id = #{deptId} and t.status = '0'
     </select>
 
 </mapper>

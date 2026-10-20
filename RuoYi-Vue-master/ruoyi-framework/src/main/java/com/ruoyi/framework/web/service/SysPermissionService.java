@@ -22,6 +22,8 @@ import com.ruoyi.system.service.ISysRoleService;
 @Component
 public class SysPermissionService
 {
+    private static final String SCHOOL_ADMIN_ROLE = "school_admin";
+
     @Autowired
     private ISysRoleService roleService;
 
@@ -38,7 +40,7 @@ public class SysPermissionService
     {
         Set<String> roles = new HashSet<String>();
         // 管理员拥有所有权限
-        if (user.isAdmin())
+        if (user.isAdmin() || hasRole(user, SCHOOL_ADMIN_ROLE))
         {
             roles.add(Constants.SUPER_ADMIN);
         }
@@ -59,7 +61,7 @@ public class SysPermissionService
     {
         Set<String> perms = new HashSet<String>();
         // 管理员拥有所有权限
-        if (user.isAdmin())
+        if (user.isAdmin() || hasRole(user, SCHOOL_ADMIN_ROLE))
         {
             perms.add(Constants.ALL_PERMISSION);
         }
@@ -85,5 +87,13 @@ public class SysPermissionService
             }
         }
         return perms;
+    }
+
+    private boolean hasRole(SysUser user, String roleKey)
+    {
+        List<SysRole> roles = user.getRoles();
+        return !CollectionUtils.isEmpty(roles)
+                && roles.stream().anyMatch(role -> StringUtils.equals(roleKey, role.getRoleKey())
+                        && StringUtils.equals(role.getStatus(), UserConstants.ROLE_NORMAL));
     }
 }

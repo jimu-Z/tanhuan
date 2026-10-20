@@ -30,12 +30,21 @@ public class TalkConstants {
     }
 
     public static final Map<String, String> ENROLLMENT_STATUS_LABELS;
+    public static void validateFollowupStatus(String status) {
+        if (status != null && !FOLLOWUP_STATUS_LABELS.containsKey(status)) {
+            throw new com.ruoyi.common.exception.ServiceException("跟进状态只能为无需跟进、待跟进、跟进中或已完成");
+        }
+    }
+
     static {
         Map<String, String> m = new LinkedHashMap<>();
         m.put("active", "在读");
         m.put("suspended", "休学");
         m.put("withdrawn", "退学");
         m.put("graduated", "毕业");
+        m.put("0", "在读");
+        m.put("1", "休学");
+        m.put("2", "退学");
         m.put("在读", "在读");
         m.put("休学", "休学");
         m.put("退学", "退学");
@@ -50,6 +59,13 @@ public class TalkConstants {
         m.put("normal", "正常");
         m.put("weekly_track", "周跟踪");
         m.put("monthly_track", "月跟踪");
+        m.put("healthy", "健康");
+        m.put("mild_warning", "轻度预警");
+        m.put("moderate_warning", "中度预警");
+        m.put("severe_warning", "重度预警");
+        m.put("0", "正常");
+        m.put("1", "关注");
+        m.put("2", "重点关注");
         m.put("健康", "健康");
         m.put("正常", "正常");
         m.put("重点关注", "重点关注");
@@ -62,9 +78,9 @@ public class TalkConstants {
     static {
         Map<String, String> m = new LinkedHashMap<>();
         m.put("none", "无");
-        m.put("general", "一般困难");
-        m.put("difficult", "困难");
-        m.put("severe", "特别困难");
+        m.put("general", "家庭经济一般困难");
+        m.put("difficult", "家庭经济困难");
+        m.put("severe", "家庭经济特别困难");
         m.put("贫困", "贫困");
         m.put("轻度贫困", "轻度贫困");
         m.put("无贫困", "无贫困");
@@ -74,6 +90,9 @@ public class TalkConstants {
     }
 
     public static final String DEFAULT_FEEDBACK = "无";
+    public static final Map<String, String> POLITICAL_STATUS_LABELS = Map.of(
+            "people", "群众", "league_member", "共青团员", "probationary_member", "中共预备党员",
+            "party_member", "中共党员", "other", "其他");
     public static final String DEFAULT_FOLLOWUP_PLAN = "待填写";
     public static final String DEFAULT_FOLLOWUP_STATUS = "pending";
 

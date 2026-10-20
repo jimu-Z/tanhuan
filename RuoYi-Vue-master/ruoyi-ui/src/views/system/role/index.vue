@@ -98,7 +98,7 @@
     </el-row>
 
     <el-table v-loading="loading" :data="roleList" @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="55" align="center" />
+      <el-table-column type="selection" width="55" align="center" :selectable="isRoleSelectable" />
       <el-table-column label="角色编号" prop="roleId" width="120" />
       <el-table-column label="角色名称" prop="roleName" :show-overflow-tooltip="true" width="150" />
       <el-table-column label="权限字符" prop="roleKey" :show-overflow-tooltip="true" width="150" />
@@ -106,6 +106,7 @@
       <el-table-column label="状态" align="center" width="100">
         <template slot-scope="scope">
           <el-switch
+            :disabled="!isRoleSelectable(scope.row)"
             v-model="scope.row.status"
             active-value="0"
             inactive-value="1"
@@ -393,8 +394,12 @@ export default {
         return response
       })
     },
+    isRoleSelectable(row) {
+      return Number(row.roleId) !== 1
+    },
     // 角色状态修改
     handleStatusChange(row) {
+      if (!this.isRoleSelectable(row)) return
       let text = row.status === "0" ? "启用" : "停用"
       this.$modal.confirm('确认要"' + text + '""' + row.roleName + '"角色吗？').then(function() {
         return changeRoleStatus(row.roleId, row.status)
@@ -450,6 +455,7 @@ export default {
     },
     // 多选框选中数据
     handleSelectionChange(selection) {
+      selection = selection.filter(this.isRoleSelectable)
       this.ids = selection.map(item => item.roleId)
       this.single = selection.length!=1
       this.multiple = !selection.length
@@ -483,11 +489,17 @@ export default {
     },
     // 树权限（全选/全不选）
     handleCheckedTreeNodeAll(value, type) {
-      if (type == 'menu') {
-        this.$refs.menu.setCheckedNodes(value ? this.menuOptions: [])
-      } else if (type == 'dept') {
-        this.$refs.dept.setCheckedNodes(value ? this.deptOptions: [])
+      const keys = []
+      const collectKeys = nodes => {
+        nodes.forEach(node => {
+          keys.push(node.id)
+          collectKeys(node.children || [])
+        })
       }
+      if (value) {
+        collectKeys(type === 'menu' ? this.menuOptions : this.deptOptions)
+      }
+      this.$refs[type].setCheckedKeys(keys)
     },
     // 树权限（父子联动）
     handleCheckedTreeConnect(value, type) {
@@ -596,9 +608,7 @@ export default {
     },
     /** 导出按钮操作 */
     handleExport() {
-      this.download('system/role/export', {
-        ...this.queryParams
-      }, `role_${new Date().getTime()}.xlsx`)
+      this.download('system/role/export', this.addDateRange(this.queryParams, this.dateRange), `role_${new Date().getTime()}.xlsx`)
     }
   }
 }

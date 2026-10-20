@@ -106,6 +106,13 @@
           <dict-tag :options="positionOptions" :value="scope.row.position" />
         </template>
       </el-table-column>
+      <el-table-column label="账号角色" align="center" prop="roleKey" width="100">
+        <template slot-scope="scope">
+          <el-tag :type="scope.row.roleKey === 'college_admin' ? 'warning' : 'info'">
+            {{ scope.row.roleKey === 'school_admin' ? '校管理员' : scope.row.roleKey === 'college_admin' ? '院管理员' : '老师' }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="手机号码" align="center" prop="phone" />
       <el-table-column label="备注" align="center" prop="remark" show-overflow-tooltip />
       <el-table-column label="状态" align="center" prop="status">
@@ -117,6 +124,14 @@
       </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
+          <el-button
+            v-if="canAdjustRoles && scope.row.roleKey !== 'school_admin'"
+            size="mini"
+            type="text"
+            icon="el-icon-key"
+            @click="handleRoleChange(scope.row)"
+            v-hasPermi="['talk:teacher:edit']"
+          >{{ scope.row.roleKey === 'college_admin' ? '降为老师' : '设为院管理员' }}</el-button>
           <el-button
             size="mini"
             type="text"
@@ -179,6 +194,13 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="角色" prop="roleKey">
+          <el-select v-model="form.roleKey" placeholder="请选择角色">
+            <el-option label="老师" value="talk_teacher" />
+            <el-option label="院管理员" value="college_admin" />
+            <el-option label="校管理员" value="school_admin" :disabled="!$auth.hasRoleOr(['admin', 'school_admin'])" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="手机号码" prop="phone">
           <el-input v-model="form.phone" placeholder="请输入手机号码" />
         </el-form-item>
@@ -187,6 +209,9 @@
             <el-radio label="0">正常</el-radio>
             <el-radio label="1">停用</el-radio>
           </el-radio-group>
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入备注" maxlength="500" show-word-limit />
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -203,10 +228,10 @@
         <el-table-column label="班级" prop="deptName" min-width="150" />
         <el-table-column label="手机号" prop="phone" width="130" />
         <el-table-column label="心理健康状态" prop="mentalHealthStatus" width="110">
-          <template slot-scope="scope">{{ mentalHealthMap[scope.row.mentalHealthStatus] || scope.row.mentalHealthStatus }}</template>
+          <template slot-scope="scope">{{ $talkLabel('mentalHealthStatus', scope.row.mentalHealthStatus, dict.type.mental_health_status) }}</template>
         </el-table-column>
         <el-table-column label="学籍状态" prop="enrollmentStatus" width="80">
-          <template slot-scope="scope">{{ enrollmentMap[scope.row.enrollmentStatus] || scope.row.enrollmentStatus }}</template>
+          <template slot-scope="scope">{{ $talkLabel('enrollmentStatus', scope.row.enrollmentStatus, dict.type.enrollment_status) }}</template>
         </el-table-column>
       </el-table>
     </el-dialog>
@@ -214,7 +239,7 @@
     <!-- 管理班级弹窗 -->
     <el-dialog :title="classDialogTitle" :visible.sync="classDialogOpen" width="850px" append-to-body :z-index="2100">
       <treeselect
-        v-model="selectedClassNames"
+        v-model="selectedClassIds"
         :multiple="true"
         :options="filteredClassDeptTree"
         :normalizer="classNormalizer"
@@ -227,7 +252,7 @@
         style="margin-bottom:12px"
       />
       <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="submitClasses">确 定</el-button>
+        <el-button type="primary" :disabled="classLoading || classLoadFailed" @click="submitClasses">确 定</el-button>
         <el-button @click="classDialogOpen = false">取 消</el-button>
       </div>
     </el-dialog>
@@ -257,14 +282,15 @@
 </template>
 
 <script>
-import { listTeacher, getTeacher, addTeacher, updateTeacher, delTeacher, getTeacherStudents, getTeacherClasses, saveTeacherClasses, getAllClassNames } from "@/api/talk/teacher"
+import { listTeacher, getTeacher, addTeacher, updateTeacher, delTeacher, changeCollegeAdminRole, getTeacherStudents, getTeacherClasses, saveTeacherClasses, getAllClassNames } from "@/api/talk/teacher"
 import { getDeptTree } from "@/api/talk/talkStudent"
 import { getToken } from "@/utils/auth"
-import Treeselect from "@riophae/vue-treeselect"
+import Treeselect from "@/components/Treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 
 export default {
   name: "TalkTeacher",
+  dicts: ['mental_health_status', 'enrollment_status'],
   components: { Treeselect },
   data() {
     return {
@@ -307,23 +333,26 @@ export default {
       studentDialogTitle: '',
       studentList: [],
       studentLoading: false,
-      // 学生弹窗字典映射
-      mentalHealthMap: { '0': '正常', '1': '关注', '2': '重点关注' },
-      enrollmentMap: { '0': '在读', '1': '休学', '2': '退学' },
       // 管理班级弹窗
       classDialogOpen: false,
       classDialogTitle: '',
       classDialogTeacherId: null,
+      classLoading: false,
+      classLoadFailed: false,
+      classLoadVersion: 0,
       allClassNames: [],
       classDeptTree: [],
       filteredClassDeptTree: [],
-      selectedClassNames: [],
+      selectedClassIds: [],
       rules: {
         teacherCode: [
           { required: true, message: "工号不能为空", trigger: "blur" }
         ],
         teacherName: [
           { required: true, message: "姓名不能为空", trigger: "blur" }
+        ],
+        roleKey: [
+          { required: true, message: "角色不能为空", trigger: "change" }
         ],
         deptId: [
           { required: true, message: "所属学院不能为空", trigger: "change" }
@@ -339,14 +368,10 @@ export default {
   },
   computed: {
     filteredPositionOptions() {
-      const roles = this.$store.state.user?.roles || []
-      const isSecretary = roles.some(r => r.roleKey === 'talk_secretary' || r.roleName === '书记')
-      if (isSecretary) {
-        return this.positionOptions.filter(
-          item => item.value === '辅导员' || item.value === '班主任'
-        )
-      }
       return this.positionOptions
+    },
+    canAdjustRoles() {
+      return this.$auth.hasRoleOr(['admin', 'school_admin', 'college_admin'])
     }
   },
   created() {
@@ -418,9 +443,9 @@ export default {
       }
     },
     classNormalizer(node) {
-      // 叶子节点(班级)用班名作value，分支节点用deptId
+      // 所有节点均使用部门 ID，避免同名班级在树组件中产生重复 ID。
       return {
-        id: node.deptType === 'class' ? node.label : node.id,
+        id: node.id,
         label: node.label,
         children: node.children && node.children.length ? node.children : undefined
       }
@@ -445,6 +470,8 @@ export default {
         deptId: undefined,
         position: undefined,
         phone: undefined,
+        roleKey: "talk_teacher",
+        remark: "",
         status: "0"
       }
       this.resetForm("form")
@@ -509,7 +536,17 @@ export default {
       }).then(() => {
         this.getList()
         this.$modal.msgSuccess("删除成功")
-      }).catch(() => { this.$modal.msgError('操作失败') })
+      }).catch(error => { if (error !== 'cancel' && error !== 'close') this.$modal.msgError('操作失败') })
+    },
+    handleRoleChange(row) {
+      const promote = row.roleKey !== 'college_admin'
+      const action = promote ? '设为院管理员' : '降为老师'
+      this.$modal.confirm(`是否确认将“${row.teacherName}”${action}？`).then(() => {
+        return changeCollegeAdminRole(row.teacherId, promote)
+      }).then(() => {
+        this.$modal.msgSuccess(action + '成功')
+        this.getList()
+      }).catch(() => {})
     },
     /** 查看教师管理的所有学生 */
     handleViewStudents(row) {
@@ -527,41 +564,64 @@ export default {
     },
     /** 管理班级 */
     handleManageClasses(row) {
+      const loadVersion = ++this.classLoadVersion
       this.classDialogTitle = row.teacherName + ' 管理的班级'
       this.classDialogOpen = true
       this.classDialogTeacherId = row.teacherId
-      this.selectedClassNames = []
+      this.selectedClassIds = []
+      this.filteredClassDeptTree = []
+      this.classLoading = true
+      this.classLoadFailed = false
       // 如果班级树还没加载，先加载
       const loadTree = this.classDeptTree.length > 0
         ? Promise.resolve()
-        : new Promise(resolve => {
-            getDeptTree().then(res => {
+        : getDeptTree().then(res => {
               const tree = this.mapDeptTree(res.data || [])
               const collegeIds = this.collectCollegeIds(tree)
               this.classDeptTree = this.filterToCollegeDescendants(tree, collegeIds)
-              resolve()
-            }).catch(() => { this.classDeptTree = []; resolve() })
           })
       // 加载允许的班级名和已选班级
-      loadTree.then(() => {
+      return loadTree.then(() => {
         return Promise.all([
           getAllClassNames(),
           getTeacherClasses(row.teacherId)
         ])
       }).then(([allRes, selectedRes]) => {
+        if (loadVersion !== this.classLoadVersion || !this.classDialogOpen) return
         this.allClassNames = allRes.data || []
-        this.selectedClassNames = selectedRes.data || []
+        const teacherTree = this.classTreeForTeacher(this.classDeptTree, row.deptId)
+        if (!teacherTree.length) {
+          this.classLoadFailed = true
+          this.$modal.msgError('教师所属学院无效，请先完善教师资料')
+          return
+        }
         // 过滤树
         const allowedNames = this.allClassNames
-        if (allowedNames.length > 0 && this.classDeptTree.length > 0) {
+        if (allowedNames.length > 0) {
           this.filteredClassDeptTree = this.pruneTreeByClassNames(
-            JSON.parse(JSON.stringify(this.classDeptTree)),
+            JSON.parse(JSON.stringify(teacherTree)),
             allowedNames
           )
         } else {
-          this.filteredClassDeptTree = this.classDeptTree || []
+          this.filteredClassDeptTree = JSON.parse(JSON.stringify(teacherTree))
         }
-      }).catch(() => { this.$modal.msgError('加载班级列表失败') })
+        this.selectedClassIds = this.findClassIdsByNames(selectedRes.data || [], this.filteredClassDeptTree)
+      }).catch(() => {
+        if (loadVersion !== this.classLoadVersion || !this.classDialogOpen) return
+        this.classLoadFailed = true
+        this.$modal.msgError('加载班级列表失败')
+      }).finally(() => {
+        if (loadVersion === this.classLoadVersion) this.classLoading = false
+      })
+    },
+    classTreeForTeacher(nodes, collegeId) {
+      if (collegeId == null) return []
+      for (const node of nodes || []) {
+        if (node.deptType === 'college' && String(node.id) === String(collegeId)) return [node]
+        const found = this.classTreeForTeacher(node.children, collegeId)
+        if (found.length) return found
+      }
+      return []
     },
     pruneTreeByClassNames(nodes, allowedNames) {
       if (!nodes || nodes.length === 0) return []
@@ -575,8 +635,30 @@ export default {
       })
       return result
     },
+    findClassIdsByNames(classNames, nodes) {
+      const nameSet = new Set(classNames)
+      const ids = []
+      const walk = list => (list || []).forEach(node => {
+        if (node.deptType === 'class' && nameSet.has(node.label)) ids.push(node.id)
+        walk(node.children)
+      })
+      walk(nodes)
+      return ids
+    },
+    findClassNamesByIds(classIds, nodes) {
+      const idSet = new Set(classIds)
+      const names = []
+      const walk = list => (list || []).forEach(node => {
+        if (node.deptType === 'class' && idSet.has(node.id)) names.push(node.label)
+        walk(node.children)
+      })
+      walk(nodes)
+      return [...new Set(names)]
+    },
     submitClasses() {
-      saveTeacherClasses(this.classDialogTeacherId, this.selectedClassNames).then(() => {
+      if (this.classLoading || this.classLoadFailed) return
+      const classNames = this.findClassNamesByIds(this.selectedClassIds, this.filteredClassDeptTree)
+      saveTeacherClasses(this.classDialogTeacherId, classNames).then(() => {
         this.$modal.msgSuccess('班级管理保存成功')
         this.classDialogOpen = false
       }).catch(() => { this.$modal.msgError('保存失败') })

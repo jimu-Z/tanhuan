@@ -82,13 +82,13 @@
     </el-row>
 
     <el-tabs v-model="talkTypeFilter" @tab-click="handleQuery" style="margin-bottom:8px">
-      <el-tab-pane label="全部" name="" />
+      <el-tab-pane label="全部" name="all" />
       <el-tab-pane label="个别谈话" name="individual" />
       <el-tab-pane label="集体谈话" name="group" />
     </el-tabs>
 
     <el-table v-loading="loading" :data="sessionList" @selection-change="handleSelectionChange"
-      row-key="sessionId" @expand-change="handleExpand" ref="sessionTable">
+      row-key="sessionId" :expand-row-keys="expandedSessionIds" @expand-change="handleExpand" ref="sessionTable">
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column type="index" label="序号" width="60" align="center" />
       <el-table-column type="expand">
@@ -97,6 +97,7 @@
             <div style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
               <span style="font-weight:bold;font-size:13px">谈话记录明细</span>
               <el-button type="primary" size="mini" icon="el-icon-plus"
+                v-if="canManageSession(scope.row)"
                 v-hasPermi="['talk:record:add']"
                 @click="handleAddRecord(scope.row)">新增记录</el-button>
             </div>
@@ -119,9 +120,11 @@
                   <el-button size="mini" type="text" icon="el-icon-download"
                     @click="handleExportStudentRecord(s2.row)">导出</el-button>
                   <el-button size="mini" type="text" icon="el-icon-edit"
+                    v-if="canManageSession(scope.row)"
                     v-hasPermi="['talk:record:edit']"
                     @click="handleUpdateRecord(s2.row)">修改</el-button>
                   <el-button size="mini" type="text" icon="el-icon-delete" style="color:#f56c6c"
+                    v-if="canManageSession(scope.row)"
                     v-hasPermi="['talk:record:remove']"
                     @click="handleDeleteRecord(s2.row)">删除</el-button>
                 </template>
@@ -149,7 +152,7 @@
         <template slot-scope="scope">
           <el-tag v-if="scope.row.talkType === 'individual'" type="primary">个别谈话</el-tag>
           <el-tag v-else-if="scope.row.talkType === 'group'" type="success">集体谈话</el-tag>
-          <span v-else>{{ scope.row.talkType }}</span>
+          <span v-else>{{ $talkLabel('talkType', scope.row.talkType) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="谈话时间" align="center" prop="talkTime" width="110">
@@ -170,7 +173,7 @@
       </el-table-column>
       <el-table-column label="谈话地点" align="center" prop="talkLocation" width="120" />
       <el-table-column label="谈话人" align="center" prop="talkPerson" width="100" />
-      <el-table-column label="谈话内容" align="center" prop="talkContent" min-width="200" show-overflow-tooltip />
+      <el-table-column label="谈话内容" align="center" prop="talkContent" :formatter="formatTalkContent" min-width="200" show-overflow-tooltip />
       <el-table-column label="内容标签" align="center" width="160">
         <template slot-scope="scope">
           <span v-if="tagMap[scope.row.sessionId] && tagMap[scope.row.sessionId].length > 0" style="font-size:12px;color:#666">
@@ -182,9 +185,11 @@
       <el-table-column label="操作" align="center" width="160">
         <template slot-scope="scope">
           <el-button size="mini" type="text" icon="el-icon-edit"
+            v-if="canManageSession(scope.row)"
             @click="handleUpdateSession(scope.row)"
             v-hasPermi="['talk:session:edit']">修改</el-button>
           <el-button size="mini" type="text" icon="el-icon-delete" style="color:#f56c6c"
+            v-if="canManageSession(scope.row)"
             @click="handleDeleteSession(scope.row)"
             v-hasPermi="['talk:session:remove']">删除</el-button>
           <el-button size="mini" type="text" icon="el-icon-download"
@@ -251,7 +256,13 @@
         <el-row>
           <el-col :span="24">
             <el-form-item label="学生" prop="studentId">
-              <el-input v-model="recordForm.studentId" placeholder="请输入学生ID" />
+              <el-select v-model="recordForm.studentId" filterable remote
+                :disabled="recordForm.recordId != null"
+                :remote-method="searchRecordStudents" :loading="recordStudentLoading"
+                placeholder="按姓名或完整学号搜索学生" style="width:100%">
+                <el-option v-for="student in recordStudentOptions" :key="student.studentId"
+                  :label="`${student.studentName}（${student.studentCode}）`" :value="student.studentId" />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -285,11 +296,12 @@
 </template>
 
 <script>
-import { listTalksession, getTalksession, delTalksession, addTalksession, updateTalksession, getBatchTags, exportGroupSummary, exportDocx, exportDocxForStudent, exportDocxBatch, TAG_LABELS } from "@/api/talk/talkSession"
+import { listTalksession, getTalksession, delTalksession, updateTalksession, getBatchTags, exportGroupSummary, exportDocx, exportDocxForStudent, exportDocxBatch, TAG_LABELS } from "@/api/talk/talkSession"
 import { listTalkrecord, getTalkrecord, delTalkrecord, addTalkrecord, updateTalkrecord } from "@/api/talk/talkStudentRecord"
-import { getTalk } from "@/api/talk/talkStudent"
+import { getTalk, listTalk } from "@/api/talk/talkStudent"
 import { getLabels } from "@/api/talk/talkTag"
 import { listAttachment } from "@/api/talk/talkAttachment"
+import { html2Text } from "@/utils"
 
 export default {
   name: "TalkManagement",
@@ -301,9 +313,10 @@ export default {
       multiple: true,
       multiple2: true,
       showSearch: true,
-      talkTypeFilter: '',
+      talkTypeFilter: 'all',
       total: 0,
       sessionList: [],
+      expandedSessionIds: [],
       tagMap: {},
       recordCounts: {},
       tagLabels: TAG_LABELS,
@@ -327,8 +340,12 @@ export default {
         talkPerson: [{ required: true, message: "谈话人不能为空", trigger: "blur" }],
       },
       recordForm: {},
+      recordStudentOptions: [],
+      recordStudentCollegeId: null,
+      recordStudentLoading: false,
+      recordStudentSearchSeq: 0,
       recordRules: {
-        studentId: [{ required: true, message: "学生ID不能为空", trigger: "blur" }],
+        studentId: [{ required: true, message: "请选择学生", trigger: "change" }],
         followupPlan: [{ required: true, message: "跟进计划不能为空", trigger: "blur" }],
         followupStatus: [{ required: true, message: "跟进状态不能为空", trigger: "change" }],
       },
@@ -342,6 +359,14 @@ export default {
     this.getList()
   },
   methods: {
+    formatTalkContent(row) {
+      return html2Text(row.talkContent || '')
+    },
+    canManageSession(session) {
+      const roles = this.$store.getters.roles || []
+      if (roles.some(role => ['admin', 'school_admin', 'college_admin'].includes(role))) return true
+      return roles.includes('talk_teacher') && !!session.createBy && session.createBy === this.$store.state.user.name
+    },
     loadTagLabels() {
       getLabels().then(res => {
         if (res.data && Object.keys(res.data).length > 0) {
@@ -351,9 +376,13 @@ export default {
     },
     getList() {
       this.loading = true
-      this.queryParams.talkType = this.talkTypeFilter || null
+      this.queryParams.talkType = this.talkTypeFilter === 'all' ? null : this.talkTypeFilter
       listTalksession(this.queryParams).then(response => {
         this.sessionList = response.rows
+        this.expandedSessionIds = (this.expandedSessionIds || []).filter(id =>
+          this.sessionList.some(row => row.sessionId === id))
+        this.sessionList.filter(row => this.expandedSessionIds.includes(row.sessionId))
+          .forEach(row => this.handleExpand(row, true))
         this.total = response.total
         this.loading = false
         this.loadTagsBatch()
@@ -392,11 +421,15 @@ export default {
       let parsed = value
       try { parsed = JSON.parse(value) } catch (e) { /* not JSON, use as-is */ }
       if (Array.isArray(parsed)) {
-        return parsed.map(v => this.tagLabels[v] || v).join('、')
+        return this.$talkTags(parsed, this.tagLabels)
       }
-      return this.tagLabels[parsed] || parsed
+      return this.$talkTags(parsed, this.tagLabels)
     },
     handleExpand(row, expanded) {
+      if (Array.isArray(expanded)) {
+        this.expandedSessionIds = expanded.map(item => item.sessionId)
+        expanded = this.expandedSessionIds.includes(row.sessionId)
+      }
       if (!expanded) return
       if (row._records !== undefined) return
       this.$set(row, '_loadingRecords', true)
@@ -408,6 +441,7 @@ export default {
       })
       listTalkrecord({ sessionId: row.sessionId, pageSize: 999 }).then(res => {
         const records = res.rows || []
+        this.$set(this.recordCounts, row.sessionId, res.total !== undefined ? res.total : records.length)
         if (records.length === 0) {
           this.$set(row, '_records', null)
           this.$set(row, '_loadingRecords', false)
@@ -469,12 +503,7 @@ export default {
     },
     downloadAttachment(att) {
       if (!att.filePath) return
-      const link = document.createElement('a')
-      link.href = att.filePath
-      link.download = att.fileName || 'download'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      this.$download.resource(att.filePath)
     },
     handleQuery() {
       this.queryParams.pageNum = 1
@@ -486,8 +515,8 @@ export default {
     },
     handleSelectionChange(selection) {
       this.ids = selection.map(item => item.sessionId)
-      this.single = selection.length !== 1
-      this.multiple = !selection.length
+      this.single = selection.length !== 1 || !this.canManageSession(selection[0])
+      this.multiple = !selection.length || selection.some(session => !this.canManageSession(session))
       this.multiple2 = selection.length < 1
     },
     // ========== 会话 CRUD ==========
@@ -507,9 +536,7 @@ export default {
       if (this.$refs.sessionForm) this.resetForm("sessionForm")
     },
     handleAddSession() {
-      this.resetSessionForm()
-      this.sessionDialogOpen = true
-      this.sessionDialogTitle = "添加谈话会话"
+      this.$router.push('/talk/initiate')
     },
     handleUpdateSession(row) {
       const sessionId = row.sessionId || (Array.isArray(this.ids) ? this.ids[0] : this.ids)
@@ -525,21 +552,17 @@ export default {
       }).catch(() => { this.$modal.msgError('获取会话详情失败') })
     },
     submitSessionForm() {
+      if (this.sessionForm.sessionId == null) {
+        this.$modal.msgWarning('请选择需要修改的会话')
+        return
+      }
       this.$refs.sessionForm.validate(valid => {
         if (valid) {
-          if (this.sessionForm.sessionId != null) {
-            updateTalksession(this.sessionForm).then(() => {
-              this.$modal.msgSuccess("修改成功")
-              this.sessionDialogOpen = false
-              this.getList()
-            }).catch(() => { this.$modal.msgError('修改失败') })
-          } else {
-            addTalksession(this.sessionForm).then(() => {
-              this.$modal.msgSuccess("新增成功")
-              this.sessionDialogOpen = false
-              this.getList()
-            }).catch(() => { this.$modal.msgError('新增失败') })
-          }
+          updateTalksession(this.sessionForm).then(() => {
+            this.$modal.msgSuccess("修改成功")
+            this.sessionDialogOpen = false
+            this.getList()
+          }).catch(() => { this.$modal.msgError('修改失败') })
         }
       })
     },
@@ -554,10 +577,13 @@ export default {
       }).then(() => {
         this.getList()
         this.$modal.msgSuccess("删除成功")
-      }).catch(() => { this.$modal.msgError('删除失败') })
+      }).catch(error => { if (error !== 'cancel' && error !== 'close') this.$modal.msgError('删除失败') })
     },
     // ========== 记录 CRUD ==========
     resetRecordForm() {
+      this.recordStudentSearchSeq++
+      this.recordStudentOptions = []
+      this.recordStudentLoading = false
       this.recordForm = {
         recordId: null,
         sessionId: this.currentSessionIdForRecord,
@@ -569,11 +595,34 @@ export default {
       }
       if (this.$refs.recordForm) this.resetForm("recordForm")
     },
+    async searchRecordStudents(query) {
+      const search = (query || '').trim()
+      const sequence = ++this.recordStudentSearchSeq
+      this.recordStudentLoading = true
+      try {
+        const params = { collegeDeptId: this.recordStudentCollegeId }
+        const queries = [{ pageNum: 1, pageSize: 20, studentName: search, params }]
+        if (search) queries.push({ pageNum: 1, pageSize: 20, studentCode: search, params })
+        const responses = await Promise.all(queries.map(params => listTalk(params)))
+        if (sequence !== this.recordStudentSearchSeq) return
+        const students = new Map()
+        responses.forEach(response => (response.rows || []).forEach(student => students.set(student.studentId, student)))
+        const selected = this.recordStudentOptions.find(student => student.studentId === this.recordForm.studentId)
+        if (selected) students.set(selected.studentId, selected)
+        this.recordStudentOptions = Array.from(students.values())
+      } catch (error) {
+        if (sequence === this.recordStudentSearchSeq) this.$modal.msgError('加载学生列表失败')
+      } finally {
+        if (sequence === this.recordStudentSearchSeq) this.recordStudentLoading = false
+      }
+    },
     handleAddRecord(sessionRow) {
       this.currentSessionIdForRecord = sessionRow.sessionId
+      this.recordStudentCollegeId = sessionRow.collegeDeptId
       this.resetRecordForm()
       this.recordDialogOpen = true
       this.recordDialogTitle = "添加谈话记录"
+      this.searchRecordStudents('')
     },
     handleUpdateRecord(row) {
       this.resetRecordForm()
@@ -582,6 +631,11 @@ export default {
         this.currentSessionIdForRecord = this.recordForm.sessionId
         this.recordDialogOpen = true
         this.recordDialogTitle = "修改谈话记录"
+        getTalk(this.recordForm.studentId).then(student => {
+          if (this.recordDialogOpen && this.recordForm.studentId === (student.data || student).studentId) {
+            this.recordStudentOptions = [student.data || student]
+          }
+        }).catch(() => { this.$modal.msgError('加载学生信息失败') })
       }).catch(() => { this.$modal.msgError('获取记录详情失败') })
     },
     submitRecordForm() {
@@ -609,11 +663,10 @@ export default {
         return delTalkrecord(row.recordId)
       }).then(() => {
         this.$modal.msgSuccess("删除成功")
-        this.refreshExpandedRecords()
-      }).catch(() => { this.$modal.msgError('删除失败') })
+        this.refreshExpandedRecords(row.sessionId)
+      }).catch(error => { if (error !== 'cancel' && error !== 'close') this.$modal.msgError('删除失败') })
     },
-    refreshExpandedRecords() {
-      const sessionId = this.currentSessionIdForRecord
+    refreshExpandedRecords(sessionId = this.currentSessionIdForRecord) {
       this.sessionList.forEach(s => {
         if (s.sessionId === sessionId) {
           this.$delete(s, '_records')
@@ -636,7 +689,7 @@ export default {
         const a = document.createElement('a'); a.href = url; a.download = '谈话记录批量导出.zip'; a.click()
         window.URL.revokeObjectURL(url)
         this.$modal.msgSuccess('导出成功')
-      }).catch(() => { this.$modal.msgError('导出失败') })
+      }).catch(error => { if (error !== 'cancel' && error !== 'close') this.$modal.msgError('导出失败') })
     },
     handleExportDocx(row) {
       const isGroup = row.talkType === 'group'
@@ -650,7 +703,7 @@ export default {
         a.click()
         window.URL.revokeObjectURL(url)
         this.$modal.msgSuccess('导出成功')
-      }).catch(() => { this.$modal.msgError('导出失败') })
+      }).catch(error => { if (error !== 'cancel' && error !== 'close') this.$modal.msgError('导出失败') })
     },
     handleExportStudentRecord(row) {
       const name = row.studentName || row.studentCode || row.studentId
@@ -663,7 +716,7 @@ export default {
         a.click()
         window.URL.revokeObjectURL(url)
         this.$modal.msgSuccess('导出成功')
-      }).catch(() => { this.$modal.msgError('导出失败') })
+      }).catch(error => { if (error !== 'cancel' && error !== 'close') this.$modal.msgError('导出失败') })
     },
     handleExportGroupSummary(row) {
       if (row.talkType !== 'group') { this.$modal.msgWarning('仅支持集体谈话的汇总导出'); return }
@@ -676,7 +729,7 @@ export default {
         a.click()
         window.URL.revokeObjectURL(url)
         this.$modal.msgSuccess('导出成功')
-      }).catch(() => { this.$modal.msgError('导出失败') })
+      }).catch(error => { if (error !== 'cancel' && error !== 'close') this.$modal.msgError('导出失败') })
     }
   }
 }

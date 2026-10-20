@@ -18,6 +18,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.multipart.MultipartFile;
 import com.alibaba.fastjson2.JSON;
 import com.ruoyi.common.annotation.Log;
+import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.domain.model.LoginUser;
 import com.ruoyi.common.core.text.Convert;
@@ -94,7 +95,7 @@ public class LogAspect
 
             // *========数据库日志=========*//
             SysOperLog operLog = new SysOperLog();
-            operLog.setStatus(BusinessStatus.SUCCESS.ordinal());
+            setOperationResult(operLog, e, jsonResult);
             // 请求的地址
             String ip = IpUtils.getIpAddr();
             operLog.setOperIp(ip);
@@ -109,11 +110,6 @@ public class LogAspect
                 }
             }
 
-            if (e != null)
-            {
-                operLog.setStatus(BusinessStatus.FAIL.ordinal());
-                operLog.setErrorMsg(StringUtils.substring(Convert.toStr(e.getMessage(), ExceptionUtil.getExceptionMessage(e)), 0, 2000));
-            }
             // 设置方法名称
             String className = joinPoint.getTarget().getClass().getName();
             String methodName = joinPoint.getSignature().getName();
@@ -136,6 +132,21 @@ public class LogAspect
         finally
         {
             TIME_THREADLOCAL.remove();
+        }
+    }
+
+    void setOperationResult(SysOperLog operLog, Exception error, Object response)
+    {
+        operLog.setStatus(BusinessStatus.SUCCESS.ordinal());
+        if (error != null)
+        {
+            operLog.setStatus(BusinessStatus.FAIL.ordinal());
+            operLog.setErrorMsg(StringUtils.substring(Convert.toStr(error.getMessage(), ExceptionUtil.getExceptionMessage(error)), 0, PARAM_MAX_LENGTH));
+        }
+        else if (response instanceof AjaxResult result && result.get(AjaxResult.CODE_TAG) != null && !result.isSuccess())
+        {
+            operLog.setStatus(BusinessStatus.FAIL.ordinal());
+            operLog.setErrorMsg(StringUtils.substring(Convert.toStr(result.get(AjaxResult.MSG_TAG), "操作失败"), 0, PARAM_MAX_LENGTH));
         }
     }
 

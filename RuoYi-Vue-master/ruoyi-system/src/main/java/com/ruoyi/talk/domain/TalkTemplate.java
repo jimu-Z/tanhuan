@@ -10,6 +10,9 @@ public class TalkTemplate extends BaseEntity
 
     private Long templateId;
 
+    /** 学院自定义模板的所属学院；系统模板为空 */
+    private Long collegeDeptId;
+
     private String templateName;
 
     private String templateContent;
@@ -28,6 +31,16 @@ public class TalkTemplate extends BaseEntity
     public void setTemplateId(Long templateId)
     {
         this.templateId = templateId;
+    }
+
+    public Long getCollegeDeptId()
+    {
+        return collegeDeptId;
+    }
+
+    public void setCollegeDeptId(Long collegeDeptId)
+    {
+        this.collegeDeptId = collegeDeptId;
     }
 
     public String getTemplateName()
@@ -84,6 +97,7 @@ public class TalkTemplate extends BaseEntity
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
             .append("templateId", getTemplateId())
+            .append("collegeDeptId", getCollegeDeptId())
             .append("templateName", getTemplateName())
             .append("templateContent", getTemplateContent())
             .append("templateType", getTemplateType())

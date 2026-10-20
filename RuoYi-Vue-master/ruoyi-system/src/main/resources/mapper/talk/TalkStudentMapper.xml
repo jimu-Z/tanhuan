@@ -46,14 +46,27 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         left join sys_dept d on s.dept_id = d.dept_id
     </sql>
 
+    <!-- 选择日期时仅列出该期间未谈的学生；结束日期包含全天。 -->
+    <sql id="studentUntalkedPeriodFilter">
+        <if test="params.beginTime != null and params.beginTime != '' and params.endTime != null and params.endTime != ''">
+            and not exists (
+                select 1 from talk_student_record period_record
+                join talk_session period_session on period_record.session_id = period_session.session_id
+                where period_record.student_id = s.student_id
+                  and period_session.talk_time &gt;= #{params.beginTime}
+                  and period_session.talk_time &lt; date_add(#{params.endTime}, interval 1 day)
+            )
+        </if>
+    </sql>
+
     <select id="selectTalkStudentList" parameterType="TalkStudent" resultMap="TalkStudentResult">
         <include refid="selectTalkStudentVo"/>
         <where>  
             <if test="studentCode != null  and studentCode != ''"> and s.student_code = #{studentCode}</if>
             <if test="studentName != null  and studentName != ''"> and s.student_name like concat('%', #{studentName}, '%')</if>
-            <if test="deptId != null "> and s.dept_id = #{deptId}</if>
-            <if test="gender != null  and gender != ''"> and s.gender = #{gender}</if>
-            <if test="politicalStatus != null  and politicalStatus != ''"> and s.political_status = #{politicalStatus}</if>
+            <if test="deptId != null "> and (s.dept_id = #{deptId} or s.dept_id in (select dept_id from sys_dept where find_in_set(#{deptId}, ancestors)))</if>
+            <if test="gender != null  and gender != ''"> and (s.gender = #{gender}<if test="params.genderLabel != null"> or s.gender = #{params.genderLabel}</if>)</if>
+            <if test="politicalStatus != null  and politicalStatus != ''"> and (s.political_status = #{politicalStatus}<if test="params.politicalStatusLabel != null"> or s.political_status = #{params.politicalStatusLabel}</if>)</if>
             <if test="nation != null  and nation != ''"> and s.nation = #{nation}</if>
             <if test="phone != null  and phone != ''"> and s.phone = #{phone}</if>
             <if test="idCard != null  and idCard != ''"> and s.id_card = #{idCard}</if>
@@ -66,11 +79,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="dormLeader != null  and dormLeader != ''"> and s.dorm_leader = #{dormLeader}</if>
             <if test="dormBuilding != null  and dormBuilding != ''"> and s.dorm_building = #{dormBuilding}</if>
             <if test="dormRoom != null  and dormRoom != ''"> and s.dorm_room = #{dormRoom}</if>
-            <if test="enrollmentStatus != null  and enrollmentStatus != ''"> and s.enrollment_status = #{enrollmentStatus}</if>
-            <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and s.mental_health_status = #{mentalHealthStatus}</if>
-            <if test="povertyLevel != null  and povertyLevel != ''"> and s.poverty_level = #{povertyLevel}</if>
-            <if test="params.counselorCode != null"> and d.dept_name in (select class_name from talk_teacher_class where teacher_code = #{params.counselorCode})</if>
-            <if test="params.secretaryDeptId != null"> and (s.dept_id = #{params.secretaryDeptId} or s.dept_id in (select dept_id from sys_dept where find_in_set(#{params.secretaryDeptId}, ancestors)))</if>
+            <if test="enrollmentStatus != null  and enrollmentStatus != ''"> and (s.enrollment_status = #{enrollmentStatus}<if test="params.enrollmentStatusLabel != null"> or s.enrollment_status = #{params.enrollmentStatusLabel}</if>)</if>
+            <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and (s.mental_health_status = #{mentalHealthStatus}<if test="params.mentalHealthStatusLabel != null"> or s.mental_health_status = #{params.mentalHealthStatusLabel}</if>)</if>
+            <if test="povertyLevel != null  and povertyLevel != ''"> and (s.poverty_level = #{povertyLevel}<if test="params.povertyLevelLabel != null"> or s.poverty_level = #{params.povertyLevelLabel}</if>)</if>
+            <include refid="studentUntalkedPeriodFilter"/>
+            <if test="params.collegeDeptId != null"> and (s.dept_id = #{params.collegeDeptId} or s.dept_id in (select dept_id from sys_dept where find_in_set(#{params.collegeDeptId}, ancestors)))</if>
         </where>
     </select>
     
@@ -188,14 +201,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <select id="countStudentsByDeptId" parameterType="Long" resultType="int">
-        select count(*) from talk_student where dept_id = #{deptId}
+        select count(*) from talk_student
+        where dept_id = #{deptId}
+           or dept_id in (select dept_id from sys_dept where find_in_set(#{deptId}, ancestors))
     </select>
 
     <select id="countTalkStudentsFiltered" parameterType="map" resultType="int">
         select count(*) from talk_student s
         <where>
-            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
-            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+            <if test="collegeDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{collegeDeptId} or find_in_set(#{collegeDeptId}, d.ancestors)))</if>
         </where>
     </select>
 
@@ -212,15 +226,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 and s.dept_id in (select d2.dept_id from sys_dept d2 where d2.dept_id = #{deptId}
                     or find_in_set(#{deptId}, d2.ancestors))
             </if>
-            <if test="beginDate != null and endDate != null">
-                and s.student_id not in (
-                    select tsr.student_id from talk_student_record tsr
-                    join talk_session ts on tsr.session_id = ts.session_id
-                    where ts.talk_time between #{beginDate} and #{endDate}
-                )
+            <choose>
+                <when test="beginDate != null and endDate != null">
+                    and not exists (
+                        select 1 from talk_student_record tsr
+                        join talk_session ts on tsr.session_id = ts.session_id
+                        where tsr.student_id = s.student_id
+                          and ts.talk_time &gt;= #{beginDate}
+                          and ts.talk_time &lt; date_add(#{endDate}, interval 1 day)
+                    )
+                </when>
+                <otherwise>
+                    and not exists (
+                        select 1 from talk_student_record tsr
+                        where tsr.student_id = s.student_id
+                    )
+                </otherwise>
+            </choose>
+            <if test="keyword != null and keyword != ''">
+                and (s.student_code like concat('%', #{keyword}, '%')
+                    or s.student_name like concat('%', #{keyword}, '%'))
             </if>
-            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
-            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+            <if test="collegeDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{collegeDeptId} or find_in_set(#{collegeDeptId}, d.ancestors)))</if>
         </where>
         order by s.student_code asc
     </select>
@@ -252,9 +279,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>
             <if test="studentCode != null  and studentCode != ''"> and s.student_code = #{studentCode}</if>
             <if test="studentName != null  and studentName != ''"> and s.student_name like concat('%', #{studentName}, '%')</if>
-            <if test="deptId != null "> and s.dept_id = #{deptId}</if>
-            <if test="gender != null  and gender != ''"> and s.gender = #{gender}</if>
-            <if test="politicalStatus != null  and politicalStatus != ''"> and s.political_status = #{politicalStatus}</if>
+            <if test="deptId != null "> and (s.dept_id = #{deptId} or s.dept_id in (select dept_id from sys_dept where find_in_set(#{deptId}, ancestors)))</if>
+            <if test="gender != null  and gender != ''"> and (s.gender = #{gender}<if test="params.genderLabel != null"> or s.gender = #{params.genderLabel}</if>)</if>
+            <if test="politicalStatus != null  and politicalStatus != ''"> and (s.political_status = #{politicalStatus}<if test="params.politicalStatusLabel != null"> or s.political_status = #{params.politicalStatusLabel}</if>)</if>
             <if test="nation != null  and nation != ''"> and s.nation = #{nation}</if>
             <if test="phone != null  and phone != ''"> and s.phone = #{phone}</if>
             <if test="idCard != null  and idCard != ''"> and s.id_card = #{idCard}</if>
@@ -267,11 +294,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="dormLeader != null  and dormLeader != ''"> and s.dorm_leader = #{dormLeader}</if>
             <if test="dormBuilding != null  and dormBuilding != ''"> and s.dorm_building = #{dormBuilding}</if>
             <if test="dormRoom != null  and dormRoom != ''"> and s.dorm_room = #{dormRoom}</if>
-            <if test="enrollmentStatus != null  and enrollmentStatus != ''"> and s.enrollment_status = #{enrollmentStatus}</if>
-            <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and s.mental_health_status = #{mentalHealthStatus}</if>
-            <if test="povertyLevel != null  and povertyLevel != ''"> and s.poverty_level = #{povertyLevel}</if>
-            <if test="params.counselorCode != null"> and d.dept_name in (select class_name from talk_teacher_class where teacher_code = #{params.counselorCode})</if>
-            <if test="params.secretaryDeptId != null"> and (s.dept_id = #{params.secretaryDeptId} or s.dept_id in (select dept_id from sys_dept where find_in_set(#{params.secretaryDeptId}, ancestors)))</if>
+            <if test="enrollmentStatus != null  and enrollmentStatus != ''"> and (s.enrollment_status = #{enrollmentStatus}<if test="params.enrollmentStatusLabel != null"> or s.enrollment_status = #{params.enrollmentStatusLabel}</if>)</if>
+            <if test="mentalHealthStatus != null  and mentalHealthStatus != ''"> and (s.mental_health_status = #{mentalHealthStatus}<if test="params.mentalHealthStatusLabel != null"> or s.mental_health_status = #{params.mentalHealthStatusLabel}</if>)</if>
+            <if test="povertyLevel != null  and povertyLevel != ''"> and (s.poverty_level = #{povertyLevel}<if test="params.povertyLevelLabel != null"> or s.poverty_level = #{params.povertyLevelLabel}</if>)</if>
+            <include refid="studentUntalkedPeriodFilter"/>
+            <if test="params.collegeDeptId != null"> and (s.dept_id = #{params.collegeDeptId} or s.dept_id in (select dept_id from sys_dept where find_in_set(#{params.collegeDeptId}, ancestors)))</if>
         </where>
     </select>
 
@@ -299,8 +326,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 and s.dept_id in (select d2.dept_id from sys_dept d2 where d2.dept_id = #{deptId}
                     or find_in_set(#{deptId}, d2.ancestors))
             </if>
-            <if test="params != null and params.counselorUsername != null and params.counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{params.counselorUsername})</if>
-            <if test="params != null and params.secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{params.secretaryDeptId} or find_in_set(#{params.secretaryDeptId}, d.ancestors)))</if>
+            <if test="params != null and params.collegeDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{params.collegeDeptId} or find_in_set(#{params.collegeDeptId}, d.ancestors)))</if>
         </where>
         order by s.student_code asc
     </select>
@@ -325,8 +351,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         from talk_student s
         <where>
             s.mental_health_status is not null and s.mental_health_status != '' and s.mental_health_status != 'normal' and s.mental_health_status != '正常' and s.mental_health_status != '健康'
-            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
-            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+            <if test="collegeDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{collegeDeptId} or find_in_set(#{collegeDeptId}, d.ancestors)))</if>
         </where>
         group by s.mental_health_status
     </select>
@@ -336,8 +361,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         from talk_student s
         <where>
             s.poverty_level is not null and s.poverty_level != '' and s.poverty_level != 'none' and s.poverty_level != '无贫困' and s.poverty_level != '无'
-            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
-            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+            <if test="collegeDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{collegeDeptId} or find_in_set(#{collegeDeptId}, d.ancestors)))</if>
         </where>
         group by s.poverty_level
     </select>
@@ -347,8 +371,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         from talk_student s
         <where>
             s.enrollment_status is not null and s.enrollment_status != '' and s.enrollment_status != 'active' and s.enrollment_status != '在读' and s.enrollment_status != '在校' and s.enrollment_status != '毕业'
-            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr.student_id from talk_student_record tsr join talk_session ts on tsr.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
-            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+            <if test="collegeDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{collegeDeptId} or find_in_set(#{collegeDeptId}, d.ancestors)))</if>
         </where>
         group by s.enrollment_status
     </select>
@@ -357,8 +380,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select count(*) from talk_student s
         <where>
             not exists (select 1 from talk_student_record tsr where tsr.student_id = s.student_id)
-            <if test="counselorUsername != null and counselorUsername != ''"> and s.student_id in (select tsr2.student_id from talk_student_record tsr2 join talk_session ts on tsr2.session_id = ts.session_id where ts.create_by = #{counselorUsername})</if>
-            <if test="secretaryDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+            <if test="collegeDeptId != null"> and s.dept_id in (select dept_id from sys_dept d where (d.dept_id = #{collegeDeptId} or find_in_set(#{collegeDeptId}, d.ancestors)))</if>
         </where>
     </select>
 

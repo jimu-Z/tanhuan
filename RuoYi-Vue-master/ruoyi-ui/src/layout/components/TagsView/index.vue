@@ -58,8 +58,8 @@
       <li @click="refreshSelectedTag(selectedTag)"><i class="el-icon-refresh-right"></i> 刷新页面</li>
       <li v-if="!isAffix(selectedTag)" @click="closeSelectedTag(selectedTag)"><i class="el-icon-close"></i> 关闭当前</li>
       <li @click="closeOthersTags"><i class="el-icon-circle-close"></i> 关闭其他</li>
-      <li v-if="!isFirstView()" @click="closeLeftTags"><i class="el-icon-back"></i> 关闭左侧</li>
-      <li v-if="!isLastView()" @click="closeRightTags"><i class="el-icon-right"></i> 关闭右侧</li>
+      <li v-if="!isFirstView(selectedTag)" @click="closeLeftTags"><i class="el-icon-back"></i> 关闭左侧</li>
+      <li v-if="!isLastView(selectedTag)" @click="closeRightTags"><i class="el-icon-right"></i> 关闭右侧</li>
       <li @click="closeAllTags(selectedTag)"><i class="el-icon-circle-close"></i> 全部关闭</li>
     </ul>
   </div>
@@ -149,17 +149,15 @@ export default {
     isAffix(tag) {
       return tag && tag.meta && tag.meta.affix
     },
-    isFirstView() {
+    isFirstView(tag = this.selectedDropdownTag) {
       try {
-        const tag = this.selectedTag && this.selectedTag.fullPath ? this.selectedTag : this.selectedDropdownTag
         return tag.fullPath === '/index' || tag.fullPath === this.visitedViews[1].fullPath
       } catch (err) {
         return false
       }
     },
-    isLastView() {
+    isLastView(tag = this.selectedDropdownTag) {
       try {
-        const tag = this.selectedTag && this.selectedTag.fullPath ? this.selectedTag : this.selectedDropdownTag
         return tag.fullPath === this.visitedViews[this.visitedViews.length - 1].fullPath
       } catch (err) {
         return false

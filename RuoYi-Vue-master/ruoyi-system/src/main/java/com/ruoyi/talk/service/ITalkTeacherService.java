@@ -17,7 +17,7 @@ public interface ITalkTeacherService {
 
     /**
      * 新增教师，同时自动创建 sys_user（账号=工号，密码=123456）
-     * 并分配角色（辅导员/班主任→talk_counselor，副书记/书记→talk_secretary）
+     * 并统一分配 talk_teacher 角色；岗位仅用于资料展示
      * 如果学院不存在则自动创建
      */
     int insertTalkTeacher(TalkTeacher teacher);
@@ -25,6 +25,9 @@ public interface ITalkTeacherService {
     int updateTalkTeacher(TalkTeacher teacher);
 
     int deleteTalkTeacherByIds(Long[] teacherIds);
+
+    /** 提升为院管理员或降级为老师。 */
+    int changeCollegeAdminRole(Long teacherId, boolean promote);
 
     /**
      * 校验工号唯一性

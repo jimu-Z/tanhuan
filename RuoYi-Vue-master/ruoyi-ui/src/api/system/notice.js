@@ -17,6 +17,14 @@ export function getNotice(noticeId) {
   })
 }
 
+// 当前登录用户查看已发布公告
+export function getPublishedNotice(noticeId) {
+  return request({
+    url: '/system/notice/published/' + noticeId,
+    method: 'get'
+  })
+}
+
 // 新增公告
 export function addNotice(data) {
   return request({

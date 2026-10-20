@@ -269,9 +269,7 @@ export default {
     },
     /** 导出按钮操作 */
     handleExport() {
-      this.download('monitor/operlog/export', {
-        ...this.queryParams
-      }, `operlog_${new Date().getTime()}.xlsx`)
+      this.download('monitor/operlog/export', this.addDateRange(this.queryParams, this.dateRange), `operlog_${new Date().getTime()}.xlsx`)
     }
   }
 }

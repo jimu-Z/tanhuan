@@ -38,7 +38,7 @@
 </template>
 
 <script>
-import { listNoticeTop, markNoticeRead, markNoticeReadAll, getNotice } from '@/api/system/notice'
+import { listNoticeTop, markNoticeRead, markNoticeReadAll, getPublishedNotice } from '@/api/system/notice'
 
 export default {
   name: 'HeaderNotice',
@@ -92,14 +92,7 @@ export default {
     },
     // 预览公告详情
     previewNotice(item) {
-      if (!item.isRead) {
-        markNoticeRead(item.noticeId).catch(() => {})
-        item.isRead = true
-        const idx = this.noticeList.indexOf(item)
-        if (idx !== -1) this.$set(this.noticeList, idx, { ...item, isRead: true })
-        this.unreadCount = Math.max(0, this.unreadCount - 1)
-      }
-      getNotice(item.noticeId).then(res => {
+      return getPublishedNotice(item.noticeId).then(res => {
         const notice = res.data
         this.previewTitle = notice.noticeTitle
         this.previewContent = notice.noticeContent
@@ -107,7 +100,16 @@ export default {
         this.previewCreateBy = notice.createBy
         this.previewCreateTime = notice.createTime
         this.previewVisible = true
-      })
+        if (!item.isRead) {
+          return markNoticeRead(item.noticeId).then(() => {
+            if (item.isRead) return
+            item.isRead = true
+            const idx = this.noticeList.indexOf(item)
+            if (idx !== -1) this.$set(this.noticeList, idx, { ...item, isRead: true })
+            this.unreadCount = Math.max(0, this.unreadCount - 1)
+          })
+        }
+      }).catch(() => {})
     },
     // 全部已读
     markAllRead() {

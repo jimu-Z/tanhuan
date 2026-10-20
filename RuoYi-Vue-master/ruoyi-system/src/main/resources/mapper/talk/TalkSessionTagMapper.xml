@@ -45,8 +45,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         from talk_session_tag tst
         join talk_session ts on tst.session_id = ts.session_id
         <where>
-            <if test="counselorUsername != null and counselorUsername != ''"> and ts.create_by = #{counselorUsername}</if>
-            <if test="secretaryDeptId != null"> and ts.session_id in (select tsr.session_id from talk_student_record tsr join talk_student stu on tsr.student_id = stu.student_id join sys_dept d on stu.dept_id = d.dept_id where (d.dept_id = #{secretaryDeptId} or find_in_set(#{secretaryDeptId}, d.ancestors)))</if>
+            <if test="collegeDeptId != null"> and ts.college_dept_id = #{collegeDeptId}</if>
         </where>
         group by tst.tag_value
     </select>

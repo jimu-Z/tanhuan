@@ -61,6 +61,20 @@ public class SysNoticeController extends BaseController
     }
 
     /**
+     * 已登录用户查看正常发布的公告，独立于管理端查询权限。
+     */
+    @GetMapping("/published/{noticeId}")
+    public AjaxResult getPublishedInfo(@PathVariable Long noticeId)
+    {
+        SysNotice notice = noticeService.selectNoticeById(noticeId);
+        if (notice == null || !"0".equals(notice.getStatus()))
+        {
+            return error("公告不存在或已停用");
+        }
+        return success(notice);
+    }
+
+    /**
      * 新增通知公告
      */
     @PreAuthorize("@ss.hasPermi('system:notice:add')")

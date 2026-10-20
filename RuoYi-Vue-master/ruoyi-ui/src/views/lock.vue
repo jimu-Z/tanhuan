@@ -182,7 +182,7 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 2000;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
   overflow: hidden;
 }

@@ -125,7 +125,7 @@ export default {
         'completed': '已完成',
         'cancelled': '已取消'
       }
-      return map[status] || status || '未知'
+      return map[status] || (status ? '未知状态' : '未设置')
     },
     handleCancel(item) {
       const id = item.appointmentId

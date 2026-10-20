@@ -6,6 +6,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <resultMap type="TalkTemplate" id="TalkTemplateResult">
         <result property="templateId"      column="template_id"      />
+        <result property="collegeDeptId" column="college_dept_id" />
         <result property="templateName"    column="template_name"    />
         <result property="templateContent" column="template_content" />
         <result property="templateType"    column="template_type"    />
@@ -18,7 +19,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectTalkTemplateVo">
-        select template_id, template_name, template_content, template_type, template_tags,
+        select template_id, college_dept_id, template_name, template_content, template_type, template_tags,
                create_by, create_time, update_by, update_time, del_flag
         from talk_template
     </sql>
@@ -28,6 +29,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>
             <if test="templateName != null  and templateName != ''"> and template_name like concat('%', #{templateName}, '%')</if>
             <if test="templateType != null  and templateType != ''"> and template_type = #{templateType}</if>
+            <if test="params.collegeDeptId != null"> and (template_type = 'system' or college_dept_id = #{params.collegeDeptId})</if>
             and del_flag = '0'
         </where>
     </select>
@@ -45,6 +47,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <insert id="insertTalkTemplate" parameterType="TalkTemplate" useGeneratedKeys="true" keyProperty="templateId">
         insert into talk_template
         <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="collegeDeptId != null">college_dept_id,</if>
             <if test="templateName != null and templateName != ''">template_name,</if>
             <if test="templateContent != null">template_content,</if>
             <if test="templateType != null and templateType != ''">template_type,</if>
@@ -56,6 +59,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="delFlag != null">del_flag,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="collegeDeptId != null">#{collegeDeptId},</if>
             <if test="templateName != null and templateName != ''">#{templateName},</if>
             <if test="templateContent != null">#{templateContent},</if>
             <if test="templateType != null and templateType != ''">#{templateType},</if>

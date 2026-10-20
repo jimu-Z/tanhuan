@@ -2,16 +2,23 @@ package com.ruoyi.talk.service.impl;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Collection;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.ruoyi.common.annotation.DataScope;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.common.core.domain.model.LoginUser;
+import com.ruoyi.common.core.redis.RedisCache;
+import com.ruoyi.common.constant.CacheConstants;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.SysUserRole;
@@ -21,6 +28,7 @@ import com.ruoyi.system.mapper.SysUserMapper;
 import com.ruoyi.system.mapper.SysUserRoleMapper;
 import com.ruoyi.talk.domain.TalkTeacher;
 import com.ruoyi.talk.mapper.TalkTeacherMapper;
+import com.ruoyi.talk.security.TalkPermissionUtils;
 import com.ruoyi.talk.service.ITalkTeacherService;
 
 /**
@@ -34,8 +42,7 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
     private static final Logger log = LoggerFactory.getLogger(TalkTeacherServiceImpl.class);
 
     private static final String DEFAULT_PASSWORD = "123456";
-    private static final String ROLE_COUNSELOR = "talk_counselor";
-    private static final String ROLE_SECRETARY = "talk_secretary";
+    private static final String ROLE_TEACHER = "talk_teacher";
 
     @Autowired
     private TalkTeacherMapper teacherMapper;
@@ -52,25 +59,47 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
     @Autowired
     private SysDeptMapper deptMapper;
 
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private RedisCache redisCache;
+
     @Override
     public TalkTeacher selectTalkTeacherById(Long teacherId) {
-        return teacherMapper.selectTalkTeacherById(teacherId);
+        TalkTeacher teacher = teacherMapper.selectTalkTeacherById(teacherId);
+        requireTeacherAccess(teacher);
+        return teacher;
     }
 
     @Override
-    @DataScope(deptAlias = "d")
     public List<TalkTeacher> selectTalkTeacherList(TalkTeacher teacher) {
+        if (!TalkPermissionUtils.isGlobalAdmin()) {
+            teacher.setDeptId(TalkPermissionUtils.currentCollegeId());
+        }
         return teacherMapper.selectTalkTeacherList(teacher);
     }
 
     @Override
     @Transactional
     public int insertTalkTeacher(TalkTeacher teacher) {
+        TalkPermissionUtils.requireCollegeManager();
+        validateTeacherFields(teacher, true);
+        validateStatus(teacher.getStatus());
+        requireCollegeDept(teacher.getDeptId());
+        TalkPermissionUtils.requireCollegeAccess(teacher.getDeptId());
+        validateTeacherAccountRole(teacher);
+        // 规范化岗位值（如"学院党委书记" → "书记"）
+        teacher.setPosition(normalizePosition(teacher.getPosition()));
+
         // 兼任自动判定：同学院同名但不同岗位 → 加工号前缀
         teacher.setTeacherCode(resolveTeacherCode(teacher));
+        validateTeacherAccountRole(teacher);
 
         teacher.setCreateTime(new Date());
-        teacher.setStatus("0");
+        if (teacher.getStatus() == null) {
+            teacher.setStatus("0");
+        }
         int rows = teacherMapper.insertTalkTeacher(teacher);
 
         // 自动创建 sys_user
@@ -80,33 +109,107 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
     }
 
     @Override
+    @Transactional
     public int updateTalkTeacher(TalkTeacher teacher) {
+        TalkPermissionUtils.requireCollegeManager();
+        validateTeacherFields(teacher, false);
+        validateStatus(teacher.getStatus());
+        TalkTeacher existing = teacherMapper.selectTalkTeacherById(teacher.getTeacherId());
+        requireTeacherAccess(existing);
+        Long targetDeptId = teacher.getDeptId() != null ? teacher.getDeptId() : existing.getDeptId();
+        requireCollegeDept(targetDeptId);
+        TalkPermissionUtils.requireCollegeAccess(targetDeptId);
+        teacher.setTeacherCode(existing.getTeacherCode());
+        SysUser account = existing.getUserId() != null ? userMapper.selectUserById(existing.getUserId())
+                : userMapper.selectUserByUserName(existing.getTeacherCode());
+        validateTeacherAccountRole(teacher, account);
+        if (account == null && StringUtils.isNotEmpty(teacher.getRoleKey())) {
+            throw new ServiceException("教师关联账号不存在，无法分配角色");
+        }
+        teacher.setPosition(normalizePosition(teacher.getPosition()));
         teacher.setUpdateBy(SecurityUtils.getUsername());
         teacher.setUpdateTime(new Date());
-        return teacherMapper.updateTalkTeacher(teacher);
+        int rows = teacherMapper.updateTalkTeacher(teacher);
+        syncTeacherUser(existing, teacher, targetDeptId);
+        return rows;
     }
 
     @Override
     @Transactional
     public int deleteTalkTeacherByIds(Long[] teacherIds) {
-        int count = 0;
+        TalkPermissionUtils.requireCollegeManager();
+        java.util.Map<Long, Long> accounts = new java.util.LinkedHashMap<>();
+        // Validate the entire batch before deleting any teacher or login account.
         for (Long id : teacherIds) {
-            TalkTeacher t = teacherMapper.selectTalkTeacherById(id);
-            if (t != null) {
-                Long userId = t.getUserId();
-                if (userId != null) {
-                    userMapper.deleteUserPhysically(userId);
-                } else {
-                    // fallback: 通过 teacherCode 查找并物理删除 sys_user
-                    SysUser user = userMapper.selectUserByUserName(t.getTeacherCode());
-                    if (user != null) {
-                        userMapper.deleteUserPhysically(user.getUserId());
+            TalkTeacher teacher = teacherMapper.selectTalkTeacherById(id);
+            if (teacher == null) {
+                continue;
+            }
+            requireTeacherAccess(teacher);
+            Long userId = teacher.getUserId();
+            SysUser account = userId == null ? userMapper.selectUserByUserName(teacher.getTeacherCode())
+                    : userMapper.selectUserById(userId);
+            if (account != null) {
+                userId = account.getUserId();
+            }
+            if (userId != null) {
+                if (Long.valueOf(1L).equals(userId) || hasRole(userId, "admin")) {
+                    throw new ServiceException("不能通过教师管理删除内置管理员账号");
+                }
+                if (!TalkPermissionUtils.isGlobalAdmin()) {
+                    if (account != null) {
+                        TalkPermissionUtils.requireCollegeAccess(account.getDeptId());
+                    }
+                    if (hasRole(userId, TalkPermissionUtils.ROLE_SCHOOL_ADMIN)) {
+                        throw new ServiceException("院管理员不能删除校管理员账号");
+                    }
+                    if (hasRole(userId, TalkPermissionUtils.ROLE_COLLEGE_ADMIN)) {
+                        throw new ServiceException("院管理员账号不能从教师管理中删除，请先按院管理员安全规则降级");
                     }
                 }
             }
-            count += teacherMapper.deleteTalkTeacherById(id);
+            accounts.put(id, userId);
+        }
+        int count = 0;
+        for (java.util.Map.Entry<Long, Long> item : accounts.entrySet()) {
+            if (item.getValue() != null) {
+                userRoleMapper.deleteUserRoleByUserId(item.getValue());
+                userMapper.deleteUserPhysically(item.getValue());
+            }
+            count += teacherMapper.deleteTalkTeacherById(item.getKey());
         }
         return count;
+    }
+
+    @Override
+    @Transactional
+    public int changeCollegeAdminRole(Long teacherId, boolean promote) {
+        TalkPermissionUtils.requireCollegeManager();
+        TalkTeacher teacher = teacherMapper.selectTalkTeacherById(teacherId);
+        requireTeacherAccess(teacher);
+        if (teacher.getUserId() == null) {
+            throw new ServiceException("该教师尚未关联登录账号");
+        }
+        SysUser account = userMapper.selectUserById(teacher.getUserId());
+        if (account == null || "2".equals(account.getDelFlag())) {
+            throw new ServiceException("关联登录账号不存在");
+        }
+        if (account.isAdmin() || hasRole(account.getUserId(), "admin")) {
+            throw new ServiceException("不能通过教师管理调整内置管理员账号");
+        }
+        if (hasRole(account.getUserId(), TalkPermissionUtils.ROLE_SCHOOL_ADMIN)) {
+            throw new ServiceException("校级管理员账号不能通过教师管理调整为院管理员");
+        }
+        if (!promote && !hasRole(teacher.getUserId(), TalkPermissionUtils.ROLE_COLLEGE_ADMIN)) {
+            throw new ServiceException("该账号不是院管理员");
+        }
+
+        teacher.setRoleKey(promote ? TalkPermissionUtils.ROLE_COLLEGE_ADMIN : ROLE_TEACHER);
+        validateTeacherAccountRole(teacher, account);
+        if (assignRole(account.getUserId(), teacher.getRoleKey())) {
+            invalidateTeacherSessions(account.getUserId());
+        }
+        return 1;
     }
 
     @Override
@@ -125,11 +228,13 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
         if (collegeId == null) {
             return null;
         }
+        TalkPermissionUtils.requireCollegeAccess(collegeId);
         return teacherMapper.selectByDeptIdAndName(collegeId, teacherName);
     }
 
     @Override
     public List<TalkTeacher> selectCounselorsByDeptId(Long deptId) {
+        TalkPermissionUtils.requireCollegeAccess(deptId);
         return teacherMapper.selectCounselorsByDeptId(deptId);
     }
 
@@ -142,11 +247,13 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
         if (collegeId == null) {
             return new java.util.ArrayList<>();
         }
+        TalkPermissionUtils.requireCollegeAccess(collegeId);
         return teacherMapper.selectCounselorsByDeptId(collegeId);
     }
 
     @Override
     public String importTeacher(List<TalkTeacher> teacherList, boolean updateSupport) {
+        TalkPermissionUtils.requireCollegeManager();
         if (teacherList == null || teacherList.isEmpty()) {
             return "导入数据为空";
         }
@@ -154,6 +261,8 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
         int failCount = 0;
         int updateCount = 0;
         StringBuilder failMsg = new StringBuilder();
+        TransactionTemplate rowTransaction = new TransactionTemplate(transactionManager);
+        rowTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 
         for (TalkTeacher teacher : teacherList) {
             if (teacher == null) {
@@ -162,64 +271,10 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
                 continue;
             }
             try {
-                // 如果学院不存在则自动创建
-                if (teacher.getDeptId() == null && teacher.getDeptName() != null) {
-                    Long deptId = getOrCreateCollegeDept(teacher.getDeptName());
-                    teacher.setDeptId(deptId);
+                Boolean updated = rowTransaction.execute(status -> importTeacherRow(teacher, updateSupport));
+                if (Boolean.TRUE.equals(updated)) {
+                    updateCount++;
                 }
-
-                // 检查工号是否已存在
-                String teacherCode = teacher.getTeacherCode();
-                if (StringUtils.isNotEmpty(teacherCode)) {
-                    TalkTeacher existing = teacherMapper.selectByTeacherCode(teacherCode);
-                    if (existing != null) {
-                        if (updateSupport) {
-                            // 更新模式：更新已有教师信息
-                            teacher.setTeacherId(existing.getTeacherId());
-                            teacher.setCreateBy(existing.getCreateBy());
-                            teacher.setCreateTime(existing.getCreateTime());
-                            teacher.setUpdateBy(SecurityUtils.getUsername());
-                            teacher.setUpdateTime(new Date());
-                            teacherMapper.updateTalkTeacher(teacher);
-                            updateCount++;
-                            successCount++;
-                            continue;
-                        } else {
-                            failCount++;
-                            failMsg.append(teacher.getTeacherName() != null ? teacher.getTeacherName() : teacherCode)
-                                    .append("(工号已存在); ");
-                            continue;
-                        }
-                    }
-                    // 兼任判定：检查是否有加工号前缀的版本
-                    String resolvedCode = resolveTeacherCode(teacher);
-                    if (!resolvedCode.equals(teacherCode)) {
-                        TalkTeacher existingPrefixed = teacherMapper.selectByTeacherCode(resolvedCode);
-                        if (existingPrefixed != null) {
-                            if (updateSupport) {
-                                teacher.setTeacherId(existingPrefixed.getTeacherId());
-                                teacher.setCreateBy(existingPrefixed.getCreateBy());
-                                teacher.setCreateTime(existingPrefixed.getCreateTime());
-                                teacher.setUpdateBy(SecurityUtils.getUsername());
-                                teacher.setUpdateTime(new Date());
-                                teacherMapper.updateTalkTeacher(teacher);
-                                updateCount++;
-                                successCount++;
-                                continue;
-                            } else {
-                                failCount++;
-                                failMsg.append(
-                                        teacher.getTeacherName() != null ? teacher.getTeacherName() : resolvedCode)
-                                        .append("(工号已存在); ");
-                                continue;
-                            }
-                        }
-                    }
-                }
-
-                teacher.setCreateBy(SecurityUtils.getUsername());
-                teacher.setStatus("0");
-                insertTalkTeacher(teacher);
                 successCount++;
             } catch (Exception e) {
                 failCount++;
@@ -239,6 +294,48 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
             message += "，失败 " + failCount + " 条: " + failMsg;
         }
         return message;
+    }
+
+    /** Each row commits teacher, account and role changes together. */
+    private boolean importTeacherRow(TalkTeacher teacher, boolean updateSupport) {
+        validateTeacherFields(teacher, true);
+        validateStatus(teacher.getStatus());
+        teacher.setPosition(normalizePosition(teacher.getPosition()));
+        validateTeacherAccountRole(teacher);
+        if (teacher.getDeptId() == null && teacher.getDeptName() != null) {
+            teacher.setDeptId(resolveImportCollege(teacher.getDeptName()));
+        }
+        requireCollegeDept(teacher.getDeptId());
+        TalkPermissionUtils.requireCollegeAccess(teacher.getDeptId());
+        TalkTeacher existing = teacherMapper.selectByTeacherCode(teacher.getTeacherCode());
+        if (existing == null) {
+            String resolvedCode = resolveTeacherCode(teacher);
+            if (!resolvedCode.equals(teacher.getTeacherCode())) {
+                existing = teacherMapper.selectByTeacherCode(resolvedCode);
+                if (existing != null) {
+                    teacher.setTeacherCode(resolvedCode);
+                    validateTeacherAccountRole(teacher);
+                }
+            }
+        }
+        if (existing != null) {
+            if (!updateSupport) {
+                throw new ServiceException("工号已存在");
+            }
+            requireTeacherAccess(existing);
+            teacher.setTeacherId(existing.getTeacherId());
+            teacher.setCreateBy(existing.getCreateBy());
+            teacher.setCreateTime(existing.getCreateTime());
+            teacher.setUpdateBy(SecurityUtils.getUsername());
+            teacher.setUpdateTime(new Date());
+            teacherMapper.updateTalkTeacher(teacher);
+            createSysUserForTeacher(teacher);
+            return true;
+        }
+        teacher.setCreateBy(SecurityUtils.getUsername());
+        if (teacher.getStatus() == null) teacher.setStatus("0");
+        insertTalkTeacher(teacher);
+        return false;
     }
 
     /**
@@ -397,61 +494,216 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
      * 为教师自动创建 sys_user 账号并分配角色
      */
     private void createSysUserForTeacher(TalkTeacher teacher) {
-        try {
-            String userName = teacher.getTeacherCode();
-            SysUser existingUser = userMapper.selectUserByUserName(userName);
-            if (existingUser != null) {
-                log.info("用户已存在，跳过创建: {}，更新 teacher.user_id", userName);
-                teacher.setUserId(existingUser.getUserId());
-                teacherMapper.updateTalkTeacherUserId(teacher);
-                return;
+        String userName = teacher.getTeacherCode();
+        SysUser existingUser = userMapper.selectUserByUserName(userName);
+        if (existingUser != null) {
+            log.info("用户已存在，更新 teacher.user_id 并刷新角色: {}", userName);
+            existingUser.setNickName(teacher.getTeacherName());
+            existingUser.setDeptId(teacher.getDeptId());
+            existingUser.setPhonenumber(teacher.getPhone());
+            if (teacher.getStatus() != null) {
+                existingUser.setStatus(teacher.getStatus());
             }
-
-            SysUser newUser = new SysUser();
-            newUser.setUserName(userName);
-            newUser.setNickName(teacher.getTeacherName());
-            newUser.setPassword(SecurityUtils.encryptPassword(DEFAULT_PASSWORD));
-            newUser.setDeptId(teacher.getDeptId());
-            newUser.setPhonenumber(teacher.getPhone());
-            newUser.setStatus("0");
-            newUser.setDelFlag("0");
-            newUser.setCreateBy(teacher.getCreateBy() != null ? teacher.getCreateBy() : "system");
-            newUser.setCreateTime(new Date());
-            userMapper.insertUser(newUser);
-            teacher.setUserId(newUser.getUserId());
-
-            // 回填 talk_teacher.user_id
+            userMapper.updateUser(existingUser);
+            teacher.setUserId(existingUser.getUserId());
             teacherMapper.updateTalkTeacherUserId(teacher);
+            if (assignRole(existingUser.getUserId(), teacher.getRoleKey())) {
+                invalidateTeacherSessions(existingUser.getUserId());
+            }
+            return;
+        }
 
-            // 分配角色
-            assignRole(newUser.getUserId(), teacher.getPosition());
+        SysUser newUser = new SysUser();
+        newUser.setUserName(userName);
+        newUser.setNickName(teacher.getTeacherName());
+        newUser.setPassword(SecurityUtils.encryptPassword(DEFAULT_PASSWORD));
+        newUser.setDeptId(teacher.getDeptId());
+        newUser.setPhonenumber(teacher.getPhone());
+        newUser.setStatus(teacher.getStatus() == null ? "0" : teacher.getStatus());
+        newUser.setDelFlag("0");
+        newUser.setCreateBy(teacher.getCreateBy() != null ? teacher.getCreateBy() : "system");
+        newUser.setCreateTime(new Date());
+        userMapper.insertUser(newUser);
+        teacher.setUserId(newUser.getUserId());
+        teacherMapper.updateTalkTeacherUserId(teacher);
+        assignRole(newUser.getUserId(), teacher.getRoleKey());
+        log.info("为教师 {} 创建用户成功: {}", teacher.getTeacherName(), userName);
+    }
 
-            log.info("为教师 {} 创建用户成功: {}", teacher.getTeacherName(), userName);
-        } catch (Exception e) {
-            log.error("为教师创建用户失败: {}", teacher.getTeacherCode(), e);
+    /**
+     * 按导入角色分配权限。旧模板不含角色时保留管理员角色，新账号默认老师。
+     */
+    private boolean assignRole(Long userId, String requestedRole) {
+        if (StringUtils.isEmpty(requestedRole) && (hasRole(userId, TalkPermissionUtils.ROLE_COLLEGE_ADMIN)
+                || hasRole(userId, TalkPermissionUtils.ROLE_SCHOOL_ADMIN)
+                || hasRole(userId, "admin"))) {
+            return false;
+        }
+        String targetKey = StringUtils.isEmpty(requestedRole) ? ROLE_TEACHER : requestedRole;
+        Long targetId = requireActiveRoleId(targetKey);
+        boolean changed = false;
+        List<SysRole> currentRoles = roleMapper.selectRolePermissionByUserId(userId);
+        if (StringUtils.isNotEmpty(requestedRole) && currentRoles != null) {
+            for (SysRole role : currentRoles) {
+                String key = role.getRoleKey();
+                if (!targetKey.equals(key) && (ROLE_TEACHER.equals(key)
+                        || TalkPermissionUtils.ROLE_COLLEGE_ADMIN.equals(key)
+                        || TalkPermissionUtils.ROLE_SCHOOL_ADMIN.equals(key))) {
+                    SysUserRole source = new SysUserRole();
+                    source.setUserId(userId);
+                    source.setRoleId(role.getRoleId());
+                    userRoleMapper.deleteUserRoleInfo(source);
+                    changed = true;
+                }
+            }
+        }
+        List<Long> userRoleIds = roleMapper.selectRoleListByUserId(userId);
+        if (userRoleIds == null || !userRoleIds.contains(targetId)) {
+            SysUserRole target = new SysUserRole();
+            target.setUserId(userId);
+            target.setRoleId(targetId);
+            userRoleMapper.batchUserRole(List.of(target));
+            changed = true;
+        }
+        return changed;
+    }
+
+    private void invalidateTeacherSessions(Long userId) {
+        Collection<String> keys = redisCache.keys(CacheConstants.LOGIN_TOKEN_KEY + "*");
+        if (keys == null) {
+            return;
+        }
+        // Revoke before committing: cache failure must roll back the role change,
+        // otherwise a downgraded account could retain administrator permissions.
+        // A later commit failure may require re-login, but cannot leave stale privilege.
+        for (String key : keys) {
+            LoginUser login = redisCache.getCacheObject(key);
+            if (login != null && userId.equals(login.getUserId())) {
+                redisCache.deleteObject(key);
+            }
+        }
+    }
+
+    private String normalizeRoleKey(String value) {
+        if (StringUtils.isEmpty(value) || value.trim().isEmpty()) {
+            return null;
+        }
+        switch (value.trim()) {
+            case "老师": case ROLE_TEACHER: return ROLE_TEACHER;
+            case "院管理员": case TalkPermissionUtils.ROLE_COLLEGE_ADMIN:
+                return TalkPermissionUtils.ROLE_COLLEGE_ADMIN;
+            case "校管理员": case TalkPermissionUtils.ROLE_SCHOOL_ADMIN:
+                return TalkPermissionUtils.ROLE_SCHOOL_ADMIN;
+            default: throw new ServiceException("角色只能为老师、院管理员或校管理员");
+        }
+    }
+
+    private Long requireActiveRoleId(String key) {
+        SysRole query = new SysRole();
+        query.setRoleKey(key);
+        List<SysRole> candidates = roleMapper.selectRoleList(query);
+        if (candidates != null) {
+            for (SysRole role : candidates) {
+                if (key.equals(role.getRoleKey()) && !"1".equals(role.getStatus())) {
+                    return role.getRoleId();
+                }
+            }
+        }
+        throw new ServiceException("目标角色尚未初始化或已停用，请检查系统角色");
+    }
+
+    /** Validate account scope and role changes before writing teacher/account data. */
+    private void validateTeacherAccountRole(TalkTeacher teacher) {
+        validateTeacherAccountRole(teacher, userMapper.selectUserByUserName(teacher.getTeacherCode()));
+    }
+
+    private void validateTeacherAccountRole(TalkTeacher teacher, SysUser account) {
+        String target = normalizeRoleKey(teacher.getRoleKey());
+        teacher.setRoleKey(target);
+        boolean global = TalkPermissionUtils.isGlobalAdmin();
+        if (TalkPermissionUtils.ROLE_SCHOOL_ADMIN.equals(target) && !global) {
+            throw new ServiceException("仅校级管理员可以分配校管理员角色");
+        }
+        if (target != null) {
+            requireActiveRoleId(target);
+        }
+        if (account == null) {
+            if (target == null) {
+                requireActiveRoleId(ROLE_TEACHER);
+            }
+            return;
+        }
+        if (account.isAdmin() || hasRole(account.getUserId(), "admin")) {
+            throw new ServiceException("不能通过教师导入修改内置管理员账号");
+        }
+        if (!global) {
+            TalkPermissionUtils.requireCollegeAccess(account.getDeptId());
+            if (hasRole(account.getUserId(), TalkPermissionUtils.ROLE_SCHOOL_ADMIN)) {
+                throw new ServiceException("院管理员不能修改校管理员账号");
+            }
+            boolean removesAdmin = target != null && !TalkPermissionUtils.ROLE_COLLEGE_ADMIN.equals(target);
+            boolean disablesAdmin = "1".equals(teacher.getStatus()) && !"1".equals(account.getStatus());
+            if ((removesAdmin || disablesAdmin)
+                    && hasRole(account.getUserId(), TalkPermissionUtils.ROLE_COLLEGE_ADMIN)) {
+                if (account.getUserId().equals(SecurityUtils.getUserId())) {
+                    throw new ServiceException("不能降级或停用自己的院管理员账号");
+                }
+                if (teacherMapper.countActiveCollegeAdminsByDeptId(account.getDeptId()) <= 1) {
+                    throw new ServiceException("学院必须至少保留一名启用状态的院管理员");
+                }
+            }
+        }
+    }
+
+    private void validateStatus(String status) {
+        if (status != null && !"0".equals(status) && !"1".equals(status)) {
+            throw new ServiceException("教师状态只能为正常或停用");
+        }
+    }
+
+    private void validateTeacherFields(TalkTeacher teacher, boolean required) {
+        if (required) {
+            if (teacher.getTeacherCode() == null || teacher.getTeacherCode().trim().isEmpty()) {
+                throw new ServiceException("教师工号不能为空");
+            }
+            teacher.setTeacherCode(teacher.getTeacherCode().trim());
+        }
+        if (required || teacher.getTeacherName() != null) {
+            if (teacher.getTeacherName() == null || teacher.getTeacherName().trim().isEmpty()) {
+                throw new ServiceException("教师姓名不能为空");
+            }
+            teacher.setTeacherName(teacher.getTeacherName().trim());
+        }
+        if (required || teacher.getPosition() != null) {
+            if (teacher.getPosition() == null || teacher.getPosition().trim().isEmpty()) {
+                throw new ServiceException("教师岗位不能为空");
+            }
         }
     }
 
     /**
-     * 根据岗位分配角色
+     * 规范化岗位值
+     * "学院党委书记" → "书记"，"学院辅导员" → "辅导员" 等
+     * 注意：先检查"副书记"再检查"书记"，因为"副书记"包含"书记"
      */
-    private void assignRole(Long userId, String position) {
-        String roleKey;
-        if ("书记".equals(position) || "副书记".equals(position)) {
-            roleKey = ROLE_SECRETARY;
-        } else {
-            roleKey = ROLE_COUNSELOR;
+    private String normalizePosition(String position) {
+        if (StringUtils.isEmpty(position)) {
+            return position;
         }
-
-        SysRole query = new SysRole();
-        query.setRoleKey(roleKey);
-        List<SysRole> roles = roleMapper.selectRoleList(query);
-        if (!roles.isEmpty()) {
-            SysUserRole userRole = new SysUserRole();
-            userRole.setUserId(userId);
-            userRole.setRoleId(roles.get(0).getRoleId());
-            userRoleMapper.batchUserRole(List.of(userRole));
+        String trimmed = position.trim();
+        if (trimmed.contains("副书记")) {
+            return "副书记";
         }
+        if (trimmed.contains("书记")) {
+            return "书记";
+        }
+        if (trimmed.contains("辅导员")) {
+            return "辅导员";
+        }
+        if (trimmed.contains("班主任")) {
+            return "班主任";
+        }
+        return trimmed;
     }
 
     /**
@@ -486,6 +738,9 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
 
     @Override
     public List<String> selectAllClassNames() {
+        if (!TalkPermissionUtils.isGlobalAdmin()) {
+            return selectClassNamesByCollegeDept(TalkPermissionUtils.currentCollegeId());
+        }
         SysDept query = new SysDept();
         query.setDeptType("class");
         return deptMapper.selectDeptList(query).stream()
@@ -496,6 +751,67 @@ public class TalkTeacherServiceImpl implements ITalkTeacherService {
 
     @Override
     public List<String> selectClassNamesByCollegeDept(Long deptId) {
+        TalkPermissionUtils.requireCollegeAccess(deptId);
+        if (deptId == null) {
+            return List.of();
+        }
+        SysDept college = deptMapper.selectDeptById(deptId);
+        if (college == null || !"college".equals(college.getDeptType()) || "2".equals(college.getDelFlag())) {
+            return List.of();
+        }
         return teacherMapper.selectClassNamesByCollegeDept(deptId);
+    }
+
+    private void requireTeacherAccess(TalkTeacher teacher) {
+        if (teacher == null) {
+            throw new ServiceException("教师不存在");
+        }
+        TalkPermissionUtils.requireCollegeAccess(teacher.getDeptId());
+    }
+
+    private void requireCollegeDept(Long deptId) {
+        SysDept dept = deptId == null ? null : deptMapper.selectDeptById(deptId);
+        if (dept == null || !"college".equals(dept.getDeptType())) {
+            throw new ServiceException("教师所属部门必须是学院节点");
+        }
+    }
+
+    private Long resolveImportCollege(String deptName) {
+        if (TalkPermissionUtils.isGlobalAdmin()) {
+            return getOrCreateCollegeDept(deptName);
+        }
+        Long collegeId = TalkPermissionUtils.currentCollegeId();
+        SysDept dept = deptMapper.selectDeptById(collegeId);
+        if (dept == null || !dept.getDeptName().equals(deptName.trim())) {
+            throw new ServiceException("院管理员只能导入本学院教师");
+        }
+        return collegeId;
+    }
+
+    private boolean hasRole(Long userId, String roleKey) {
+        List<SysRole> roles = roleMapper.selectRolePermissionByUserId(userId);
+        return roles != null && roles.stream().anyMatch(role -> roleKey.equals(role.getRoleKey()));
+    }
+
+    private void syncTeacherUser(TalkTeacher existing, TalkTeacher update, Long targetDeptId) {
+        Long userId = existing.getUserId();
+        SysUser user = userId != null ? userMapper.selectUserById(userId)
+                : userMapper.selectUserByUserName(existing.getTeacherCode());
+        if (user == null) {
+            return;
+        }
+        user.setNickName(StringUtils.isNotEmpty(update.getTeacherName()) ? update.getTeacherName() : existing.getTeacherName());
+        user.setDeptId(targetDeptId);
+        if (update.getPhone() != null) {
+            user.setPhonenumber(update.getPhone());
+        }
+        if (update.getStatus() != null) {
+            user.setStatus(update.getStatus());
+        }
+        user.setUpdateBy(SecurityUtils.getUsername());
+        userMapper.updateUser(user);
+        if (StringUtils.isNotEmpty(update.getRoleKey()) && assignRole(user.getUserId(), update.getRoleKey())) {
+            invalidateTeacherSessions(user.getUserId());
+        }
     }
 }

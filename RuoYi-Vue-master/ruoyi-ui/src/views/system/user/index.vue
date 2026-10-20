@@ -57,7 +57,7 @@
             </el-row>
 
             <el-table v-loading="loading" :data="userList" @selection-change="handleSelectionChange">
-              <el-table-column type="selection" width="50" align="center" />
+              <el-table-column type="selection" width="50" align="center" :selectable="isUserSelectable" />
               <el-table-column label="用户编号" align="center" key="userId" prop="userId" v-if="columns.userId.visible" />
               <el-table-column label="用户名称" align="center" key="userName" prop="userName" v-if="columns.userName.visible" :show-overflow-tooltip="true" />
               <el-table-column label="用户昵称" align="center" key="nickName" prop="nickName" v-if="columns.nickName.visible" :show-overflow-tooltip="true" />
@@ -65,7 +65,7 @@
               <el-table-column label="手机号码" align="center" key="phonenumber" prop="phonenumber" v-if="columns.phonenumber.visible" width="120" />
               <el-table-column label="状态" align="center" key="status" v-if="columns.status.visible">
                 <template slot-scope="scope">
-                  <el-switch v-model="scope.row.status" active-value="0" inactive-value="1" @change="handleStatusChange(scope.row)"></el-switch>
+                  <el-switch v-model="scope.row.status" active-value="0" inactive-value="1" :disabled="!isUserSelectable(scope.row)" @change="handleStatusChange(scope.row)"></el-switch>
                 </template>
               </el-table-column>
               <el-table-column label="创建时间" align="center" prop="createTime" v-if="columns.createTime.visible" width="160">
@@ -104,8 +104,9 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="归属部门" prop="deptId">
+            <el-form-item label="归属部门" prop="deptId" :required="requiresCollege">
               <treeselect v-model="form.deptId" :options="enabledDeptOptions" :show-count="true" placeholder="请选择归属部门" />
+              <div v-if="requiresCollege" class="text-muted" style="font-size: 12px; line-height: 18px">老师和院管理员必须选择所属学院</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -124,7 +125,7 @@
         <el-row>
           <el-col :span="12">
             <el-form-item v-if="form.userId == undefined" label="用户名称" prop="userName">
-              <el-input v-model="form.userName" placeholder="请输入用户名称" maxlength="30" />
+              <el-input v-model.trim="form.userName" placeholder="请输入用户名称" maxlength="30" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -203,7 +204,7 @@
 <script>
 import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect } from "@/api/system/user"
 import { getToken } from "@/utils/auth"
-import Treeselect from "@riophae/vue-treeselect"
+import Treeselect from "@/components/Treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 import { Splitpanes, Pane } from "splitpanes"
 import "splitpanes/dist/splitpanes.css"
@@ -288,6 +289,10 @@ export default {
       },
       // 表单校验
       rules: {
+        deptId: [{ validator: (rule, value, callback) => {
+          if (this.requiresCollege && !value) callback(new Error("老师和院管理员必须选择所属学院"))
+          else callback()
+        }, trigger: "change" }],
         userName: [
           { required: true, message: "用户名称不能为空", trigger: "blur" },
           { min: 2, max: 20, message: '用户名称长度必须介于 2 和 20 之间', trigger: 'blur' }
@@ -309,12 +314,19 @@ export default {
         ],
         phonenumber: [
           {
-            pattern: /^1[3|4|5|6|7|8|9][0-9]\d{8}$/,
+            pattern: /^1[3-9]\d{9}$/,
             message: "请输入正确的手机号码",
             trigger: "blur"
           }
         ]
       }
+    }
+  },
+  computed: {
+    requiresCollege() {
+      const selected = (this.form.roleIds || []).map(String)
+      return this.roleOptions.some(role => selected.includes(String(role.roleId))
+        && ["talk_teacher", "college_admin"].includes(role.roleKey))
     }
   },
   watch: {
@@ -371,7 +383,11 @@ export default {
       this.handleQuery()
     },
     // 用户状态修改
+    isUserSelectable(row) {
+      return Number(row.userId) !== 1
+    },
     handleStatusChange(row) {
+      if (!this.isUserSelectable(row)) return
       let text = row.status === "0" ? "启用" : "停用"
       this.$modal.confirm('确认要"' + text + '""' + row.userName + '"用户吗？').then(function() {
         return changeUserStatus(row.userId, row.status)
@@ -419,6 +435,7 @@ export default {
     },
     // 多选框选中数据
     handleSelectionChange(selection) {
+      selection = selection.filter(this.isUserSelectable)
       this.ids = selection.map(item => item.userId)
       this.single = selection.length != 1
       this.multiple = !selection.length
@@ -518,9 +535,7 @@ export default {
     },
     /** 导出按钮操作 */
     handleExport() {
-      this.download('system/user/export', {
-        ...this.queryParams
-      }, `user_${new Date().getTime()}.xlsx`)
+      this.download('system/user/export', this.addDateRange(this.queryParams, this.dateRange), `user_${new Date().getTime()}.xlsx`)
     },
     /** 导入按钮操作 */
     handleImport() {

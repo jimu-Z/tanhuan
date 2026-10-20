@@ -1,12 +1,14 @@
 package com.ruoyi.talk.service.impl;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.ruoyi.talk.utils.AttachmentPathUtils;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.SecurityUtils;
+import com.ruoyi.common.core.domain.entity.SysDept;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.talk.constant.TalkConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,11 +20,15 @@ import com.ruoyi.talk.mapper.TalkAttachmentMapper;
 import com.ruoyi.talk.mapper.TalkSessionMapper;
 import com.ruoyi.talk.mapper.TalkSessionTagMapper;
 import com.ruoyi.talk.mapper.TalkStudentRecordMapper;
+import com.ruoyi.talk.mapper.TalkStudentMapper;
+import com.ruoyi.system.mapper.SysDeptMapper;
 import com.ruoyi.talk.domain.TalkAttachment;
 import com.ruoyi.talk.domain.TalkSession;
 import com.ruoyi.talk.domain.TalkSessionCreateRequest;
 import com.ruoyi.talk.domain.TalkSessionTag;
 import com.ruoyi.talk.domain.TalkStudentRecord;
+import com.ruoyi.talk.domain.TalkStudent;
+import com.ruoyi.talk.security.TalkPermissionUtils;
 import com.ruoyi.talk.service.ITalkSessionService;
 
 /**
@@ -50,46 +56,43 @@ public class TalkSessionServiceImpl implements ITalkSessionService {
     @Autowired
     private TalkAttachmentMapper talkAttachmentMapper;
 
+    @Autowired
+    private TalkStudentMapper talkStudentMapper;
+
+    @Autowired
+    private SysDeptMapper sysDeptMapper;
+
     @Override
     public TalkSession selectTalkSessionBySessionId(Long sessionId) {
-        return talkSessionMapper.selectTalkSessionBySessionId(sessionId);
+        TalkSession session = talkSessionMapper.selectTalkSessionBySessionId(sessionId);
+        if (session != null) {
+            TalkPermissionUtils.requireCollegeAccess(session.getCollegeDeptId());
+        }
+        return session;
     }
 
     @Override
     public List<TalkSession> selectTalkSessionList(TalkSession talkSession) {
-        applyDataScopeFilter(talkSession);
+        TalkPermissionUtils.applyCollegeScope(talkSession);
         return talkSessionMapper.selectTalkSessionList(talkSession);
-    }
-
-    private void applyDataScopeFilter(TalkSession talkSession) {
-        if (SecurityUtils.isAdmin()) {
-            return;
-        }
-        String username = SecurityUtils.getUsername();
-        if (username == null) {
-            return;
-        }
-        if (talkSession.getParams() == null) {
-            talkSession.setParams(new HashMap<>());
-        }
-        if (SecurityUtils.hasRole("talk_counselor")) {
-            talkSession.getParams().put("counselorUsername", username);
-        } else if (SecurityUtils.hasRole("talk_secretary")) {
-            Long deptId = SecurityUtils.getDeptId();
-            if (deptId != null) {
-                talkSession.getParams().put("secretaryDeptId", deptId);
-            }
-        }
     }
 
     @Override
     public int insertTalkSession(TalkSession talkSession) {
+        if (talkSession.getCollegeDeptId() == null) {
+            throw new ServiceException("谈话必须指定所属学院");
+        }
+        TalkPermissionUtils.requireCollegeAccess(talkSession.getCollegeDeptId());
+        talkSession.setCreateBy(SecurityUtils.getUsername());
         talkSession.setCreateTime(DateUtils.getNowDate());
         return talkSessionMapper.insertTalkSession(talkSession);
     }
 
     @Override
     public int updateTalkSession(TalkSession talkSession) {
+        TalkSession existing = requireSession(talkSession.getSessionId());
+        TalkPermissionUtils.requireOwnedWrite(existing.getCollegeDeptId(), existing.getCreateBy());
+        talkSession.setCollegeDeptId(null);
         talkSession.setUpdateBy(SecurityUtils.getUsername());
         talkSession.setUpdateTime(DateUtils.getNowDate());
         return talkSessionMapper.updateTalkSession(talkSession);
@@ -98,8 +101,12 @@ public class TalkSessionServiceImpl implements ITalkSessionService {
     @Override
     @Transactional
     public int deleteTalkSessionBySessionIds(Long[] sessionIds) {
-        int total = 0;
         for (Long sessionId : sessionIds) {
+            TalkSession session = requireSession(sessionId);
+            TalkPermissionUtils.requireOwnedWrite(session.getCollegeDeptId(), session.getCreateBy());
+        }
+        int total = 0;
+        for (Long sessionId : new java.util.LinkedHashSet<>(java.util.Arrays.asList(sessionIds))) {
             total += deleteTalkSessionBySessionId(sessionId);
         }
         return total;
@@ -108,14 +115,12 @@ public class TalkSessionServiceImpl implements ITalkSessionService {
     @Override
     @Transactional
     public int deleteTalkSessionBySessionId(Long sessionId) {
+        TalkSession existing = requireSession(sessionId);
+        TalkPermissionUtils.requireOwnedWrite(existing.getCollegeDeptId(), existing.getCreateBy());
         List<TalkAttachment> attachments = talkAttachmentMapper.selectTalkAttachmentBySessionId(sessionId);
         for (TalkAttachment att : attachments) {
             try {
-                String fullPath = profile + att.getFilePath();
-                File file = new File(fullPath);
-                if (file.exists() && !file.delete()) {
-                    log.warn("删除附件文件失败: {}", fullPath);
-                }
+                AttachmentPathUtils.deleteWithinProfile(profile, att.getFilePath());
             } catch (Exception e) {
                 log.warn("删除附件文件异常: {}", e.getMessage());
             }
@@ -129,9 +134,13 @@ public class TalkSessionServiceImpl implements ITalkSessionService {
     @Override
     @Transactional
     public TalkSession createTalkWithRecords(TalkSessionCreateRequest request) {
+        java.util.Date talkTime = validateCreateRequest(request);
+        Long collegeDeptId = resolveSessionCollege(request.getStudentIds());
+        TalkPermissionUtils.requireCollegeAccess(collegeDeptId);
         TalkSession session = new TalkSession();
+        session.setCollegeDeptId(collegeDeptId);
         session.setTalkType(request.getTalkType());
-        session.setTalkTime(DateUtils.parseDate(request.getTalkTime()));
+        session.setTalkTime(talkTime);
         session.setTalkLocation(request.getTalkLocation());
         session.setTalkPerson(request.getTalkPerson());
         session.setTalkContent(request.getTalkContent());
@@ -182,30 +191,141 @@ public class TalkSessionServiceImpl implements ITalkSessionService {
         return session;
     }
 
+    /** Reject malformed requests before the first database write. */
+    private java.util.Date validateCreateRequest(TalkSessionCreateRequest request) {
+        if (request == null) throw new ServiceException("谈话信息不能为空");
+        if (!"individual".equals(request.getTalkType()) && !"group".equals(request.getTalkType())) {
+            throw new ServiceException("谈话类型只能为个别谈话或集体谈话");
+        }
+        String time = request.getTalkTime();
+        java.util.Date parsed = null;
+        if (time != null && time.matches("\\d{4}-\\d{2}-\\d{2}( \\d{2}:\\d{2}(:\\d{2})?)?")) {
+            String format = time.length() == 10 ? "yyyy-MM-dd" : time.length() == 16 ? "yyyy-MM-dd HH:mm" : "yyyy-MM-dd HH:mm:ss";
+            java.text.SimpleDateFormat parser = new java.text.SimpleDateFormat(format);
+            parser.setLenient(false);
+            try { parsed = parser.parse(time); } catch (java.text.ParseException ignored) { }
+        }
+        if (parsed == null) throw new ServiceException("谈话日期无效，请使用正确的年月日或日期时间");
+        List<Long> ids = request.getStudentIds();
+        if (ids == null || ids.isEmpty()) throw new ServiceException("谈话对象不能为空");
+        java.util.Set<Long> distinct = new java.util.HashSet<>();
+        for (Long id : ids) {
+            if (id == null || id <= 0) throw new ServiceException("参与学生编号无效");
+            if (!distinct.add(id)) throw new ServiceException("参与学生不能重复");
+        }
+        if ("individual".equals(request.getTalkType()) && ids.size() != 1) {
+            throw new ServiceException("个别谈话只能选择一名学生");
+        }
+        if (request.getTalkPerson() == null || request.getTalkPerson().trim().isEmpty()) {
+            throw new ServiceException("谈话人不能为空");
+        }
+        if (request.getStudentDataList() != null) {
+            java.util.Set<Long> feedbackStudents = new java.util.HashSet<>();
+            for (TalkSessionCreateRequest.StudentDataItem item : request.getStudentDataList()) {
+                if (item == null) throw new ServiceException("学生记录不能为空");
+                if (!distinct.contains(item.getStudentId())) throw new ServiceException("学生记录必须属于参与学生");
+                if (!feedbackStudents.add(item.getStudentId())) throw new ServiceException("学生记录不能重复");
+                TalkConstants.validateFollowupStatus(item.getFollowupStatus());
+            }
+        }
+        return parsed;
+    }
+
     @Override
     public List<TalkSessionTag> selectTalkSessionTags(Long sessionId) {
+        TalkPermissionUtils.requireCollegeAccess(requireSession(sessionId).getCollegeDeptId());
         return talkSessionTagMapper.selectTalkSessionTagBySessionId(sessionId);
     }
 
     @Override
     public Map<Long, List<TalkSessionTag>> selectTalkSessionTagsBatch(String sessionIds) {
-        List<Long> ids = new ArrayList<>();
+        java.util.Set<Long> distinctIds = new java.util.LinkedHashSet<>();
         if (sessionIds != null && !sessionIds.trim().isEmpty()) {
-            for (String s : sessionIds.split(",")) {
+            for (String s : sessionIds.split(",", -1)) {
                 try {
-                    ids.add(Long.parseLong(s.trim()));
+                    long id = Long.parseLong(s.trim());
+                    if (id <= 0) throw new NumberFormatException();
+                    distinctIds.add(id);
                 } catch (NumberFormatException ignored) {
+                    throw new ServiceException("谈话编号必须为有效的正整数");
                 }
             }
         }
+        List<Long> ids = new ArrayList<>(distinctIds);
         Map<Long, List<TalkSessionTag>> result = new HashMap<>();
         if (ids.isEmpty()) {
             return result;
         }
+        List<TalkSession> sessions = talkSessionMapper.selectTalkSessionBySessionIds(ids.toArray(new Long[0]));
+        java.util.Set<Long> found = new java.util.HashSet<>();
+        if (sessions != null) {
+            for (TalkSession session : sessions) {
+                TalkPermissionUtils.requireCollegeAccess(session.getCollegeDeptId());
+                found.add(session.getSessionId());
+            }
+        }
+        if (!found.containsAll(ids)) throw new ServiceException("谈话会话不存在");
         List<TalkSessionTag> tags = talkSessionTagMapper.selectTagsBySessionIds(ids);
         for (TalkSessionTag tag : tags) {
             result.computeIfAbsent(tag.getSessionId(), k -> new ArrayList<>()).add(tag);
         }
         return result;
+    }
+
+    private TalkSession requireSession(Long sessionId)
+    {
+        TalkSession session = talkSessionMapper.selectTalkSessionBySessionId(sessionId);
+        if (session == null)
+        {
+            throw new ServiceException("谈话会话不存在");
+        }
+        return session;
+    }
+
+    private Long resolveSessionCollege(List<Long> studentIds)
+    {
+        if (studentIds == null || studentIds.isEmpty())
+        {
+            throw new ServiceException("谈话对象不能为空");
+        }
+        Long collegeDeptId = null;
+        for (Long studentId : studentIds)
+        {
+            TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(studentId);
+            if (student == null)
+            {
+                throw new ServiceException("学生不存在: " + studentId);
+            }
+            Long current = resolveCollegeDeptId(student.getDeptId());
+            if (collegeDeptId == null)
+            {
+                collegeDeptId = current;
+            }
+            else if (!collegeDeptId.equals(current))
+            {
+                throw new ServiceException("同一谈话只能选择同一学院的学生");
+            }
+        }
+        return collegeDeptId;
+    }
+
+    private Long resolveCollegeDeptId(Long deptId)
+    {
+        Long currentId = deptId;
+        java.util.Set<Long> visited = new java.util.HashSet<>();
+        while (currentId != null && currentId > 0 && visited.add(currentId) && visited.size() <= 32)
+        {
+            SysDept dept = sysDeptMapper.selectDeptById(currentId);
+            if (dept == null)
+            {
+                break;
+            }
+            if ("college".equals(dept.getDeptType()))
+            {
+                return dept.getDeptId();
+            }
+            currentId = dept.getParentId();
+        }
+        throw new ServiceException("学生未归属有效学院");
     }
 }

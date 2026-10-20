@@ -75,7 +75,7 @@ public class SysMenuServiceImpl implements ISysMenuService
     {
         List<SysMenu> menuList = null;
         // 管理员显示所有菜单信息
-        if (SecurityUtils.isAdmin(userId))
+        if (SecurityUtils.isAdmin(userId) || isActiveSchoolAdmin(userId))
         {
             menuList = menuMapper.selectMenuList(menu);
         }
@@ -85,6 +85,13 @@ public class SysMenuServiceImpl implements ISysMenuService
             menuList = menuMapper.selectMenuListByUserId(menu);
         }
         return menuList;
+    }
+
+    private boolean isActiveSchoolAdmin(Long userId)
+    {
+        List<SysRole> roles = roleMapper.selectRolePermissionByUserId(userId);
+        return roles != null && roles.stream().anyMatch(role -> role != null
+                && "school_admin".equals(role.getRoleKey()) && "0".equals(role.getStatus()));
     }
 
     /**

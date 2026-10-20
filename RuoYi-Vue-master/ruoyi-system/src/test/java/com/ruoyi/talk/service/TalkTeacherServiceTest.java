@@ -4,9 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mockStatic;
 
 import com.ruoyi.common.core.domain.entity.SysRole;
+import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.system.domain.SysUserRole;
 import com.ruoyi.talk.domain.TalkTeacher;
 import com.ruoyi.talk.mapper.TalkTeacherMapper;
@@ -14,12 +17,15 @@ import com.ruoyi.talk.service.impl.TalkTeacherServiceImpl;
 import com.ruoyi.system.mapper.SysRoleMapper;
 import com.ruoyi.system.mapper.SysUserMapper;
 import com.ruoyi.system.mapper.SysUserRoleMapper;
+import com.ruoyi.system.mapper.SysDeptMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -42,13 +48,20 @@ class TalkTeacherServiceTest {
     @Mock
     private SysRoleMapper roleMapper;
 
+    @Mock
+    private SysDeptMapper deptMapper;
+
     @InjectMocks
     private TalkTeacherServiceImpl teacherService;
 
     private TalkTeacher testTeacher;
+    private MockedStatic<SecurityUtils> securityUtilsMock;
 
     @BeforeEach
     void setUp() {
+        securityUtilsMock = mockStatic(SecurityUtils.class);
+        securityUtilsMock.when(SecurityUtils::isAdmin).thenReturn(true);
+        securityUtilsMock.when(SecurityUtils::getUsername).thenReturn("admin");
         testTeacher = new TalkTeacher();
         testTeacher.setTeacherCode("T001");
         testTeacher.setTeacherName("张老师");
@@ -56,6 +69,11 @@ class TalkTeacherServiceTest {
         testTeacher.setPosition("counselor");
         testTeacher.setPhone("13800138000");
         testTeacher.setCreateBy("admin");
+    }
+
+    @AfterEach
+    void tearDown() {
+        securityUtilsMock.close();
     }
 
     // ==================== T1: 教师删除 → 物理删除 sys_user ====================
@@ -102,16 +120,22 @@ class TalkTeacherServiceTest {
     // ==================== 原有测试：导入教师创建用户 ====================
 
     /**
-     * 导入辅导员 → 自动创建 sys_user → 分配 talk_counselor 角色
+     * 新增教师 → 自动创建 sys_user → 统一分配 talk_teacher 角色
      */
     @Test
     void insertCounselorShouldCreateSysUserAndAssignRole() {
-        // Given: 角色查询返回 talk_counselor (roleId=5)
-        SysRole counselorRole = new SysRole();
-        counselorRole.setRoleId(5L);
-        when(roleMapper.selectRoleList(any())).thenReturn(List.of(counselorRole));
+        SysRole teacherRole = new SysRole();
+        teacherRole.setRoleId(8L);
+        teacherRole.setRoleKey("talk_teacher");
+        when(roleMapper.selectRoleList(any())).thenReturn(List.of(teacherRole));
+        when(roleMapper.selectRolePermissionByUserId(any())).thenReturn(List.of());
+        when(roleMapper.selectRoleListByUserId(any())).thenReturn(List.of());
 
         when(teacherMapper.insertTalkTeacher(any())).thenReturn(1);
+        SysDept college = new SysDept();
+        college.setDeptId(100L);
+        college.setDeptType("college");
+        when(deptMapper.selectDeptById(100L)).thenReturn(college);
         when(userMapper.selectUserByUserName("T001")).thenReturn(null); // 用户不存在，需创建
         when(userMapper.insertUser(any(SysUser.class))).thenReturn(1);
 
@@ -135,7 +159,7 @@ class TalkTeacherServiceTest {
         ArgumentCaptor<List<SysUserRole>> roleCaptor = ArgumentCaptor.forClass(List.class);
         verify(userRoleMapper).batchUserRole(roleCaptor.capture());
         SysUserRole userRole = roleCaptor.getValue().get(0);
-        assertThat(userRole.getRoleId()).isEqualTo(5L);
+        assertThat(userRole.getRoleId()).isEqualTo(8L);
     }
 
     /**

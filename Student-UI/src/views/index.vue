@@ -197,7 +197,7 @@
               <i class="el-icon-star-on"></i>
               <span>政治面貌</span>
             </div>
-            <div class="profile-value">{{ user.politicalStatus || '-' }}</div>
+            <div class="profile-value">{{ politicalStatusText(user.politicalStatus) }}</div>
           </div>
         </div>
       </div>
@@ -258,7 +258,11 @@ export default {
     },
     getStatusText(status) {
       const map = { pending: '待跟进', in_progress: '跟进中', completed: '已完成', none: '无需跟进' }
-      return map[status] || '待跟进'
+      return map[status] || (status ? '未知状态' : '未设置')
+    },
+    politicalStatusText(value) {
+      const labels = { people: '群众', league_member: '共青团员', probationary_member: '中共预备党员', party_member: '中共党员', other: '其他' }
+      return labels[value] || (value && /[\u3400-\u9fff]/.test(value) ? value : value ? '未知状态' : '未设置')
     },
     formatTime(time) {
       if (!time) return '-'
@@ -269,7 +273,7 @@ export default {
     },
     getTalkTypeText(type) {
       const map = { individual: '个别谈话', group: '集体谈话' }
-      return map[type] || type || '个别谈话'
+      return map[type] || (type ? '未知类型' : '未设置')
     },
     truncateText(text, maxLen) {
       if (!text) return '暂无内容'

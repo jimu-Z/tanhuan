@@ -17,8 +17,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Log;
+import com.ruoyi.common.annotation.RepeatSubmit;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.talk.domain.TalkSession;
 import com.ruoyi.talk.domain.TalkSessionCreateRequest;
@@ -106,9 +108,13 @@ public class TalkSessionController extends BaseController {
     @GetMapping("/exportDocx/{sessionId}/student/{studentId}")
     public void exportDocxForStudent(@PathVariable Long sessionId, @PathVariable Long studentId,
             HttpServletResponse response) throws Exception {
-        byte[] docxBytes = talkDocxService.generateDocxByStudent(studentId, sessionId);
         TalkSession session = talkSessionService.selectTalkSessionBySessionId(sessionId);
-        String fileName = "谈话记录_" + (session != null ? session.getTalkPerson() : sessionId) + ".docx";
+        if (session == null) {
+            writeJsonError(response, "会话不存在");
+            return;
+        }
+        byte[] docxBytes = talkDocxService.generateDocxByStudent(studentId, sessionId);
+        String fileName = "谈话记录_" + session.getTalkPerson() + ".docx";
         writeFileDownload(response, docxBytes, fileName, false);
     }
 
@@ -117,6 +123,7 @@ public class TalkSessionController extends BaseController {
      */
     @PreAuthorize("@ss.hasPermi('talk:session:add')")
     @Log(title = "谈话会话管理", businessType = BusinessType.INSERT)
+    @RepeatSubmit(message = "请勿重复创建谈话")
     @PostMapping("/create")
     public AjaxResult createTalk(@RequestBody TalkSessionCreateRequest request) {
         TalkSession session = talkSessionService.createTalkWithRecords(request);
@@ -130,26 +137,27 @@ public class TalkSessionController extends BaseController {
     @Log(title = "谈话会话管理", businessType = BusinessType.EXPORT)
     @PostMapping("/exportDocx/batch")
     public void exportDocxBatch(@RequestBody Map<String, List<Long>> body, HttpServletResponse response) throws Exception {
-        List<Long> sessionIds = body.get("sessionIds");
+        List<Long> sessionIds = body == null ? null : body.get("sessionIds");
         if (sessionIds == null || sessionIds.isEmpty()) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "sessionIds不能为空");
-            return;
+            throw new ServiceException("sessionIds不能为空");
+        }
+        for (Long sessionId : sessionIds) {
+            if (sessionId == null || talkSessionService.selectTalkSessionBySessionId(sessionId) == null) {
+                throw new ServiceException("谈话会话不存在");
+            }
         }
         ByteArrayOutputStream zip = new ByteArrayOutputStream();
         try (ZipOutputStream zos = new ZipOutputStream(zip)) {
-            for (Long sid : sessionIds) {
-                try {
-                    byte[] b = talkDocxService.generateDocxBySession(sid);
-                    TalkSession s = talkSessionService.selectTalkSessionBySessionId(sid);
-                    String name = (s != null ? s.getTalkPerson() : sid) + "_" + sid + ".docx";
-                    zos.putNextEntry(new ZipEntry(name));
-                    zos.write(b);
-                    zos.closeEntry();
-                    // 打包该会话的附件
-                    talkDocxService.writeAttachmentsToZip(zos, sid);
-                } catch (Exception e) {
-                    log.warn("跳过导出失败的会话{}: {}", sid, e.getMessage());
-                }
+            for (Long sid : new java.util.LinkedHashSet<>(sessionIds)) {
+                TalkSession session = talkSessionService.selectTalkSessionBySessionId(sid);
+                byte[] docxBytes = talkDocxService.generateDocxBySession(sid);
+                String name = com.ruoyi.talk.utils.ArchiveEntryNames.basename(session.getTalkPerson()) + "_" + sid
+                        + ("group".equals(session.getTalkType()) ? ".zip" : ".docx");
+                zos.putNextEntry(new ZipEntry(name));
+                zos.write(docxBytes);
+                zos.closeEntry();
+                // 打包该会话的附件
+                talkDocxService.writeAttachmentsToZip(zos, sid);
             }
         }
         response.setContentType("application/zip");
@@ -162,15 +170,67 @@ public class TalkSessionController extends BaseController {
     }
 
     /**
+     * 按选中的学生记录导出，不扩展到会话内其他学生。
+     */
+    @PreAuthorize("@ss.hasPermi('talk:session:export')")
+    @Log(title = "学生谈话记录", businessType = BusinessType.EXPORT)
+    @PostMapping("/exportDocx/records/batch")
+    public void exportDocxRecordsBatch(@RequestBody Map<String, List<Long>> body,
+            HttpServletResponse response) throws Exception {
+        List<Long> recordIds = body == null ? null : body.get("recordIds");
+        if (recordIds == null || recordIds.isEmpty()) {
+            throw new ServiceException("请选择需要导出的学生谈话记录");
+        }
+        Map<Long, TalkStudentRecord> selectedRecords = new java.util.LinkedHashMap<>();
+        for (Long recordId : new java.util.LinkedHashSet<>(recordIds)) {
+            TalkStudentRecord record = recordId == null ? null
+                    : talkStudentRecordMapper.selectTalkStudentRecordByRecordId(recordId);
+            if (record == null) {
+                throw new ServiceException("学生谈话记录不存在");
+            }
+            // 在生成任一文档之前校验全部会话的读取范围。
+            if (talkSessionService.selectTalkSessionBySessionId(record.getSessionId()) == null
+                    || record.getStudentId() == null) {
+                throw new ServiceException("谈话记录关联的会话或学生不存在");
+            }
+            selectedRecords.put(recordId, record);
+        }
+        ByteArrayOutputStream zip = new ByteArrayOutputStream();
+        try (ZipOutputStream output = new ZipOutputStream(zip)) {
+            for (TalkStudentRecord record : selectedRecords.values()) {
+                byte[] document = talkDocxService.generateDocxByRecord(record.getRecordId());
+                String name = record.getRecordId() + "_"
+                        + com.ruoyi.talk.utils.ArchiveEntryNames.basename(record.getStudentName()) + ".docx";
+                output.putNextEntry(new ZipEntry(name));
+                output.write(document);
+                output.closeEntry();
+            }
+        }
+        writeFileDownload(response, zip.toByteArray(), "学生谈话记录批量导出.zip", true);
+    }
+
+    @PreAuthorize("@ss.hasPermi('talk:session:export')")
+    @Log(title = "学生谈话记录", businessType = BusinessType.EXPORT)
+    @GetMapping("/exportDocx/record/{recordId}")
+    public void exportDocxForRecord(@PathVariable Long recordId, HttpServletResponse response) throws Exception {
+        byte[] document = talkDocxService.generateDocxByRecord(recordId);
+        writeFileDownload(response, document, "学生谈话记录_" + recordId + ".docx", false);
+    }
+
+    /**
      * 导出集体谈话汇总表 (.docx)
      */
     @PreAuthorize("@ss.hasPermi('talk:session:export')")
     @Log(title = "谈话会话管理", businessType = BusinessType.EXPORT)
     @GetMapping("/exportGroupSummary/{sessionId}")
     public void exportGroupSummary(@PathVariable Long sessionId, HttpServletResponse response) throws Exception {
-        byte[] docxBytes = talkDocxService.generateGroupSummaryDocx(sessionId);
         TalkSession session = talkSessionService.selectTalkSessionBySessionId(sessionId);
-        String fileName = "集体谈话汇总表_" + (session != null ? session.getTalkPerson() : sessionId) + ".docx";
+        if (session == null) {
+            writeJsonError(response, "会话不存在");
+            return;
+        }
+        byte[] docxBytes = talkDocxService.generateGroupSummaryDocx(sessionId);
+        String fileName = "集体谈话汇总表_" + session.getTalkPerson() + ".docx";
         writeFileDownload(response, docxBytes, fileName, false);
     }
 
@@ -188,6 +248,7 @@ public class TalkSessionController extends BaseController {
     }
 
     private void writeJsonError(HttpServletResponse response, String msg) throws Exception {
+        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter()
                 .write("{\"msg\":\"" + msg.replace("\\", "\\\\").replace("\"", "\\\"") + "\",\"code\":500}");
@@ -196,7 +257,8 @@ public class TalkSessionController extends BaseController {
     @PreAuthorize("@ss.hasPermi('talk:session:query')")
     @GetMapping("/detail/{sessionId:\\d+}")
     public AjaxResult getInfo(@PathVariable("sessionId") Long sessionId) {
-        return success(talkSessionService.selectTalkSessionBySessionId(sessionId));
+        TalkSession session = talkSessionService.selectTalkSessionBySessionId(sessionId);
+        return session == null ? error("谈话会话不存在") : success(session);
     }
 
     /**
@@ -211,12 +273,18 @@ public class TalkSessionController extends BaseController {
     @PreAuthorize("@ss.hasPermi('talk:session:query')")
     @GetMapping("/tags/{sessionId:\\d+}")
     public AjaxResult getTags(@PathVariable("sessionId") Long sessionId) {
+        if (talkSessionService.selectTalkSessionBySessionId(sessionId) == null) {
+            return error("谈话会话不存在");
+        }
         return success(talkSessionService.selectTalkSessionTags(sessionId));
     }
 
     @PreAuthorize("@ss.hasPermi('talk:session:query')")
     @GetMapping("/participants/{sessionId:\\d+}")
     public AjaxResult getParticipants(@PathVariable("sessionId") Long sessionId) {
+        if (talkSessionService.selectTalkSessionBySessionId(sessionId) == null) {
+            return error("谈话会话不存在");
+        }
         List<TalkStudentRecord> records = talkStudentRecordMapper.selectTalkStudentRecordBySessionId(sessionId);
         records.sort(Comparator.comparing(TalkStudentRecord::getStudentCode, Comparator.nullsLast(String::compareTo)));
         return success(records);

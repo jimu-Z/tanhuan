@@ -86,7 +86,8 @@ public interface TalkStudentMapper {
      * @param deptId    可选部门ID过滤
      */
     public List<TalkStudent> selectUntalkedStudentsInPeriod(@Param("startTime") String startTime,
-            @Param("endTime") String endTime, @Param("deptId") Long deptId, @Param("params") Map<String, Object> params);
+            @Param("endTime") String endTime, @Param("deptId") Long deptId,
+            @Param("params") Map<String, Object> params);
 
     public Long selectMinAvailableStudentId();
 
@@ -103,7 +104,10 @@ public interface TalkStudentMapper {
     public List<TalkStudent> selectByCollegeDeptId(@Param("deptId") Long deptId);
 
     public List<java.util.HashMap<String, Object>> countByMentalHealthFiltered(Map<String, Object> params);
+
     public List<java.util.HashMap<String, Object>> countByPovertyLevelFiltered(Map<String, Object> params);
+
     public List<java.util.HashMap<String, Object>> countByEnrollmentStatusFiltered(Map<String, Object> params);
+
     public int countUntalkedStudentsFiltered(Map<String, Object> params);
 }

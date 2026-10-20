@@ -4,18 +4,30 @@
     <el-card class="detail-card">
       <div slot="header">
         <span>{{ student.studentName }} 的基本信息</span>
+        <el-button size="mini" class="return-button" @click="$router.push('/talk/student')">返回列表</el-button>
       </div>
       <el-descriptions :column="3" border size="small">
         <el-descriptions-item label="学号">{{ student.studentCode }}</el-descriptions-item>
         <el-descriptions-item label="姓名">{{ student.studentName }}</el-descriptions-item>
-        <el-descriptions-item label="性别">{{ student.gender === '0' ? '男' : student.gender === '1' ? '女' : student.gender }}</el-descriptions-item>
+        <el-descriptions-item label="班级">{{ student.deptName || '未设置' }}</el-descriptions-item>
+        <el-descriptions-item label="性别">{{ $talkLabel('gender', student.gender) }}</el-descriptions-item>
         <el-descriptions-item label="民族">{{ student.nation }}</el-descriptions-item>
-        <el-descriptions-item label="政治面貌">{{ student.politicalStatus }}</el-descriptions-item>
+        <el-descriptions-item label="政治面貌">{{ $talkLabel('politicalStatus', student.politicalStatus, studentDicts.politicalStatus) }}</el-descriptions-item>
         <el-descriptions-item label="联系电话">{{ student.phone }}</el-descriptions-item>
+        <el-descriptions-item label="身份证号">{{ student.idCard || '-' }}</el-descriptions-item>
         <el-descriptions-item label="家庭住址" :span="3">{{ student.address }}</el-descriptions-item>
-        <el-descriptions-item label="学籍状态">{{ student.enrollmentStatus }}</el-descriptions-item>
-        <el-descriptions-item label="心理健康">{{ student.mentalHealthStatus }}</el-descriptions-item>
-        <el-descriptions-item label="贫困等级">{{ student.povertyLevel }}</el-descriptions-item>
+        <el-descriptions-item label="父亲姓名">{{ student.fatherName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="父亲电话">{{ student.fatherPhone || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="母亲姓名">{{ student.motherName || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="母亲电话">{{ student.motherPhone || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="班长">{{ student.classMonitor || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="舍长">{{ student.dormLeader || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="宿舍楼">{{ student.dormBuilding || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="宿舍号">{{ student.dormRoom || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="学籍状态">{{ $talkLabel('enrollmentStatus', student.enrollmentStatus, studentDicts.enrollmentStatus) }}</el-descriptions-item>
+        <el-descriptions-item label="心理健康">{{ $talkLabel('mentalHealthStatus', student.mentalHealthStatus, studentDicts.mentalHealthStatus) }}</el-descriptions-item>
+        <el-descriptions-item label="贫困等级">{{ $talkLabel('povertyLevel', student.povertyLevel, studentDicts.povertyLevel) }}</el-descriptions-item>
+        <el-descriptions-item label="备注" :span="3">{{ student.remark || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
 
@@ -35,6 +47,7 @@
           <template slot-scope="scope">
             <el-tag v-if="scope.row.session.talkType === 'individual'" type="primary" size="small">个别谈话</el-tag>
             <el-tag v-else-if="scope.row.session.talkType === 'group'" type="success" size="small">集体谈话</el-tag>
+            <span v-else>{{ $talkLabel('talkType', scope.row.session.talkType) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="谈话人" prop="session.talkPerson" width="120" align="center" />
@@ -52,6 +65,7 @@
             <el-tag v-else-if="scope.row.record.followupStatus === 'in_progress'" type="warning" size="small">跟进中</el-tag>
             <el-tag v-else-if="scope.row.record.followupStatus === 'completed'" type="success" size="small">已完成</el-tag>
             <el-tag v-else-if="scope.row.record.followupStatus === 'none'" size="small">无需跟进</el-tag>
+            <span v-else>{{ $talkLabel('followupStatus', scope.row.record.followupStatus) }}</span>
           </template>
         </el-table-column>
       </el-table>
@@ -60,6 +74,8 @@
 </template>
 
 <script>
+import { getDicts } from "@/api/system/dict/data"
+import { getLabels } from "@/api/talk/talkTag"
 import { getStudentDetail } from '@/api/talk/talkStudent'
 import { getSessionTags, TAG_LABELS } from '@/api/talk/talkSession'
 
@@ -68,12 +84,18 @@ export default {
   data() {
     return {
       student: {},
+      studentDicts: {},
       history: [],
       loadingHistory: false,
-      tagCache: {}
+      tagCache: {},
+      tagLabels: { ...TAG_LABELS }
     }
   },
   created() {
+    for (const [field, type] of Object.entries({ politicalStatus: 'political_status', enrollmentStatus: 'enrollment_status', mentalHealthStatus: 'mental_health_status', povertyLevel: 'poverty_level' })) {
+      getDicts(type).then(res => { this.$set(this.studentDicts, field, res.data || []) }).catch(() => {})
+    }
+    getLabels().then(res => { this.tagLabels = { ...TAG_LABELS, ...(res.data || {}) } }).catch(() => {})
     const studentId = this.$route.params.studentId || this.$route.query.studentId
     if (studentId) {
       this.loadDetail(studentId)
@@ -91,7 +113,7 @@ export default {
         this.history.forEach(h => {
           const sid = h.session ? h.session.sessionId : null
           if (sid) {
-            getSessionTags(sid).then(r => { this.$set(this.tagCache, sid, (r.data || []).map(t => TAG_LABELS[t.tagValue] || t.tagValue).join('、')) }).catch(err => {
+            getSessionTags(sid).then(r => { this.$set(this.tagCache, sid, r.data || []) }).catch(err => {
               console.warn('加载会话标签失败:', sid, err)
             })
           }
@@ -101,7 +123,7 @@ export default {
       })
     },
     getTagsDisplay(sessionId) {
-      return this.tagCache[sessionId] || ''
+      return (this.tagCache[sessionId] || []).map(t => this.$talkTags(t.tagValue, this.tagLabels)).join('、')
     }
   }
 }
@@ -109,4 +131,5 @@ export default {
 
 <style scoped>
 .detail-card { margin-bottom: 16px; }
+.return-button { float: right; }
 </style>

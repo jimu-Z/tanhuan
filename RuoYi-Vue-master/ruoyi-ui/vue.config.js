@@ -9,7 +9,8 @@ const CompressionPlugin = require('compression-webpack-plugin')
 
 const name = process.env.VUE_APP_TITLE || '学生谈心谈话系统' // 网页标题
 
-const baseUrl = 'http://211.64.39.248:6060' // 后端接口
+// 本地开发默认代理到本机后端；如需联调其他环境可通过 VUE_APP_PROXY_TARGET 覆盖。
+const baseUrl = process.env.VUE_APP_PROXY_TARGET || 'http://127.0.0.1:6060'
 
 const port = process.env.port || process.env.npm_config_port || 6080 // 端口
 
@@ -32,7 +33,7 @@ module.exports = {
   devServer: {
     host: '0.0.0.0',
     port: port,
-    open: true,
+    open: false,
     proxy: {
       // detail: https://cli.vuejs.org/config/#devserver-proxy
       [process.env.VUE_APP_BASE_API]: {

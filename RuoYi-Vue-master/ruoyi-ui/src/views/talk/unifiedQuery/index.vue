@@ -1,775 +1,348 @@
 <template>
-  <div class="app-container">
-    <el-radio-group v-model="queryMode" @change="handleModeChange" size="small" style="margin-bottom:12px">
-      <el-radio-button label="records">查已有记录</el-radio-button>
-      <el-radio-button label="untalked">查未谈学生</el-radio-button>
-    </el-radio-group>
+  <div class="query-page">
+    <section class="query-hero">
+      <div>
+        <span class="eyebrow">DATA SEARCH</span>
+        <h1>统一查询</h1>
+        <p>集中检索谈话记录与未谈学生，查询结果自动遵循当前账号的数据范围。</p>
+      </div>
+      <div class="mode-switch">
+        <button :class="{ active: queryMode === 'records' }" @click="switchMode('records')"><i class="el-icon-document"></i><span>谈话记录</span></button>
+        <button :class="{ active: queryMode === 'untalked' }" @click="switchMode('untalked')"><i class="el-icon-user"></i><span>未谈学生</span></button>
+      </div>
+    </section>
 
-    <el-form :model="queryParams" ref="queryForm" size="small" :inline="true" v-show="showSearch" label-width="72px">
-      <el-form-item label="时间范围">
-        <el-date-picker
-          v-model="queryParams.dateRange"
-          type="daterange"
-          range-separator="至"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          value-format="yyyy-MM-dd"
-          style="width:240px"
-        />
-      </el-form-item>
-      <el-form-item label="学号/姓名">
-        <el-input
-          v-model="queryParams.keyword"
-          placeholder="请输入学号或姓名"
-          clearable
-          style="width:160px"
-          @keyup.enter.native="handleQuery"
-        />
-      </el-form-item>
-      <el-form-item v-if="queryMode === 'records'" label="谈话类型">
-        <el-select v-model="queryParams.talkType" placeholder="全部" clearable style="width:120px">
-          <el-option label="个别谈话" value="individual" />
-          <el-option label="集体谈话" value="group" />
-        </el-select>
-      </el-form-item>
-      <el-form-item v-if="queryMode === 'records'" label="内容标签">
-        <el-select v-model="queryParams.tags" multiple placeholder="全部" clearable collapse-tags style="width:220px">
-          <el-option v-for="item in tagOptions" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-      </el-form-item>
-      <el-form-item v-if="queryMode === 'records'" label="谈话人">
-        <el-input v-model="queryParams.talkPerson" placeholder="谈话人" clearable style="width:140px" />
-      </el-form-item>
-      <el-form-item v-if="queryMode === 'untalked'" label="班级">
-        <el-cascader
-          v-model="selectedDeptPath"
-          :options="deptTree"
-          :props="{ value: 'deptId', label: 'deptName', children: 'children', checkStrictly: true }"
-          placeholder="请选择班级"
-          clearable
-          style="width:180px"
-          @change="handleDeptChange"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
-        <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
+    <section class="panel filter-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>{{ queryMode === 'records' ? '记录筛选' : '学生筛选' }}</h2>
+          <span>{{ queryMode === 'records' ? '可按学生、时间、类型、标签和谈话人组合查询' : '查找指定时间段内尚未开展谈话的学生' }}</span>
+        </div>
+        <el-button type="text" icon="el-icon-refresh" @click="resetQuery">重置条件</el-button>
+      </div>
 
-    <el-row v-if="queryMode === 'records'" :gutter="10" class="mb8">
-      <el-col :span="1.5">
-        <el-button
-          type="warning"
-          plain
-          icon="el-icon-download"
-          size="mini"
-          :disabled="selected.length === 0"
-          @click="handleBatchExport"
-          v-hasPermi="['talk:session:export']"
-        >批量导出</el-button>
-      </el-col>
-      <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
-    </el-row>
+      <el-form ref="queryForm" :model="queryParams" label-position="top" class="query-form">
+        <el-row :gutter="16">
+          <el-col :xs="24" :sm="12" :lg="6">
+            <el-form-item label="学号 / 姓名">
+              <el-input v-model.trim="queryParams.keyword" clearable placeholder="输入学号或学生姓名" @keyup.enter.native="handleQuery">
+                <i slot="prefix" class="el-input__icon el-icon-search"></i>
+              </el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :lg="7">
+            <el-form-item label="时间范围">
+              <el-date-picker v-model="dateRange" type="daterange" value-format="yyyy-MM-dd" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <template v-if="queryMode === 'records'">
+            <el-col :xs="24" :sm="12" :lg="4">
+              <el-form-item label="谈话类型">
+                <el-select v-model="queryParams.talkType" clearable placeholder="全部类型" style="width: 100%">
+                  <el-option label="个别谈话" value="individual" />
+                  <el-option label="集体谈话" value="group" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :lg="7">
+              <el-form-item label="内容标签">
+                <el-select v-model="queryParams.tags" multiple collapse-tags clearable placeholder="全部标签" style="width: 100%">
+                  <el-option v-for="tag in tagOptions" :key="tag.value" :label="tag.label" :value="tag.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :lg="6">
+              <el-form-item label="谈话人">
+                <el-input v-model.trim="queryParams.talkPerson" clearable placeholder="输入教师姓名" @keyup.enter.native="handleQuery" />
+              </el-form-item>
+            </el-col>
+          </template>
+          <el-col v-else :xs="24" :sm="12" :lg="7">
+            <el-form-item label="学院 / 班级">
+              <el-cascader v-model="selectedDeptPath" :options="deptTree" :props="deptProps" clearable placeholder="全部班级" style="width: 100%" @change="handleDeptChange" />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :lg="4" class="search-action-col">
+            <el-button type="primary" icon="el-icon-search" class="search-button" @click="handleQuery">开始查询</el-button>
+          </el-col>
+        </el-row>
+      </el-form>
+    </section>
 
-    <el-row v-if="queryMode === 'untalked'" :gutter="10" class="mb8">
-      <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
-    </el-row>
+    <section class="panel result-panel">
+      <div class="panel-heading result-heading">
+        <div>
+          <h2>{{ queryMode === 'records' ? '谈话记录' : '未谈学生' }}</h2>
+          <span>共找到 <strong>{{ total }}</strong> 条结果</span>
+        </div>
+        <el-button v-if="queryMode === 'records'" type="primary" plain icon="el-icon-download" :disabled="selectedRows.length === 0" v-hasPermi="['talk:session:export']" @click="handleBatchExport">批量导出</el-button>
+      </div>
 
-    <el-tabs v-if="queryMode === 'records'" v-model="talkTypeFilter" @tab-click="handleTabClick" style="margin-bottom:8px">
-      <el-tab-pane label="全部" name="all" />
-      <el-tab-pane label="个别谈话" name="individual" />
-      <el-tab-pane label="集体谈话" name="group" />
-    </el-tabs>
-
-    <el-table v-loading="loading" :data="displayList" @selection-change="handleSelectionChange" :row-key="getRowKey" :key="queryMode">
-      <el-table-column v-if="queryMode === 'records'" type="selection" width="50" align="center" />
-      <el-table-column type="index" label="序号" width="60" align="center" />
-      <el-table-column v-if="queryMode === 'records'" label="会话ID" align="center" prop="sessionId" width="80" />
-      <el-table-column v-if="queryMode === 'records'" label="学生姓名" align="center" prop="studentName" width="100" />
-      <el-table-column v-if="queryMode === 'records'" label="学号" align="center" prop="studentCode" width="130" />
-      <el-table-column v-if="queryMode === 'records'" label="谈话类型" align="center" width="90">
-        <template slot-scope="scope">
-          <el-tag v-if="scope.row.talkType === 'individual'" type="primary" size="small">个别谈话</el-tag>
-          <el-tag v-else-if="scope.row.talkType === 'group'" type="success" size="small">集体谈话</el-tag>
-          <span v-else>{{ scope.row.talkType }}</span>
+      <el-table :key="queryMode" v-loading="loading" :data="rows" :row-key="rowKey" class="result-table" @selection-change="selectedRows = $event">
+        <el-table-column v-if="queryMode === 'records'" type="selection" width="48" align="center" />
+        <el-table-column type="index" label="序号" width="64" align="center" :index="tableIndex" />
+        <template v-if="queryMode === 'records'">
+          <el-table-column label="学生" min-width="150">
+            <template slot-scope="scope">
+              <div class="student-cell"><span class="student-avatar">{{ (scope.row.studentName || '?').slice(0, 1) }}</span><div><strong>{{ scope.row.studentName || '-' }}</strong><small>{{ scope.row.studentCode || '-' }}</small></div></div>
+            </template>
+          </el-table-column>
+          <el-table-column label="类型" width="96" align="center">
+            <template slot-scope="scope"><el-tag :type="scope.row.talkType === 'group' ? 'success' : 'primary'" size="small" effect="plain">{{ $talkLabel('talkType', scope.row.talkType) }}</el-tag></template>
+          </el-table-column>
+          <el-table-column label="谈话时间" prop="talkTime" width="164"><template slot-scope="scope">{{ formatDateTime(scope.row.talkTime) }}</template></el-table-column>
+          <el-table-column label="谈话人" prop="talkPerson" width="120" show-overflow-tooltip />
+          <el-table-column label="谈话内容" prop="talkContent" :formatter="formatTalkContent" min-width="240" show-overflow-tooltip />
+          <el-table-column label="标签" min-width="190">
+            <template slot-scope="scope"><div v-if="tagsFor(scope.row.sessionId).length" class="tag-list"><el-tag v-for="tag in tagsFor(scope.row.sessionId)" :key="tag" size="mini" type="info">{{ tag }}</el-tag></div><span v-else class="muted">—</span></template>
+          </el-table-column>
+          <el-table-column label="操作" width="82" fixed="right" align="center">
+            <template slot-scope="scope"><el-button type="text" icon="el-icon-download" v-hasPermi="['talk:session:export']" @click="handleExportRow(scope.row)">导出</el-button></template>
+          </el-table-column>
         </template>
-      </el-table-column>
-      <el-table-column v-if="queryMode === 'records'" label="谈话时间" align="center" width="110">
-        <template slot-scope="scope">
-          <span>{{ scope.row.talkTime ? scope.row.talkTime.substring(0, 10) : '-' }}</span>
+        <template v-else>
+          <el-table-column label="学生" min-width="180">
+            <template slot-scope="scope"><div class="student-cell"><span class="student-avatar warm">{{ (scope.row.studentName || '?').slice(0, 1) }}</span><div><strong>{{ scope.row.studentName || '-' }}</strong><small>{{ scope.row.studentCode || '-' }}</small></div></div></template>
+          </el-table-column>
+          <el-table-column label="班级" prop="deptName" min-width="220" show-overflow-tooltip />
+          <el-table-column label="最近谈话时间" width="170"><template slot-scope="scope">{{ formatDateTime(scope.row.lastTalkTime) }}</template></el-table-column>
+          <el-table-column label="操作" width="110" align="center">
+            <template slot-scope="scope"><el-button type="text" icon="el-icon-chat-line-round" @click="$router.push({ path: '/talk/initiate', query: { studentId: scope.row.studentId } })">发起谈话</el-button></template>
+          </el-table-column>
         </template>
-      </el-table-column>
-      <el-table-column v-if="queryMode === 'records'" label="谈话人" align="center" prop="talkPerson" width="100" />
-      <el-table-column v-if="queryMode === 'records'" label="谈话内容" align="center" prop="talkContent" min-width="200" show-overflow-tooltip />
-      <el-table-column v-if="queryMode === 'records'" label="内容标签" align="center" width="180">
-        <template slot-scope="scope">
-          <span v-if="tagDataMap[scope.row.sessionId] && tagDataMap[scope.row.sessionId].length > 0">
-            <el-tag
-              v-for="(tag, ti) in tagDataMap[scope.row.sessionId]"
-              :key="ti"
-              size="mini"
-              type="info"
-              style="margin:2px"
-            >{{ tag }}</el-tag>
-          </span>
-          <span v-else style="color:#c0c4cc">-</span>
-        </template>
-      </el-table-column>
-      <el-table-column v-if="queryMode === 'records'" label="操作" align="center" width="80">
-        <template slot-scope="scope">
-          <el-button
-            size="mini"
-            type="text"
-            icon="el-icon-download"
-            @click="handleExportRow(scope.row)"
-          >导出</el-button>
-        </template>
-      </el-table-column>
-
-      <el-table-column v-if="queryMode === 'untalked'" label="学号" align="center" prop="studentCode" width="130" />
-      <el-table-column v-if="queryMode === 'untalked'" label="姓名" align="center" prop="studentName" width="120" />
-      <el-table-column v-if="queryMode === 'untalked'" label="班级" align="center" prop="deptName" width="200" show-overflow-tooltip />
-      <el-table-column v-if="queryMode === 'untalked'" label="上次谈话时间" align="center" width="140">
-        <template slot-scope="scope">
-          <span>{{ scope.row.lastTalkTime ? scope.row.lastTalkTime.substring(0, 10) : '-' }}</span>
-        </template>
-      </el-table-column>
-    </el-table>
-
-    <pagination
-      v-show="total>0"
-      :total="total"
-      :page.sync="queryParams.pageNum"
-      :limit.sync="queryParams.pageSize"
-      @pagination="getList"
-    />
+        <template slot="empty"><div class="empty-state"><i :class="queryMode === 'records' ? 'el-icon-document' : 'el-icon-user'"></i><p>没有找到符合条件的数据</p><span>调整筛选条件后再试试</span></div></template>
+      </el-table>
+      <pagination v-show="total > 0" :total="total" :page.sync="queryParams.pageNum" :limit.sync="queryParams.pageSize" @pagination="getList" />
+    </section>
   </div>
 </template>
 
 <script>
-import { listTalksession, getSessionTags, getBatchTags, TAG_LABELS } from '@/api/talk/talkSession'
 import { listTalkrecord } from '@/api/talk/talkStudentRecord'
-import { getTalk, getDeptTree, listUntalked } from '@/api/talk/talkStudent'
-import request from '@/utils/request'
+import { getDeptTree, listUntalked } from '@/api/talk/talkStudent'
+import { getBatchTags, exportDocxForRecord, exportDocxRecordsBatch, TAG_LABELS } from '@/api/talk/talkSession'
+import { getActiveTags } from '@/api/talk/talkTag'
+import { html2Text } from '@/utils'
 
 export default {
   name: 'UnifiedQuery',
   data() {
     return {
       loading: false,
-      showSearch: true,
-      selected: [],
-      total: 0,
-      talkTypeFilter: 'all',
-      allData: [],
-      displayList: [],
-      tagDataMap: {},
-
       queryMode: 'records',
+      rows: [],
+      total: 0,
+      selectedRows: [],
+      dateRange: [],
       deptTree: [],
       selectedDeptPath: [],
       selectedDeptId: null,
-
-      queryParams: {
-        pageNum: 1,
-        pageSize: 10,
-        dateRange: null,
-        keyword: '',
-        talkType: '',
-        tags: [],
-        talkPerson: ''
-      },
-
-      tagOptions: Object.keys(TAG_LABELS).map(k => ({ value: k, label: TAG_LABELS[k] }))
+      deptProps: { value: 'deptId', label: 'deptName', children: 'children', checkStrictly: true, emitPath: true },
+      tagOptions: Object.keys(TAG_LABELS).map(value => ({ value, label: TAG_LABELS[value] })),
+      tagLabelMap: { ...TAG_LABELS },
+      tagDataMap: {},
+      requestSeq: 0,
+      queryParams: this.defaultQuery()
     }
   },
   computed: {
-    getRowKey() {
-      if (this.queryMode === 'records') {
-        return 'rowKey'
-      }
-      return 'studentId'
+    rowKey() {
+      return this.queryMode === 'records' ? 'recordId' : 'studentId'
     }
   },
   created() {
-    this.loadDeptTree()
+    this.loadSupportData()
     this.getList()
   },
   methods: {
-    loadDeptTree() {
-      getDeptTree().then(response => {
-        this.deptTree = response.data || []
-      }).catch(() => {
-        this.deptTree = []
-        this.$modal.msgError('加载部门树失败')
-      })
+    formatTalkContent(row) {
+      return html2Text(row.talkContent || '')
     },
-
-    handleModeChange() {
-      this.queryParams.pageNum = 1
-      this.selected = []
-      this.allData = []
-      this.displayList = []
-      this.total = 0
-      if (this.queryMode === 'untalked') {
-        this.selectedDeptPath = []
-        this.selectedDeptId = null
-      }
-      this.getList()
+    defaultQuery() {
+      return { pageNum: 1, pageSize: 10, keyword: '', talkType: '', tags: [], talkPerson: '' }
     },
-
-    handleDeptChange(value) {
-      if (value && value.length > 0) {
-        this.selectedDeptId = value[value.length - 1]
-      } else {
-        this.selectedDeptId = null
-      }
+    loadSupportData() {
+      getDeptTree().then(res => { this.deptTree = res.data || [] }).catch(() => { this.deptTree = [] })
+      getActiveTags().then(res => {
+        const tags = res.data || []
+        if (!tags.length) return
+        this.tagOptions = tags.map(tag => ({ value: tag.tagKey, label: tag.tagName }))
+        this.tagLabelMap = tags.reduce((map, tag) => { map[tag.tagKey] = tag.tagName; return map }, { ...TAG_LABELS })
+      }).catch(() => {})
     },
-
+    switchMode(mode) {
+      if (mode === this.queryMode) return
+      this.queryMode = mode
+      this.resetQuery()
+    },
+    handleDeptChange(path) {
+      this.selectedDeptId = path && path.length ? path[path.length - 1] : null
+    },
     getList() {
-      if (this.queryMode === 'untalked') {
-        this.loadUntalkedList()
-        return
-      }
-      this.loadRecordsList()
+      if (this.queryMode === 'untalked') this.loadUntalked()
+      else this.loadRecords()
     },
-
-    loadUntalkedList() {
+    loadRecords() {
+      const requestId = ++this.requestSeq
       this.loading = true
       const params = {
         pageNum: this.queryParams.pageNum,
-        pageSize: this.queryParams.pageSize
+        pageSize: this.queryParams.pageSize,
+        keyword: this.queryParams.keyword || undefined,
+        talkType: this.queryParams.talkType || undefined,
+        talkPerson: this.queryParams.talkPerson || undefined,
+        tagValues: this.queryParams.tags.length ? this.queryParams.tags.join(',') : undefined,
+        beginTalkTime: this.dateRange && this.dateRange[0],
+        endTalkTime: this.dateRange && this.dateRange[1]
       }
-      if (this.queryParams.dateRange && this.queryParams.dateRange.length === 2) {
-        params.beginDate = this.queryParams.dateRange[0]
-        params.endDate = this.queryParams.dateRange[1]
-      }
-      if (this.selectedDeptId) {
-        params.deptId = this.selectedDeptId
-      }
-      if (this.queryParams.keyword) {
-        params.keyword = this.queryParams.keyword
-      }
-
-      listUntalked(params).then(response => {
-        this.displayList = response.rows || []
-        this.total = response.total || 0
-        this.loading = false
+      listTalkrecord(params).then(res => {
+        if (requestId !== this.requestSeq || this.queryMode !== 'records') return
+        this.rows = res.rows || []
+        this.total = Number(res.total) || 0
+        this.loadRowTags(this.rows)
       }).catch(() => {
-        this.displayList = []
+        if (requestId !== this.requestSeq || this.queryMode !== 'records') return
+        this.rows = []
         this.total = 0
-        this.loading = false
-        this.$modal.msgError('查询未谈学生失败')
+        this.$modal.msgError('谈话记录查询失败')
+      }).finally(() => {
+        if (requestId === this.requestSeq) this.loading = false
       })
     },
-
-    loadRecordsList() {
+    loadUntalked() {
+      const requestId = ++this.requestSeq
       this.loading = true
       const params = {
         pageNum: this.queryParams.pageNum,
-        pageSize: this.queryParams.pageSize
+        pageSize: this.queryParams.pageSize,
+        keyword: this.queryParams.keyword || undefined,
+        deptId: this.selectedDeptId || undefined,
+        beginDate: this.dateRange && this.dateRange[0],
+        endDate: this.dateRange && this.dateRange[1]
       }
-
-      if (this.queryParams.dateRange && this.queryParams.dateRange.length === 2) {
-        params.beginTime = this.queryParams.dateRange[0]
-        params.endTime = this.queryParams.dateRange[1]
-      }
-
-      if (this.talkTypeFilter && this.talkTypeFilter !== 'all') {
-         params.talkType = this.talkTypeFilter
-       } else if (this.queryParams.talkType) {
-         params.talkType = this.queryParams.talkType
-       }
-
-      const hasFrontendFilters = this.queryParams.keyword ||
-        (this.queryParams.tags && this.queryParams.tags.length > 0) ||
-        (this.queryParams.dateRange && this.queryParams.dateRange.length === 2)
-
-      if (hasFrontendFilters) {
-        params.pageNum = 1
-        params.pageSize = 9999
-      }
-
-      listTalksession(params).then(response => {
-        const sessions = response.rows || []
-        if (sessions.length === 0) {
-           this.allData = []
-           this.tagDataMap = {}
-           this.total = 0
-           this.displayList = []
-           this.loading = false
-           return
-         }
-
-        this.loadTagsForSessions(sessions)
-
-        const sessionIds = sessions.map(s => s.sessionId)
-        listTalkrecord({ sessionIds: sessionIds.join(','), pageSize: 9999 }).then(recRes => {
-          const records = recRes.rows || []
-          const sessionMap = {}
-          sessions.forEach(s => { sessionMap[s.sessionId] = s })
-
-          const studentIds = [...new Set(records.map(r => r.studentId))]
-          const studentMap = {}
-          Promise.all(studentIds.map(id =>
-            getTalk(id).then(stu => {
-              if (stu.data) { studentMap[id] = stu.data }
-            }).catch(() => {})
-          )).then(() => {
-            this.allData = records.map(record => {
-              const session = sessionMap[record.sessionId] || {}
-              const student = studentMap[record.studentId] || {}
-              return {
-                rowKey: record.sessionId + '_' + record.recordId,
-                sessionId: record.sessionId,
-                talkType: session.talkType || '',
-                talkTime: session.talkTime || '',
-                talkContent: session.talkContent || '',
-                talkPerson: session.talkPerson || '',
-                talkLocation: session.talkLocation || '',
-                recordId: record.recordId,
-                studentId: record.studentId,
-                studentName: student.studentName || '',
-                studentCode: student.studentCode || '',
-                studentFeedback: record.studentFeedback,
-                followupPlan: record.followupPlan,
-                followupStatus: record.followupStatus
-              }
-            })
-
-            if (hasFrontendFilters) {
-              this.applyFilters()
-            } else {
-              this.total = response.total
-              this.displayList = this.allData.slice()
-            }
-            this.loading = false
-          })
-        }).catch(() => {
-          this.allData = []
-          this.total = 0
-          this.displayList = []
-          this.loading = false
-        })
+      listUntalked(params).then(res => {
+        if (requestId !== this.requestSeq || this.queryMode !== 'untalked') return
+        this.rows = res.rows || []
+        this.total = Number(res.total) || 0
       }).catch(() => {
-        this.allData = []
+        if (requestId !== this.requestSeq || this.queryMode !== 'untalked') return
+        this.rows = []
         this.total = 0
-        this.displayList = []
-        this.loading = false
+        this.$modal.msgError('未谈学生查询失败')
+      }).finally(() => {
+        if (requestId === this.requestSeq) this.loading = false
       })
     },
-
-    loadTagsForSessions(sessions) {
-      const sessionIds = sessions.map(s => s.sessionId)
-      getBatchTags(sessionIds).then(res => {
-        const data = res.data || {}
-        const newTagMap = {}
-        Object.keys(data).forEach(k => {
-          newTagMap[Number(k)] = (data[k] || []).map(t => {
-            const val = t.tagValue
-            if (!val) return '-'
-            // 兼容 tagValue 可能是 JSON 数组字符串
-            let parsed = val
-            try { parsed = JSON.parse(val) } catch (e) { /* not JSON */ }
-            if (Array.isArray(parsed)) {
-              return parsed.map(v => TAG_LABELS[v] || v).join('、')
-            }
-            return TAG_LABELS[parsed] || parsed
-          })
-        })
-        this.tagDataMap = newTagMap
-      }).catch(() => {
-        this.tagDataMap = {}
+    loadRowTags(rows) {
+      const ids = [...new Set(rows.map(row => row.sessionId).filter(Boolean))]
+      if (!ids.length) { this.tagDataMap = {}; return }
+      getBatchTags(ids).then(res => { this.tagDataMap = res.data || {} }).catch(() => { this.tagDataMap = {} })
+    },
+    tagsFor(sessionId) {
+      const entries = this.tagDataMap[sessionId] || this.tagDataMap[String(sessionId)] || []
+      const values = []
+      entries.forEach(entry => {
+        let parsed = entry.tagValue
+        try { parsed = JSON.parse(entry.tagValue) } catch (e) { /* 兼容历史普通字符串 */ }
+        const items = Array.isArray(parsed) ? parsed : [parsed]
+        items.filter(Boolean).forEach(value => values.push(this.$talkTags(value, this.tagLabelMap)))
       })
+      return [...new Set(values)]
     },
-
-    applyFilters() {
-      let data = this.allData.slice()
-
-      if (this.queryParams.keyword) {
-        const kw = this.queryParams.keyword.toLowerCase()
-        data = data.filter(row =>
-          (row.studentName || '').toLowerCase().indexOf(kw) > -1 ||
-          (row.studentCode || '').toLowerCase().indexOf(kw) > -1
-        )
-      }
-
-      if (this.talkTypeFilter && this.talkTypeFilter !== 'all') {
-        data = data.filter(row => row.talkType === this.talkTypeFilter)
-      } else if (this.queryParams.talkType) {
-        data = data.filter(row => row.talkType === this.queryParams.talkType)
-      }
-
-      if (this.queryParams.talkPerson) {
-        const tp = this.queryParams.talkPerson.toLowerCase()
-        data = data.filter(row => (row.talkPerson || '').toLowerCase().indexOf(tp) > -1)
-      }
-
-      if (this.queryParams.tags && this.queryParams.tags.length > 0) {
-        const selectedTags = this.queryParams.tags
-        data = data.filter(row => {
-          const rowTags = this.tagDataMap[row.sessionId] || []
-          return selectedTags.some(t => rowTags.indexOf(TAG_LABELS[t] || t) > -1)
-        })
-      }
-
-      if (this.queryParams.dateRange && this.queryParams.dateRange.length === 2) {
-        const start = this.queryParams.dateRange[0]
-        const end = this.queryParams.dateRange[1]
-        data = data.filter(row => {
-          if (!row.talkTime) return false
-          const date = row.talkTime.substring(0, 10)
-          return date >= start && date <= end
-        })
-      }
-
-      this.total = data.length
-      const startIdx = (this.queryParams.pageNum - 1) * this.queryParams.pageSize
-      this.displayList = data.slice(startIdx, startIdx + this.queryParams.pageSize)
-    },
-
     handleQuery() {
       this.queryParams.pageNum = 1
+      this.selectedRows = []
       this.getList()
     },
-
     resetQuery() {
-      this.queryParams = {
-        pageNum: 1,
-        pageSize: 10,
-        dateRange: null,
-        keyword: '',
-        talkType: '',
-        tags: [],
-        talkPerson: ''
-      }
-      this.talkTypeFilter = 'all'
+      this.queryParams = this.defaultQuery()
+      this.dateRange = []
       this.selectedDeptPath = []
       this.selectedDeptId = null
-      this.handleQuery()
-    },
-
-    handleTabClick() {
-      this.queryParams.pageNum = 1
-      this.queryParams.talkType = ''
+      this.rows = []
+      this.total = 0
+      this.selectedRows = []
       this.getList()
     },
-
-    handleSelectionChange(selection) {
-      this.selected = selection
+    tableIndex(index) {
+      return (this.queryParams.pageNum - 1) * this.queryParams.pageSize + index + 1
     },
-
-    handleExportRow(row) {
-      this.$modal.confirm('确认导出该条谈话记录吗？').then(() => {
-        return request({
-          url: '/ruoyi-system/talksession/exportDocx/' + row.sessionId,
-          method: 'get',
-          responseType: 'blob'
-        })
-      }).then(blob => {
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = '谈话记录_' + (row.studentName || row.sessionId) + '.docx'
-        a.click()
-        window.URL.revokeObjectURL(url)
-        this.$modal.msgSuccess('导出成功')
-      }).catch(() => {
-        this.$modal.msgError('导出失败')
-      })
+    formatDateTime(value) {
+      return value ? String(value).replace('T', ' ').substring(0, 16) : '暂无记录'
     },
-
-    handleBatchExport() {
-      if (this.selected.length === 0) {
-        this.$modal.msgWarning('请至少选择一条记录')
-        return
+    async saveBlob(blob, fileName) {
+      // DOCX and ZIP exports both use ZIP headers. Authentication/error JSON is not a document.
+      const header = new Uint8Array(await blob.slice(0, 4).arrayBuffer())
+      if (header.length < 4 || header[0] !== 0x50 || header[1] !== 0x4b) {
+        throw new Error('导出未返回有效文件')
       }
-      const sessionIds = [...new Set(this.selected.map(item => item.sessionId))]
-      this.$modal.confirm('确认导出选中的 ' + sessionIds.length + ' 条会话记录吗？').then(() => {
-        return request({
-          url: '/ruoyi-system/talksession/exportDocx/batch',
-          method: 'post',
-          data: sessionIds,
-          responseType: 'blob'
-        })
-      }).then(blob => {
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = '谈话记录批量导出.zip'
-        a.click()
-        window.URL.revokeObjectURL(url)
-        this.$modal.msgSuccess('导出成功')
-      }).catch(() => {
-        this.$modal.msgError('批量导出失败')
-      })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    },
+    handleExportRow(row) {
+      exportDocxForRecord(row.recordId).then(blob => this.saveBlob(blob, '谈话记录_' + (row.studentName || row.studentId) + '.docx')).catch(() => this.$modal.msgError('导出失败'))
+    },
+    handleBatchExport() {
+      const recordIds = [...new Set(this.selectedRows.map(row => row.recordId))]
+      if (!recordIds.length) return
+      exportDocxRecordsBatch(recordIds).then(blob => this.saveBlob(blob, '谈话记录批量导出.zip')).catch(() => this.$modal.msgError('批量导出失败'))
     }
   }
 }
 </script>
 
 <style lang="scss" scoped>
-@import "@/assets/styles/variables.scss";
-
-.app-container {
-  padding: 20px;
-  background: linear-gradient(160deg, #f0f5fa 0%, #e8edf2 100%);
-  min-height: calc(100vh - 84px);
-}
-
-.search-section {
-  background: #ffffff;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(26, 82, 118, 0.08);
-  margin-bottom: 16px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-
-  .el-input__inner {
-    height: 36px;
-    line-height: 36px;
-    border-radius: 6px;
-    border: 1px solid #d4e0eb;
-    background: #ffffff;
-    transition: all 0.3s ease;
-
-    &:hover {
-      border-color: #2a6fa8;
-    }
-
-    &:focus {
-      border-color: #1a5276;
-      box-shadow: 0 0 0 3px rgba(26, 82, 118, 0.08);
-      background: #ffffff;
-    }
-  }
-
-  ::v-deep .el-input__prefix {
-    color: #2a6fa8;
-  }
-
-  ::v-deep .el-button--primary {
-    background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
-    border: none;
-    box-shadow: 0 2px 8px rgba(26, 82, 118, 0.25);
-    transition: all 0.3s ease;
-    height: 36px;
-
-    &:hover {
-      background: linear-gradient(135deg, #1e5f8a 0%, #3080ba 100%);
-      box-shadow: 0 4px 12px rgba(26, 82, 118, 0.35);
-      transform: translateY(-1px);
-    }
-  }
-}
-
-::v-deep .el-tabs__item.is-active {
-  color: #1a5276;
-}
-::v-deep .el-tabs__active-bar {
-  background-color: #1a5276;
-}
-::v-deep .el-tabs__item:hover {
-  color: #2a6fa8;
-}
-
-.el-table {
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(26, 82, 118, 0.08);
-
-  ::v-deep th.el-table__cell {
-    background: linear-gradient(135deg, #2a6fa8 0%, #4a8fc7 100%) !important;
-    color: #ffffff;
-    font-weight: 600;
-    font-size: 14px;
-    border-color: #e8edf2;
-    padding: 12px 0;
-  }
-
-  ::v-deep td.el-table__cell {
-    border-color: #e8edf2;
-    font-size: 13px;
-    padding: 10px 0;
-  }
-
-  ::v-deep .el-table__body tr {
-    transition: background 0.2s ease;
-
-    &:hover > td {
-      background: #f0f6fc !important;
-    }
-  }
-
-  ::v-deep .el-table__body tr:nth-child(even) {
-    background: #fafbfd;
-  }
-
-  ::v-deep .el-table__body tr:nth-child(odd) {
-    background: #ffffff;
-  }
-
-  ::v-deep .el-table__body tr.current-row > td {
-    background: #e8f4f8 !important;
-  }
-}
-
-.small-padding {
-  ::v-deep .el-button--text {
-    padding: 4px 8px;
-    font-size: 13px;
-
-    &:first-child {
-      color: #2a6fa8;
-      &:hover { color: #3a85c0; text-decoration: underline; }
-    }
-
-    &:nth-child(2) {
-      color: #e64340;
-      &:hover { color: #f06060; text-decoration: underline; }
-    }
-  }
-}
-
-::v-deep .pagination-container {
-  margin-top: 16px;
-  background: #ffffff;
-  padding: 12px 16px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(26, 82, 118, 0.06);
-  display: flex;
-  justify-content: center;
-
-  .el-pagination {
-    .btn-prev,
-    .btn-next,
-    .el-pager li {
-      background: #ffffff;
-      color: #1a5276;
-      border-radius: 4px;
-
-      &:hover {
-        background: #f0f6fc;
-        color: #1a5276;
-      }
-
-      &.active {
-        background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
-        color: #ffffff;
-      }
-    }
-
-    .el-pagination__sizes {
-      .el-input__inner {
-        border-color: #d4e0eb;
-        &:hover { border-color: #1a5276; }
-      }
-    }
-  }
-}
-
-::v-deep .el-dialog {
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 20px 60px rgba(10, 37, 64, 0.2);
-
-  .el-dialog__header {
-    background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
-    padding: 16px 20px;
-    margin: 0;
-
-    .el-dialog__title {
-      color: #ffffff;
-      font-weight: 600;
-      font-size: 16px;
-    }
-
-    .el-dialog__headerbtn {
-      .el-dialog__close {
-        color: rgba(255, 255, 255, 0.8);
-        &:hover {
-          color: #ffffff;
-          transform: rotate(90deg);
-        }
-      }
-    }
-  }
-
-  .el-dialog__body {
-    padding: 24px 20px;
-    background: #ffffff;
-
-    .el-form-item__label {
-      color: #1a5276;
-      font-weight: 500;
-    }
-
-    .el-input__inner,
-    .el-textarea__inner {
-      border-radius: 6px;
-      border: 1px solid #d4e0eb;
-
-      &:hover { border-color: #2a6fa8; }
-
-      &:focus {
-        border-color: #1a5276;
-        box-shadow: 0 0 0 3px rgba(26, 82, 118, 0.08);
-      }
-    }
-
-    .el-select .el-input__inner {
-      border-radius: 6px;
-    }
-  }
-
-  .el-dialog__footer {
-    padding: 12px 20px 20px;
-    background: #fafbfd;
-    border-top: 1px solid #e8edf2;
-    text-align: center;
-
-    .el-button--primary {
-      background: linear-gradient(135deg, #1a5276 0%, #2a6fa8 100%);
-      border: none;
-      box-shadow: 0 4px 12px rgba(26, 82, 118, 0.3);
-      min-width: 100px;
-
-      &:hover {
-        background: linear-gradient(135deg, #1e5f8a 0%, #3080ba 100%);
-        box-shadow: 0 6px 20px rgba(26, 82, 118, 0.4);
-        transform: translateY(-1px);
-      }
-    }
-
-    .el-button--default {
-      border-color: #d4e0eb;
-      color: #606266;
-      background: #ffffff;
-      min-width: 100px;
-
-      &:hover {
-        border-color: #1a5276;
-        color: #1a5276;
-        background: #f0f6fc;
-      }
-    }
-  }
-}
-
-@media screen and (max-width: 768px) {
-  .app-container {
-    padding: 12px;
-  }
-
-  .search-section {
-    flex-direction: column;
-
-    ::v-deep .el-input {
-      width: 100% !important;
-    }
-  }
+.query-page { min-height: calc(100vh - 84px); padding: 24px; background: #f3f6f9; color: #17324d; }
+.query-hero { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 20px; padding: 30px 34px; border-radius: 18px; color: #fff; background: linear-gradient(125deg, #0e5b72 0%, #147c88 52%, #54a790 100%); box-shadow: 0 16px 34px rgba(24, 95, 109, .2); }
+.query-hero::after { content: ''; position: absolute; right: -60px; top: -95px; width: 260px; height: 260px; border: 48px solid rgba(255, 255, 255, .08); border-radius: 50%; }
+.eyebrow { font-size: 11px; letter-spacing: 3px; opacity: .72; }
+.query-hero h1 { margin: 8px 0 7px; font-family: "Microsoft YaHei", sans-serif; font-size: 30px; letter-spacing: 2px; }
+.query-hero p { margin: 0; font-size: 14px; opacity: .82; }
+.mode-switch { position: relative; z-index: 1; display: flex; padding: 5px; border: 1px solid rgba(255, 255, 255, .25); border-radius: 13px; background: rgba(7, 54, 67, .28); backdrop-filter: blur(8px); }
+.mode-switch button { border: 0; padding: 11px 18px; border-radius: 9px; color: rgba(255, 255, 255, .72); background: transparent; cursor: pointer; transition: .2s ease; }
+.mode-switch button i { margin-right: 7px; }
+.mode-switch button.active { color: #155b68; background: #fff; box-shadow: 0 5px 14px rgba(4, 40, 49, .18); }
+.panel { margin-bottom: 18px; padding: 22px 24px; border: 1px solid #e6edf1; border-radius: 16px; background: #fff; box-shadow: 0 8px 24px rgba(28, 62, 78, .055); }
+.panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.panel-heading h2 { margin: 0 0 5px; font-size: 17px; color: #17324d; }
+.panel-heading span { font-size: 12px; color: #8496a6; }
+.panel-heading strong { color: #147c88; font-size: 15px; }
+.result-heading { margin-bottom: 12px; }
+.query-form ::v-deep .el-form-item { margin-bottom: 0; }
+.query-form ::v-deep .el-form-item__label { padding-bottom: 7px; color: #536b7c; font-weight: 500; line-height: 20px; }
+.query-form ::v-deep .el-input__inner { border-color: #dce6eb; border-radius: 8px; }
+.query-form ::v-deep .el-input__inner:focus { border-color: #168294; }
+.search-action-col { padding-top: 27px; }
+.search-button { width: 100%; border-color: #147c88; background: #147c88; border-radius: 8px; }
+.search-button:hover { border-color: #0e6877; background: #0e6877; }
+.result-table::before { display: none; }
+.result-table ::v-deep th { color: #506879; background: #f6f9fa; }
+.result-table ::v-deep td { padding: 12px 0; }
+.student-cell { display: flex; align-items: center; gap: 10px; }
+.student-cell strong, .student-cell small { display: block; }
+.student-cell strong { margin-bottom: 3px; color: #213e54; font-size: 14px; }
+.student-cell small { color: #96a5b1; font-size: 11px; }
+.student-avatar { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; color: #147c88; background: #e6f3f3; font-weight: 700; }
+.student-avatar.warm { color: #a26a19; background: #fff2dc; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.muted { color: #b5c0c8; }
+.empty-state { padding: 40px 0; color: #9aaab6; text-align: center; }
+.empty-state i { font-size: 34px; color: #cad5dc; }
+.empty-state p { margin: 10px 0 4px; color: #60798b; }
+.empty-state span { font-size: 12px; }
+@media (max-width: 768px) {
+  .query-page { padding: 14px; }
+  .query-hero { align-items: flex-start; flex-direction: column; padding: 24px 20px; }
+  .mode-switch { width: 100%; }
+  .mode-switch button { flex: 1; }
+  .panel { padding: 18px 15px; }
+  .query-form ::v-deep .el-form-item { margin-bottom: 14px; }
+  .search-action-col { padding-top: 0; }
 }
 </style>

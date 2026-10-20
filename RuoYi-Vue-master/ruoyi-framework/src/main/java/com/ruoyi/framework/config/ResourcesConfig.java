@@ -2,6 +2,7 @@ package com.ruoyi.framework.config;
 
 import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.CacheControl;
@@ -25,6 +26,9 @@ public class ResourcesConfig implements WebMvcConfigurer
 {
     @Autowired
     private RepeatSubmitInterceptor repeatSubmitInterceptor;
+
+    @Value("${cors.allowed-origins:http://127.0.0.1:6080,http://localhost:6080}")
+    private String allowedOrigins;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry)
@@ -55,8 +59,16 @@ public class ResourcesConfig implements WebMvcConfigurer
     public CorsFilter corsFilter()
     {
         CorsConfiguration config = new CorsConfiguration();
-        // 设置访问源地址
-        config.addAllowedOriginPattern("*");
+        // Only explicitly configured frontends may call the API cross-origin.
+        for (String origin : allowedOrigins.split(","))
+        {
+            String trimmedOrigin = origin.trim();
+            if (!trimmedOrigin.isEmpty())
+            {
+                config.addAllowedOrigin(trimmedOrigin);
+            }
+        }
+        config.setAllowCredentials(false);
         // 设置访问源请求头
         config.addAllowedHeader("*");
         // 设置访问源请求方法

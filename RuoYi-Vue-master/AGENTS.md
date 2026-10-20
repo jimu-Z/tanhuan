@@ -1,5 +1,15 @@
 # AGENTS.md — 学生谈心谈话管理系统
 
+## v10 当前基线（2026-09-09）
+
+本节优先于下方保留的历史轮次记录。领域真相见 `CONTEXT.md`，设计决策见 `docs/adr/0003-four-role-college-scope.md`，数据库升级入口为 `sql/talk_role_permission_v9.sql`。
+
+- 权限只由 `admin`、`school_admin`、`college_admin`、`talk_teacher` 决定，教师岗位不参与授权；旧 `talk_secretary`/`talk_counselor` 已迁移并停用。
+- 所有在用学生、教师、谈话、记录、附件、学院标签和学院模板查询必须显式按学院隔离；谈话写操作还必须校验创建人所有权。
+- 管理员操作范围：`admin`/校管理员全校，院管理员本学院。教师可查看本学院教师名单；可维护本学院学生但不可删除；不可维护教师账号、学院、班级。
+- 统一查询和统计分析作为核心管理端能力上线；学生端及预约、预警、大屏、回访、学生反馈、我的记录暂不上线，代码与数据保留、入口隐藏。
+- 系统标签/模板仅 `admin` 和校管理员维护；学院标签/模板由本学院教师和院管理员共同维护。
+
 ## Agent skills
 
 ### Issue tracker
@@ -75,3 +85,5 @@ HTTP请求 → Controller
 - 前端需要部门树时，使用 `getDeptTree()` 而非 `listDept()`，避免 `system:dept:list` 权限依赖
 - 修改角色相关逻辑前，先查阅 CONTEXT.md 的「角色」章节和「数据权限架构」
 - 每次修复 BUG 后，更新 CLAUDE.md 的 BUG 修复历史表
+- 新增 Mapper insert 语句时，必须包含 `useGeneratedKeys="true" keyProperty="xxx"`，否则主键不会回填到 Java 对象
+- 前端标签显示必须兼容 `tagValue` 可能是 JSON 数组字符串的情况（`try { JSON.parse(value) } catch {}`）

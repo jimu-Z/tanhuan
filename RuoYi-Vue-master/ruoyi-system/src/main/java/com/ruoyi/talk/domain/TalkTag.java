@@ -9,6 +9,9 @@ public class TalkTag extends BaseEntity
     private static final long serialVersionUID = 1L;
 
     private Long tagId;
+    /** system=系统内置，college=学院自定义 */
+    private String scopeType;
+    private Long collegeDeptId;
     private String tagKey;
     private String tagName;
     private Integer sortOrder;
@@ -17,6 +20,12 @@ public class TalkTag extends BaseEntity
 
     public Long getTagId() { return tagId; }
     public void setTagId(Long tagId) { this.tagId = tagId; }
+
+    public String getScopeType() { return scopeType; }
+    public void setScopeType(String scopeType) { this.scopeType = scopeType; }
+
+    public Long getCollegeDeptId() { return collegeDeptId; }
+    public void setCollegeDeptId(Long collegeDeptId) { this.collegeDeptId = collegeDeptId; }
 
     public String getTagKey() { return tagKey; }
     public void setTagKey(String tagKey) { this.tagKey = tagKey; }
@@ -37,6 +46,8 @@ public class TalkTag extends BaseEntity
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
             .append("tagId", getTagId())
+            .append("scopeType", getScopeType())
+            .append("collegeDeptId", getCollegeDeptId())
             .append("tagKey", getTagKey())
             .append("tagName", getTagName())
             .append("sortOrder", getSortOrder())

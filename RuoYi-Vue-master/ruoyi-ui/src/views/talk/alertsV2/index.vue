@@ -175,7 +175,7 @@
       </el-table-column>
       <el-table-column label="预警类型" align="center" prop="alertType" width="100">
         <template slot-scope="scope">
-          <span>{{ selectDictLabel(dict.type.alert_type, scope.row.alertType) || '-' }}</span>
+          <span>{{ $talkLabel('alertType', scope.row.alertType, dict.type.alert_type) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="预警原因" align="center" prop="alertReason" min-width="200" show-overflow-tooltip />

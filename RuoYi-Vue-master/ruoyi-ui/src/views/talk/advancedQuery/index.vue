@@ -46,7 +46,7 @@
       <el-table-column type="selection" width="45" />
       <el-table-column type="index" label="序号" width="50" align="center" />
       <el-table-column label="类型" width="70" align="center">
-        <template slot-scope="s"><el-tag :type="s.row.talkType==='individual'?'primary':'success'" size="mini">{{ s.row.talkType==='individual'?'个别':'集体' }}</el-tag></template>
+        <template slot-scope="s"><el-tag :type="s.row.talkType==='individual'?'primary':'success'" size="mini">{{ $talkLabel('talkType', s.row.talkType) }}</el-tag></template>
       </el-table-column>
       <el-table-column label="学生" prop="studentName" min-width="80" align="center" />
       <el-table-column label="学号" prop="studentCode" width="100" align="center" />
@@ -63,7 +63,7 @@
           <el-tag v-else-if="s.row.followupStatus==='in_progress'" type="warning" size="mini">跟进中</el-tag>
           <el-tag v-else-if="s.row.followupStatus==='completed'" type="success" size="mini">已完成</el-tag>
           <el-tag v-else-if="s.row.followupStatus==='none'" size="mini">无需跟进</el-tag>
-          <span v-else style="font-size:12px">{{ s.row.followupStatus }}</span>
+          <span v-else style="font-size:12px">{{ $talkLabel('followupStatus', s.row.followupStatus) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="70" align="center">

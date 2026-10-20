@@ -236,9 +236,7 @@ export default {
     },
     /** 导出按钮操作 */
     handleExport() {
-      this.download('monitor/logininfor/export', {
-        ...this.queryParams
-      }, `logininfor_${new Date().getTime()}.xlsx`)
+      this.download('monitor/logininfor/export', this.addDateRange(this.queryParams, this.dateRange), `logininfor_${new Date().getTime()}.xlsx`)
     }
   }
 }

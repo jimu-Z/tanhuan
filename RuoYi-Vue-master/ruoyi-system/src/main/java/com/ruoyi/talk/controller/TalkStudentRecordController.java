@@ -42,18 +42,9 @@ public class TalkStudentRecordController extends BaseController {
     /**
      * 查询当前学生自己的谈话记录（学生视角）或辅导员发起的谈话记录（辅导员视角）
      */
+    @PreAuthorize("@ss.hasPermi('talk:record:list')")
     @GetMapping("/myRecords")
     public TableDataInfo myRecords(TalkStudentRecord talkStudentRecord) {
-        String username = SecurityUtils.getUsername();
-        // 先尝试作为学生查询
-        com.ruoyi.talk.domain.TalkStudent student = talkStudentRecordService.selectTalkStudentByCode(username);
-        if (student != null) {
-            talkStudentRecord.setStudentId(student.getStudentId());
-            talkStudentRecord.setStudentCode(username);
-        } else {
-            // 不是学生，作为辅导员查询自己创建的谈话会话中的记录
-            talkStudentRecord.getParams().put("counselorUsername", username);
-        }
         startPage();
         List<TalkStudentRecord> list = talkStudentRecordService.selectTalkStudentRecordList(talkStudentRecord);
         return getDataTable(list);
@@ -82,20 +73,11 @@ public class TalkStudentRecordController extends BaseController {
         util.exportExcel(response, list, "谈话记录管理数据");
     }
 
-    /**
-     * 获取谈话记录管理详细信息（教师查看时标记反馈已读）
-     */
+    /** 获取谈话记录管理详细信息 */
     @PreAuthorize("@ss.hasPermi('talk:record:query')")
     @GetMapping(value = "/{recordId:\\d+}")
     public AjaxResult getInfo(@PathVariable("recordId") Long recordId) {
-        TalkStudentRecord record = talkStudentRecordService.selectTalkStudentRecordByRecordId(recordId);
-        if (record != null && record.getTeacherNotified() != null && record.getTeacherNotified() == 0) {
-            TalkStudentRecord update = new TalkStudentRecord();
-            update.setRecordId(recordId);
-            update.setTeacherNotified(1);
-            talkStudentRecordService.updateTalkStudentRecord(update);
-        }
-        return success(record);
+        return success(talkStudentRecordService.selectTalkStudentRecordByRecordId(recordId));
     }
 
     /**

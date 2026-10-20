@@ -34,6 +34,10 @@ public class TalkTeacher extends BaseEntity {
 
     private String status;
 
+    /** 当前业务角色（非数据库字段） */
+    @Excel(name = "角色", handler = com.ruoyi.talk.util.TalkExcelLabelHandler.class, args = { "teacher_role" })
+    private String roleKey;
+
     /** 学院名称（非数据库字段），导入时匹配"所属学院"列 */
     @Excel(name = "所属学院")
     private String deptName;
@@ -105,6 +109,14 @@ public class TalkTeacher extends BaseEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getRoleKey() {
+        return roleKey;
+    }
+
+    public void setRoleKey(String roleKey) {
+        this.roleKey = roleKey;
     }
 
     public String getDeptName() {

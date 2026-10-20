@@ -6,6 +6,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.ruoyi.common.annotation.Excel;
 import com.ruoyi.common.core.domain.BaseEntity;
+import com.ruoyi.talk.util.TalkExcelContentHandler;
 
 /**
  * 谈话会话管理对象 talk_session
@@ -20,6 +21,9 @@ public class TalkSession extends BaseEntity
     /** 会话ID */
     private Long sessionId;
 
+    /** 谈话发生时所属学院ID（历史归属快照） */
+    private Long collegeDeptId;
+
     /** 谈话类型（individual 个体谈话 / group 集体谈话） */
     @Excel(name = "谈话类型", readConverterExp = "individual=个别谈话,group=集体谈话")
     private String talkType;
@@ -33,12 +37,12 @@ public class TalkSession extends BaseEntity
     @Excel(name = "谈话地点")
     private String talkLocation;
 
-    /** 谈话人(默认当前班主任) */
-    @Excel(name = "谈话人(默认当前班主任)")
+    /** 谈话人 */
+    @Excel(name = "谈话人")
     private String talkPerson;
 
     /** 谈话内容（所有参与学生共享） */
-    @Excel(name = "谈话内容")
+    @Excel(name = "谈话内容", handler = TalkExcelContentHandler.class, wrapText = true)
     private String talkContent;
 
     public void setSessionId(Long sessionId) 
@@ -49,6 +53,16 @@ public class TalkSession extends BaseEntity
     public Long getSessionId() 
     {
         return sessionId;
+    }
+
+    public Long getCollegeDeptId()
+    {
+        return collegeDeptId;
+    }
+
+    public void setCollegeDeptId(Long collegeDeptId)
+    {
+        this.collegeDeptId = collegeDeptId;
     }
 
     public void setTalkType(String talkType) 
@@ -105,6 +119,7 @@ public class TalkSession extends BaseEntity
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
             .append("sessionId", getSessionId())
+            .append("collegeDeptId", getCollegeDeptId())
             .append("talkType", getTalkType())
             .append("talkTime", getTalkTime())
             .append("talkLocation", getTalkLocation())

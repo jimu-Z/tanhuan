@@ -22,6 +22,7 @@ import com.ruoyi.system.mapper.SysRoleDeptMapper;
 import com.ruoyi.system.mapper.SysRoleMapper;
 import com.ruoyi.system.mapper.SysRoleMenuMapper;
 import com.ruoyi.system.mapper.SysUserRoleMapper;
+import com.ruoyi.system.service.BusinessRoleCollegeValidator;
 import com.ruoyi.system.service.ISysRoleService;
 
 /**
@@ -43,6 +44,9 @@ public class SysRoleServiceImpl implements ISysRoleService
 
     @Autowired
     private SysRoleDeptMapper roleDeptMapper;
+
+    @Autowired
+    private BusinessRoleCollegeValidator collegeValidator;
 
     /**
      * 根据条件分页查询角色数据
@@ -386,6 +390,7 @@ public class SysRoleServiceImpl implements ISysRoleService
     @Override
     public int deleteAuthUser(SysUserRole userRole)
     {
+        checkUserRoleChangesAllowed(userRole.getRoleId(), userRole.getUserId());
         return userRoleMapper.deleteUserRoleInfo(userRole);
     }
 
@@ -399,6 +404,7 @@ public class SysRoleServiceImpl implements ISysRoleService
     @Override
     public int deleteAuthUsers(Long roleId, Long[] userIds)
     {
+        checkUserRoleChangesAllowed(roleId, userIds);
         return userRoleMapper.deleteUserRoleInfos(roleId, userIds);
     }
 
@@ -410,8 +416,11 @@ public class SysRoleServiceImpl implements ISysRoleService
      * @return 结果
      */
     @Override
+    @Transactional
     public int insertAuthUsers(Long roleId, Long[] userIds)
     {
+        checkUserRoleChangesAllowed(roleId, userIds);
+        collegeValidator.checkUsersForRole(roleId, userIds);
         // 新增用户与角色管理
         List<SysUserRole> list = new ArrayList<SysUserRole>();
         for (Long userId : userIds)
@@ -422,5 +431,18 @@ public class SysRoleServiceImpl implements ISysRoleService
             list.add(ur);
         }
         return userRoleMapper.batchUserRole(list);
+    }
+
+    private void checkUserRoleChangesAllowed(Long roleId, Long... userIds)
+    {
+        checkRoleAllowed(new SysRole(roleId));
+        checkRoleDataScope(roleId);
+        for (Long userId : userIds)
+        {
+            if (SecurityUtils.isAdmin(userId))
+            {
+                throw new ServiceException("不允许操作超级管理员用户");
+            }
+        }
     }
 }

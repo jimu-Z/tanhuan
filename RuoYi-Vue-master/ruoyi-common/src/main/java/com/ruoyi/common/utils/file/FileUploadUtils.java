@@ -170,9 +170,14 @@ public class FileUploadUtils
 
     public static final String getPathFileName(String uploadDir, String fileName) throws IOException
     {
-        int dirLastIndex = RuoYiConfig.getProfile().length() + 1;
-        String currentDir = StringUtils.substring(uploadDir, dirLastIndex);
-        return Constants.RESOURCE_PREFIX + "/" + currentDir + "/" + fileName;
+        String profile = RuoYiConfig.getProfile().replace("\\", "/");
+        String normalizedUploadDir = uploadDir.replace("\\", "/");
+        String currentDir = normalizedUploadDir.startsWith(profile)
+                ? normalizedUploadDir.substring(profile.length())
+                : "";
+        currentDir = StringUtils.strip(currentDir, "/");
+        return Constants.RESOURCE_PREFIX + "/"
+                + (StringUtils.isNotEmpty(currentDir) ? currentDir + "/" : "") + fileName;
     }
 
     /**

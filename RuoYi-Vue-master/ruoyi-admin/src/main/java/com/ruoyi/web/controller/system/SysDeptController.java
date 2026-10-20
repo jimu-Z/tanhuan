@@ -22,6 +22,8 @@ import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.service.ISysDeptService;
+import com.ruoyi.talk.security.TalkPermissionUtils;
+import com.ruoyi.talk.service.ITalkStudentService;
 
 /**
  * 部门信息
@@ -34,6 +36,9 @@ public class SysDeptController extends BaseController
 {
     @Autowired
     private ISysDeptService deptService;
+
+    @Autowired
+    private ITalkStudentService studentService;
 
     /**
      * 获取部门列表
@@ -77,6 +82,11 @@ public class SysDeptController extends BaseController
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysDept dept)
     {
+        deptService.checkDeptDataScope(dept.getParentId());
+        if (isScopedCollegeAdmin() && !"grade".equals(dept.getDeptType()) && !"class".equals(dept.getDeptType()))
+        {
+            return error("院管理员只能新增年级或班级");
+        }
         if (!deptService.checkDeptNameUnique(dept))
         {
             return error("新增部门'" + dept.getDeptName() + "'失败，部门名称已存在");
@@ -95,6 +105,17 @@ public class SysDeptController extends BaseController
     {
         Long deptId = dept.getDeptId();
         deptService.checkDeptDataScope(deptId);
+        deptService.checkDeptDataScope(dept.getParentId());
+        SysDept existing = deptService.selectDeptById(deptId);
+        if (isScopedCollegeAdmin() && existing != null && "college".equals(existing.getDeptType()))
+        {
+            return error("院管理员不能修改学院节点");
+        }
+        if (isScopedCollegeAdmin() && dept.getDeptType() != null
+                && !"grade".equals(dept.getDeptType()) && !"class".equals(dept.getDeptType()))
+        {
+            return error("院管理员只能维护年级或班级类型");
+        }
         if (!deptService.checkDeptNameUnique(dept))
         {
             return error("修改部门'" + dept.getDeptName() + "'失败，部门名称已存在");
@@ -121,6 +142,15 @@ public class SysDeptController extends BaseController
     {
         String[] deptIds = params.get("deptIds").split(",");
         String[] orderNums = params.get("orderNums").split(",");
+        for (String deptId : deptIds)
+        {
+            deptService.checkDeptDataScope(Long.valueOf(deptId));
+            SysDept existing = deptService.selectDeptById(Long.valueOf(deptId));
+            if (isScopedCollegeAdmin() && existing != null && "college".equals(existing.getDeptType()))
+            {
+                return error("院管理员不能调整学院节点排序");
+            }
+        }
         deptService.updateDeptSort(deptIds, orderNums);
         return success();
     }
@@ -133,6 +163,11 @@ public class SysDeptController extends BaseController
     @DeleteMapping("/{deptId}")
     public AjaxResult remove(@PathVariable Long deptId)
     {
+        SysDept existing = deptService.selectDeptById(deptId);
+        if (isScopedCollegeAdmin() && existing != null && "college".equals(existing.getDeptType()))
+        {
+            return error("院管理员不能删除学院节点");
+        }
         if (deptService.hasChildByDeptId(deptId))
         {
             return warn("存在下级部门,不允许删除");
@@ -142,6 +177,15 @@ public class SysDeptController extends BaseController
             return warn("部门存在用户,不允许删除");
         }
         deptService.checkDeptDataScope(deptId);
+        if (studentService.countStudentsByDeptId(deptId) > 0)
+        {
+            return warn("部门存在学生，不允许删除");
+        }
         return toAjax(deptService.deleteDeptById(deptId));
+    }
+
+    private boolean isScopedCollegeAdmin()
+    {
+        return TalkPermissionUtils.isCollegeAdmin() && !TalkPermissionUtils.isGlobalAdmin();
     }
 }

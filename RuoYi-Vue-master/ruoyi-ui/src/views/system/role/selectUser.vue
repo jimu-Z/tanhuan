@@ -25,7 +25,7 @@
     </el-form>
     <el-row>
       <el-table @row-click="clickRow" ref="table" :data="userList" @selection-change="handleSelectionChange" height="260px">
-        <el-table-column type="selection" width="55"></el-table-column>
+        <el-table-column type="selection" :selectable="isUserSelectable" width="55"></el-table-column>
         <el-table-column label="用户名称" prop="userName" :show-overflow-tooltip="true" />
         <el-table-column label="用户昵称" prop="nickName" :show-overflow-tooltip="true" />
         <el-table-column label="邮箱" prop="email" :show-overflow-tooltip="true" />
@@ -87,6 +87,9 @@ export default {
     }
   },
   methods: {
+    isUserSelectable(row) {
+      return Number(row.userId) !== 1
+    },
     // 显示弹框
     show() {
       this.queryParams.roleId = this.roleId
@@ -94,11 +97,12 @@ export default {
       this.visible = true
     },
     clickRow(row) {
+      if (!this.isUserSelectable(row)) return
       this.$refs.table.toggleRowSelection(row)
     },
     // 多选框选中数据
     handleSelectionChange(selection) {
-      this.userIds = selection.map(item => item.userId)
+      this.userIds = selection.filter(this.isUserSelectable).map(item => item.userId)
     },
     // 查询表数据
     getList() {

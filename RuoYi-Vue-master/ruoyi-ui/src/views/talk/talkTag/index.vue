@@ -40,28 +40,6 @@
           v-hasPermi="['talk:tag:add']"
         >新增</el-button>
       </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="success"
-          plain
-          icon="el-icon-edit"
-          size="mini"
-          :disabled="single"
-          @click="handleUpdate"
-          v-hasPermi="['talk:tag:edit']"
-        >修改</el-button>
-      </el-col>
-      <el-col :span="1.5">
-        <el-button
-          type="danger"
-          plain
-          icon="el-icon-delete"
-          size="mini"
-          :disabled="multiple"
-          @click="handleDelete"
-          v-hasPermi="['talk:tag:remove']"
-        >删除</el-button>
-      </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
@@ -70,6 +48,13 @@
       <el-table-column label="标签ID" align="center" prop="tagId" />
       <el-table-column label="标签标识" align="center" prop="tagName" />
       <el-table-column label="标签名称" align="center" prop="tagName" />
+      <el-table-column label="标签类型" align="center" prop="scopeType" width="100">
+        <template slot-scope="scope">
+          <el-tag :type="scope.row.scopeType === 'system' ? 'primary' : 'success'">
+            {{ $talkLabel('scopeType', scope.row.scopeType) }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="排序" align="center" prop="sortOrder" />
       <el-table-column label="状态" align="center" prop="status">
         <template slot-scope="scope">
@@ -86,6 +71,7 @@
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button
+            v-if="canManageDefinition(scope.row)"
             size="mini"
             type="text"
             icon="el-icon-edit"
@@ -93,6 +79,7 @@
             v-hasPermi="['talk:tag:edit']"
           >修改</el-button>
           <el-button
+            v-if="canManageDefinition(scope.row)"
             size="mini"
             type="text"
             icon="el-icon-delete"
@@ -177,7 +164,15 @@ export default {
   created() {
     this.getList()
   },
+  computed: {
+    isGlobalAdmin() {
+      return this.$auth.hasRoleOr(['admin', 'school_admin'])
+    }
+  },
   methods: {
+    canManageDefinition(row) {
+      return row.scopeType !== 'system' || this.isGlobalAdmin
+    },
     getList() {
       this.loading = true
       listTag(this.queryParams).then(response => {
@@ -257,7 +252,7 @@ export default {
       }).then(() => {
         this.getList()
         this.$modal.msgSuccess("删除成功")
-      }).catch(() => { this.$modal.msgError('操作失败') })
+      }).catch(error => { if (error !== 'cancel' && error !== 'close') this.$modal.msgError('操作失败') })
     }
   }
 }

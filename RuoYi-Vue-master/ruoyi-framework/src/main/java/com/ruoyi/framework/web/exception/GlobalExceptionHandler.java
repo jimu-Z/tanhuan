@@ -16,6 +16,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.text.Convert;
 import com.ruoyi.common.exception.DemoModeException;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.exception.user.UserException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.html.EscapeUtil;
 
@@ -28,6 +29,14 @@ import com.ruoyi.common.utils.html.EscapeUtil;
 public class GlobalExceptionHandler
 {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /** Known account validation failures carry localized, user-facing messages. */
+    @ExceptionHandler(UserException.class)
+    public AjaxResult handleUserException(UserException e, HttpServletRequest request)
+    {
+        log.warn("请求地址'{}',账号验证失败'{}'", request.getRequestURI(), e.getCode());
+        return AjaxResult.error(StringUtils.isEmpty(e.getMessage()) ? "账号验证失败，请重新登录" : e.getMessage());
+    }
 
     /**
      * 权限校验异常
@@ -98,7 +107,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生未知异常.", requestURI, e);
-        return AjaxResult.error(e.getMessage());
+        return AjaxResult.error("系统内部错误，请联系管理员");
     }
 
     /**
@@ -109,7 +118,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生系统异常.", requestURI, e);
-        return AjaxResult.error(e.getMessage());
+        return AjaxResult.error("系统内部错误，请联系管理员");
     }
 
     /**

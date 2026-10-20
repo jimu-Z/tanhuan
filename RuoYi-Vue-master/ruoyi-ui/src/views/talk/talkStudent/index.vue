@@ -23,12 +23,9 @@
           placeholder="请选择班级" clearable style="width:240px" @change="handleQuery" />
       </el-form-item>
       <el-form-item label="性别" prop="gender">
-        <el-input
-          v-model="queryParams.gender"
-          placeholder="请输入性别"
-          clearable
-          @keyup.enter.native="handleQuery"
-        />
+        <el-select v-model="queryParams.gender" placeholder="请选择性别" clearable @change="handleQuery">
+          <el-option v-for="option in genderOptions" :key="option.dictValue" :label="option.dictLabel" :value="option.dictValue" />
+        </el-select>
       </el-form-item>
       <el-form-item label="民族" prop="nation">
         <el-input
@@ -127,14 +124,11 @@
         />
       </el-form-item>
       <el-form-item label="贫困等级认定" prop="povertyLevel">
-        <el-input
-          v-model="queryParams.povertyLevel"
-          placeholder="请输入贫困等级认定"
-          clearable
-          @keyup.enter.native="handleQuery"
-        />
+        <el-select v-model="queryParams.povertyLevel" placeholder="请选择贫困等级" clearable @change="handleQuery">
+          <el-option v-for="option in povertyLevelOptions" :key="option.dictValue" :label="option.dictLabel" :value="option.dictValue" />
+        </el-select>
       </el-form-item>
-      <el-form-item label="日期范围" prop="dateRange">
+      <el-form-item label="未谈日期范围" prop="dateRange">
         <el-date-picker
           v-model="queryParams.dateRange"
           type="daterange"
@@ -217,10 +211,10 @@
       <el-table-column label="班级" align="center" prop="deptName" :show-overflow-tooltip="true" />
       <el-table-column label="性别" align="center" prop="gender">
         <template slot-scope="scope">
-          <span>{{ scope.row.gender === '1' ? '女' : scope.row.gender === '0' ? '男' : '-' }}</span>
+          <span>{{ $talkLabel('gender', scope.row.gender, genderOptions) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="政治面貌" align="center" prop="politicalStatus" />
+      <el-table-column label="政治面貌" align="center" prop="politicalStatus"><template slot-scope="scope">{{ $talkLabel('politicalStatus', scope.row.politicalStatus, politicalStatusOptions) }}</template></el-table-column>
       <el-table-column label="民族" align="center" prop="nation" />
       <el-table-column label="本人联系电话" align="center" prop="phone">
         <template slot-scope="scope">{{ maskPhone(scope.row.phone) }}</template>
@@ -237,9 +231,9 @@
       <el-table-column label="舍长" align="center" prop="dormLeader" />
       <el-table-column label="宿舍楼" align="center" prop="dormBuilding" />
       <el-table-column label="宿舍号" align="center" prop="dormRoom" />
-      <el-table-column label="学籍状态" align="center" prop="enrollmentStatus" />
-      <el-table-column label="心理健康状态" align="center" prop="mentalHealthStatus" />
-      <el-table-column label="贫困等级认定" align="center" prop="povertyLevel" />
+      <el-table-column label="学籍状态" align="center" prop="enrollmentStatus"><template slot-scope="scope">{{ $talkLabel('enrollmentStatus', scope.row.enrollmentStatus, enrollmentStatusOptions) }}</template></el-table-column>
+      <el-table-column label="心理健康状态" align="center" prop="mentalHealthStatus"><template slot-scope="scope">{{ $talkLabel('mentalHealthStatus', scope.row.mentalHealthStatus, mentalHealthStatusOptions) }}</template></el-table-column>
+      <el-table-column label="贫困等级认定" align="center" prop="povertyLevel"><template slot-scope="scope">{{ $talkLabel('povertyLevel', scope.row.povertyLevel, povertyLevelOptions) }}</template></el-table-column>
       <el-table-column label="备注" align="center" prop="remark" />
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
@@ -292,7 +286,7 @@
           <el-col :span="24">
             <el-form-item label="班级" prop="deptId">
               <el-cascader v-model="form.deptId" :options="deptTree"
-                :props="{ checkStrictly:true, label:'label', value:'id' }"
+                :props="{ checkStrictly:false, label:'label', value:'id' }"
                 placeholder="请选择班级" clearable style="width:100%" />
             </el-form-item>
           </el-col>
@@ -419,16 +413,21 @@
       <div v-if="importStep === 1">
         <el-upload
           ref="upload"
+          action=""
           drag
           :auto-upload="false"
           :limit="1"
           accept=".xlsx,.xls"
           :on-change="handleFileChange"
+          :on-remove="handleFileRemove"
           :file-list="fileList"
         >
           <i class="el-icon-upload"></i>
           <div class="el-upload__text">将Excel文件拖到此处，或<em>点击上传</em></div>
-          <div class="el-upload__tip" slot="tip">支持 .xlsx / .xls 格式，第1行为标题行将自动跳过</div>
+          <div class="el-upload__tip" slot="tip">
+            支持 .xlsx / .xls 格式；使用下载模板，从第3行开始填写，系统自动识别标题行
+            <el-link type="primary" :underline="false" style="font-size:12px;vertical-align:baseline;margin-left:8px" @click="handleDownloadTemplate">下载模板</el-link>
+          </div>
         </el-upload>
         <div style="margin-top:12px">
           <span style="font-size:13px;color:#666;margin-right:8px">重复处理：</span>
@@ -466,7 +465,9 @@
               <el-tag v-else type="danger">错误</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="提示" prop="message" min-width="120" show-overflow-tooltip />
+          <el-table-column label="提示" min-width="120" show-overflow-tooltip>
+            <template slot-scope="scope">{{ importMode === 'update' && scope.row.message === '学号已存在，将跳过此条记录' ? '学号已存在，将覆盖已有数据' : scope.row.message }}</template>
+          </el-table-column>
         </el-table>
         </div>
         <div slot="footer" class="dialog-footer" style="text-align: center; margin-top: 15px;">
@@ -479,7 +480,7 @@
 </template>
 
 <script>
-import { listTalk, getTalk, delTalk, addTalk, updateTalk, importPreview, importExecute, getDeptTree } from "@/api/talk/talkStudent"
+import { buildStudentQuery, listTalk, getTalk, delTalk, addTalk, updateTalk, importPreview, importExecute, getDeptTree } from "@/api/talk/talkStudent"
 import { getDicts } from "@/api/system/dict/data"
 import request from "@/utils/request"
 
@@ -542,7 +543,7 @@ export default {
           { required: true, message: "姓名不能为空", trigger: "blur" }
         ],
         deptId: [
-          { required: true, message: "部门ID(班级)不能为空", trigger: "blur" }
+          { required: true, message: "请选择班级", trigger: "change" }
         ],
       },
       // 导入相关
@@ -584,13 +585,11 @@ export default {
       }).catch(() => { this.$modal.msgError('操作失败') })
     },
     mapDeptTree(nodes) {
-      return nodes.map(n => ({
-        id: n.deptId,
-        label: n.deptName,
-        deptType: n.deptType,
-        parentId: n.parentId,
-        children: n.children ? this.mapDeptTree(n.children) : []
-      }))
+      return nodes.map(n => {
+        const node = { id: n.deptId, label: n.deptName, deptType: n.deptType, parentId: n.parentId }
+        if (n.children && n.children.length) node.children = this.mapDeptTree(n.children)
+        return node
+      })
     },
     /** 在部门树中查找从根到目标节点的路径 */
     findDeptPath(targetId, tree, path = []) {
@@ -691,7 +690,7 @@ export default {
     /** 修改按钮操作 */
     handleUpdate(row) {
       this.reset()
-      const studentId = row ? row.studentId : (this.ids && this.ids.length > 0 ? this.ids[0] : null)
+      const studentId = row && row.studentId != null ? row.studentId : (this.ids && this.ids.length > 0 ? this.ids[0] : null)
       getTalk(studentId).then(response => {
         this.form = response.data || {}
         // 将 deptId 转换为级联路径数组以便回显
@@ -741,12 +740,12 @@ export default {
       }).then(() => {
         this.getList()
         this.$modal.msgSuccess("删除成功")
-      }).catch(() => { this.$modal.msgError('删除失败') })
+      }).catch(error => { if (error !== 'cancel' && error !== 'close') this.$modal.msgError('删除失败') })
     },
     /** 导出按钮操作 */
     handleExport() {
       this.download('ruoyi-system/talk/export', {
-        ...this.queryParams
+        ...buildStudentQuery(this.queryParams)
       }, `talk_${new Date().getTime()}.xlsx`)
     },
     /** 打开导入对话框 */
@@ -756,10 +755,25 @@ export default {
       this.uploadFile = null
       this.fileList = []
     },
+    /** 下载导入模板 */
+    handleDownloadTemplate() {
+      this.download('ruoyi-system/talk/importTemplate', {}, `德州学院学生教育管理台账模板_${new Date().getTime()}.xlsx`)
+    },
     /** 文件选择变化 */
     handleFileChange(file) {
-      this.uploadFile = file.raw
+      const raw = file && file.raw
+      if (!raw || !/\.(xlsx|xls)$/i.test(raw.name || file.name || '')) {
+        this.uploadFile = null
+        this.fileList = []
+        this.$modal.msgError('仅支持 .xlsx 或 .xls 格式的文件')
+        return
+      }
+      this.uploadFile = raw
       this.fileList = [file]
+    },
+    handleFileRemove() {
+      this.uploadFile = null
+      this.fileList = []
     },
     /** 导入预览 */
     handleImportPreview() {
@@ -788,11 +802,13 @@ export default {
         const errors = data.errors || []
         if (errors.length > 0) {
           this.$alert(
-            '<div style="max-height:300px;overflow-y:auto;">' +
-            errors.map(e => '<div style="margin:4px 0;color:#e6a23c;">' + e + '</div>').join('') +
-            '</div>',
+            this.$createElement('div', { style: { maxHeight: '300px', overflowY: 'auto' } },
+              errors.map(error => this.$createElement('div', {
+                style: { margin: '4px 0', color: '#e6a23c' }
+              }, [String(error)]))
+            ),
             msg,
-            { dangerouslyUseHTMLString: true, confirmButtonText: '知道了', type: data.successCount > 0 ? 'warning' : 'error' }
+            { confirmButtonText: '知道了', type: data.successCount > 0 ? 'warning' : 'error' }
           )
         } else {
           this.$modal.msgSuccess(msg)

@@ -67,9 +67,12 @@
       :tree-props="{children: 'children', hasChildren: 'hasChildren'}"
     >
       <el-table-column prop="deptName" label="部门名称" width="260"></el-table-column>
+      <el-table-column prop="deptType" label="组织类型" width="100">
+        <template slot-scope="scope">{{ deptTypeLabel(scope.row.deptType) }}</template>
+      </el-table-column>
       <el-table-column prop="orderNum" label="排序" width="200">
         <template slot-scope="scope">
-          <el-input-number v-model="scope.row.orderNum" controls-position="right" :min="0" size="mini" style="width: 88px" />
+          <el-input-number v-model="scope.row.orderNum" :disabled="!canManageNode(scope.row)" controls-position="right" :min="0" size="mini" style="width: 88px" />
         </template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="100">
@@ -88,6 +91,7 @@
             size="mini"
             type="text"
             icon="el-icon-edit"
+            v-if="canManageNode(scope.row)"
             @click="handleUpdate(scope.row)"
             v-hasPermi="['system:dept:edit']"
           >修改</el-button>
@@ -99,7 +103,7 @@
             v-hasPermi="['system:dept:add']"
           >新增</el-button>
           <el-button
-            v-if="scope.row.parentId != 0"
+            v-if="scope.row.parentId != 0 && canManageNode(scope.row)"
             size="mini"
             type="text"
             icon="el-icon-delete"
@@ -117,6 +121,19 @@
           <el-col :span="24" v-if="form.parentId !== 0">
             <el-form-item label="上级部门" prop="parentId">
               <treeselect v-model="form.parentId" :options="deptOptions" :normalizer="normalizer" placeholder="选择上级部门" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="组织类型" prop="deptType">
+              <el-select v-model="form.deptType" placeholder="请选择组织类型">
+                <el-option label="学校" value="school" :disabled="!$auth.hasRoleOr(['admin', 'school_admin'])" />
+                <el-option label="学院" value="college" :disabled="!$auth.hasRoleOr(['admin', 'school_admin'])" />
+                <el-option label="年级" value="grade" />
+                <el-option label="班级" value="class" />
+                <el-option v-if="form.deptType === 'dept'" label="其他部门（历史）" value="dept" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -173,7 +190,7 @@
 
 <script>
 import { listDept, getDept, delDept, addDept, updateDept, updateDeptSort, listDeptExcludeChild } from "@/api/system/dept"
-import Treeselect from "@riophae/vue-treeselect"
+import Treeselect from "@/components/Treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 
 export default {
@@ -209,6 +226,9 @@ export default {
       form: {},
       // 表单校验
       rules: {
+        deptType: [
+          { required: true, message: "请选择组织类型", trigger: "change" }
+        ],
         parentId: [
           { required: true, message: "上级部门不能为空", trigger: "blur" }
         ],
@@ -227,7 +247,7 @@ export default {
         ],
         phone: [
           {
-            pattern: /^1[3|4|5|6|7|8|9][0-9]\d{8}$/,
+            pattern: /^1[3-9]\d{9}$/,
             message: "请输入正确的手机号码",
             trigger: "blur"
           }
@@ -238,7 +258,18 @@ export default {
   created() {
     this.getList()
   },
+  computed: {
+    isScopedCollegeAdmin() {
+      return this.$auth.hasRoleOr(['college_admin']) && !this.$auth.hasRoleOr(['admin', 'school_admin'])
+    }
+  },
   methods: {
+    canManageNode(row) {
+      return !this.isScopedCollegeAdmin || ['grade', 'class'].includes(row.deptType)
+    },
+    deptTypeLabel(type) {
+      return { school: "学校", college: "学院", grade: "年级", class: "班级", dept: "其他部门" }[type] || "未分类"
+    },
     /** 查询部门列表 */
     getList() {
       this.loading = true
@@ -271,6 +302,7 @@ export default {
         deptId: undefined,
         parentId: undefined,
         deptName: undefined,
+        deptType: undefined,
         orderNum: undefined,
         leader: undefined,
         phone: undefined,

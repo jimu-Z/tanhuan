@@ -127,7 +127,7 @@
         <template slot-scope="scope">
           <el-tag v-if="scope.row.talkType === 'individual'" type="primary">个别谈话</el-tag>
           <el-tag v-else-if="scope.row.talkType === 'group'" type="success">集体谈话</el-tag>
-          <span v-else>{{ scope.row.talkType }}</span>
+          <span v-else>{{ $talkLabel('talkType', scope.row.talkType) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="谈话时间" align="center" prop="talkTime" width="180">
@@ -237,6 +237,7 @@
 </template>
 
 <script>
+import { getLabels } from "@/api/talk/talkTag"
 import { listTalksession, getTalksession, delTalksession, addTalksession, updateTalksession, getSessionTags, TAG_LABELS, exportDocx, exportDocxBatch } from "@/api/talk/talkSession"
 import { listTalkrecord } from "@/api/talk/talkStudentRecord"
 import { getTalk } from "@/api/talk/talkStudent"
@@ -263,6 +264,7 @@ export default {
       // 谈话会话管理表格数据
       talksessionList: [],
       tagMap: {},
+      tagLabels: { ...TAG_LABELS },
       // 弹出层标题
       title: "",
       // 是否显示弹出层
@@ -294,6 +296,7 @@ export default {
     }
   },
   created() {
+    getLabels().then(res => { this.tagLabels = { ...TAG_LABELS, ...(res.data || {}) } }).catch(() => {})
     this.getList()
   },
   methods: {
@@ -322,9 +325,9 @@ export default {
       let parsed = value
       try { parsed = JSON.parse(value) } catch (e) { /* not JSON, use as-is */ }
       if (Array.isArray(parsed)) {
-        return parsed.map(v => TAG_LABELS[v] || v).join('、')
+        return this.$talkTags(parsed, this.tagLabels)
       }
-      return TAG_LABELS[parsed] || parsed
+      return this.$talkTags(parsed, this.tagLabels)
     },
     handleExpand(row, expanded) {
       if (!expanded || row._students) return
@@ -359,12 +362,7 @@ export default {
     },
     downloadAttachment(att) {
       if (!att.filePath) return
-      const link = document.createElement('a')
-      link.href = att.filePath
-      link.download = att.fileName || 'download'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      this.$download.resource(att.filePath)
     },
     // 取消按钮
     cancel() {

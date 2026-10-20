@@ -4,6 +4,7 @@ import { getRouters } from '@/api/menu'
 import Layout from '@/layout/index'
 import ParentView from '@/components/ParentView'
 import InnerLink from '@/layout/components/InnerLink'
+import { isHttp } from '@/utils/validate'
 
 const permission = {
   state: {
@@ -55,6 +56,10 @@ const permission = {
 // 遍历后台传来的路由字符串，转换为组件对象
 function filterAsyncRouter(asyncRouterMap, lastRouter = false, type = false) {
   return asyncRouterMap.filter(route => {
+    // 外链保留在侧边栏数据中，但不注册到 vue-router，避免无前导斜杠告警。
+    if (type && isHttp(route.path)) {
+      return false
+    }
     if (type && route.children) {
       route.children = filterChildren(route.children)
     }

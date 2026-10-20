@@ -79,6 +79,7 @@
 
 .el-dialog:not(.is-fullscreen) {
   margin-top: 6vh !important;
+  max-width: calc(100vw - 32px);
 }
 
 .el-dialog__body {

@@ -5,6 +5,8 @@
 
     <resultMap type="TalkTag" id="TalkTagResult">
         <result property="tagId"      column="tag_id"      />
+        <result property="scopeType" column="scope_type" />
+        <result property="collegeDeptId" column="college_dept_id" />
         <result property="tagKey"     column="tag_key"     />
         <result property="tagName"    column="tag_name"    />
         <result property="sortOrder"  column="sort_order"  />
@@ -17,7 +19,7 @@
     </resultMap>
 
     <sql id="selectTalkTagVo">
-        select tag_id, tag_key, tag_name, sort_order, status, del_flag,
+        select tag_id, scope_type, college_dept_id, tag_key, tag_name, sort_order, status, del_flag,
                create_by, create_time, update_by, update_time
         from talk_tag
     </sql>
@@ -28,6 +30,7 @@
             <if test="tagKey != null and tagKey != ''"> and tag_key like concat('%', #{tagKey}, '%')</if>
             <if test="tagName != null and tagName != ''"> and tag_name like concat('%', #{tagName}, '%')</if>
             <if test="status != null and status != ''"> and status = #{status}</if>
+            <if test="params.collegeDeptId != null"> and (scope_type = 'system' or college_dept_id = #{params.collegeDeptId})</if>
             and del_flag = '0'
         </where>
         order by sort_order asc
@@ -38,15 +41,18 @@
         where tag_id = #{tagId} and del_flag = '0'
     </select>
 
-    <select id="selectActiveTags" resultMap="TalkTagResult">
+    <select id="selectActiveTags" parameterType="TalkTag" resultMap="TalkTagResult">
         <include refid="selectTalkTagVo"/>
         where status = '0' and del_flag = '0'
+        <if test="params.collegeDeptId != null"> and (scope_type = 'system' or college_dept_id = #{params.collegeDeptId})</if>
         order by sort_order asc
     </select>
 
     <insert id="insertTalkTag" parameterType="TalkTag" useGeneratedKeys="true" keyProperty="tagId">
         insert into talk_tag
         <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="scopeType != null and scopeType != ''">scope_type,</if>
+            <if test="collegeDeptId != null">college_dept_id,</if>
             <if test="tagKey != null and tagKey != ''">tag_key,</if>
             <if test="tagName != null and tagName != ''">tag_name,</if>
             <if test="sortOrder != null">sort_order,</if>
@@ -55,6 +61,8 @@
             <if test="createTime != null">create_time,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="scopeType != null and scopeType != ''">#{scopeType},</if>
+            <if test="collegeDeptId != null">#{collegeDeptId},</if>
             <if test="tagKey != null and tagKey != ''">#{tagKey},</if>
             <if test="tagName != null and tagName != ''">#{tagName},</if>
             <if test="sortOrder != null">#{sortOrder},</if>
@@ -67,6 +75,8 @@
     <update id="updateTalkTag" parameterType="TalkTag">
         update talk_tag
         <trim prefix="SET" suffixOverrides=",">
+            <if test="scopeType != null and scopeType != ''">scope_type = #{scopeType},</if>
+            <if test="collegeDeptId != null">college_dept_id = #{collegeDeptId},</if>
             <if test="tagKey != null and tagKey != ''">tag_key = #{tagKey},</if>
             <if test="tagName != null and tagName != ''">tag_name = #{tagName},</if>
             <if test="sortOrder != null">sort_order = #{sortOrder},</if>

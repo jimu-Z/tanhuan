@@ -1,6 +1,10 @@
 package com.ruoyi.talk.service;
 
 import java.io.*;
+import java.nio.file.Path;
+import com.ruoyi.talk.utils.AttachmentPathUtils;
+import com.ruoyi.talk.utils.ArchiveEntryNames;
+import com.ruoyi.talk.util.TalkContentText;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -16,7 +20,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
 import com.ruoyi.common.config.RuoYiConfig;
-import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.system.mapper.SysDeptMapper;
 import com.ruoyi.talk.constant.TalkConstants;
@@ -32,11 +35,13 @@ import com.ruoyi.talk.mapper.TalkSessionTagMapper;
 import com.ruoyi.talk.mapper.TalkStudentMapper;
 import com.ruoyi.talk.mapper.TalkStudentRecordMapper;
 import com.ruoyi.talk.mapper.TalkTagMapper;
+import com.ruoyi.talk.security.TalkPermissionUtils;
 
 @Service
 public class TalkDocxService {
 
     private static final Logger log = LoggerFactory.getLogger(TalkDocxService.class);
+    private static final com.fasterxml.jackson.databind.ObjectMapper TAG_JSON = new com.fasterxml.jackson.databind.ObjectMapper();
     private static final ThreadLocal<SimpleDateFormat> FMT = ThreadLocal
             .withInitial(() -> new SimpleDateFormat("yyyy年MM月dd日"));
 
@@ -57,6 +62,35 @@ public class TalkDocxService {
     private TalkAttachmentMapper talkAttachmentMapper;
     @Autowired
     private SysDeptMapper sysDeptMapper;
+    @Autowired
+    private com.ruoyi.system.mapper.SysDictDataMapper sysDictDataMapper;
+
+    private String studentLabel(String dictType, String value, Map<String, String> fallback) {
+        if (value == null || value.trim().isEmpty()) return "";
+        String key = value.trim();
+        String label = sysDictDataMapper.selectDictLabel(dictType, key);
+        if (label != null && !label.trim().isEmpty()) return label;
+        if (fallback.containsKey(key)) return fallback.get(key);
+        return key.matches(".*[\\u3400-\\u9fff].*") ? key : "未知状态";
+    }
+
+    private List<String> tagValues(String value) {
+        if (value == null || value.trim().isEmpty()) return Collections.emptyList();
+        String raw = value.trim();
+        if (raw.startsWith("[")) {
+            try {
+                return Arrays.asList(TAG_JSON.readValue(raw, String[].class));
+            } catch (IOException ignored) { /* 兼容历史普通标签值 */ }
+        }
+        return Arrays.asList(raw.split(","));
+    }
+
+    private String tagDisplay(String value, Map<String, String> labels) {
+        return tagValues(value).stream().filter(Objects::nonNull).map(String::trim).filter(key -> !key.isEmpty())
+                .map(key -> labels.getOrDefault(key, TalkConstants.TAG_LABELS.getOrDefault(key,
+                        key.matches(".*[\\u3400-\\u9fff].*") ? key : "未知标签")))
+                .collect(Collectors.joining("、"));
+    }
 
     private boolean templateOk() {
         try {
@@ -83,7 +117,8 @@ public class TalkDocxService {
             throw new IllegalArgumentException("会话不存在");
         List<TalkStudentRecord> records = talkStudentRecordMapper.selectTalkStudentRecordBySessionId(sessionId);
         List<TalkSessionTag> tags = talkSessionTagMapper.selectTalkSessionTagBySessionId(sessionId);
-        if (!templateOk())
+        boolean useTemplate = templateOk();
+        if (!useTemplate && !"group".equals(session.getTalkType()))
             return fallback(session, records, tags);
 
         if ("individual".equals(session.getTalkType())) {
@@ -93,13 +128,14 @@ public class TalkDocxService {
         }
         ByteArrayOutputStream zip = new ByteArrayOutputStream();
         try (ZipOutputStream zos = new ZipOutputStream(zip)) {
+            int recordIndex = 0;
             for (TalkStudentRecord rec : records) {
                 TalkStudent stu = talkStudentMapper.selectTalkStudentByStudentId(rec.getStudentId());
                 if (stu == null)
                     continue;
-                byte[] b = fill(session, stu, rec, tags);
+                byte[] b = useTemplate ? fill(session, stu, rec, tags) : fallback(session, List.of(rec), tags);
                 zos.putNextEntry(
-                        new ZipEntry(stu.getStudentName() + "_"
+                        new ZipEntry((++recordIndex) + "_" + stu.getStudentId() + "_" + ArchiveEntryNames.basename(stu.getStudentName()) + "_"
                                 + (session.getTalkTime() != null ? FMT.get().format(session.getTalkTime()) : "未知")
                                 + ".docx"));
                 zos.write(b);
@@ -115,16 +151,30 @@ public class TalkDocxService {
         TalkSession session = talkSessionMapper.selectTalkSessionBySessionId(sessionId);
         if (session == null)
             throw new IllegalArgumentException("会话不存在");
-        TalkStudent stu = talkStudentMapper.selectTalkStudentByStudentId(studentId);
-        if (stu == null)
-            throw new IllegalArgumentException("学生不存在");
+        TalkPermissionUtils.requireCollegeAccess(session.getCollegeDeptId());
         List<TalkStudentRecord> records = talkStudentRecordMapper.selectTalkStudentRecordBySessionId(sessionId);
-        TalkStudentRecord rec = records.stream().filter(r -> r.getStudentId().equals(studentId)).findFirst()
+        TalkStudentRecord rec = records.stream().filter(r -> Objects.equals(r.getStudentId(), studentId)).findFirst()
                 .orElse(null);
-        List<TalkSessionTag> tags = talkSessionTagMapper.selectTalkSessionTagBySessionId(sessionId);
+        if (rec == null) throw new IllegalArgumentException("当前会话没有该学生的谈话记录");
+        return studentDocument(session, rec);
+    }
+
+    public byte[] generateDocxByRecord(Long recordId) throws Exception {
+        TalkStudentRecord record = talkStudentRecordMapper.selectTalkStudentRecordByRecordId(recordId);
+        if (record == null) throw new IllegalArgumentException("学生谈话记录不存在");
+        TalkSession session = talkSessionMapper.selectTalkSessionBySessionId(record.getSessionId());
+        if (session == null) throw new IllegalArgumentException("会话不存在");
+        TalkPermissionUtils.requireCollegeAccess(session.getCollegeDeptId());
+        return studentDocument(session, record);
+    }
+
+    private byte[] studentDocument(TalkSession session, TalkStudentRecord record) throws Exception {
+        TalkStudent stu = talkStudentMapper.selectTalkStudentByStudentId(record.getStudentId());
+        if (stu == null) throw new IllegalArgumentException("学生不存在");
+        List<TalkSessionTag> tags = talkSessionTagMapper.selectTalkSessionTagBySessionId(session.getSessionId());
         if (!templateOk())
-            return fallbackStudent(session, stu, rec);
-        return fill(session, stu, rec, tags);
+            return fallbackStudent(session, stu, record);
+        return fill(session, stu, record, tags);
     }
 
     private byte[] fill(TalkSession session, TalkStudent stu, TalkStudentRecord rec, List<TalkSessionTag> tags)
@@ -133,6 +183,7 @@ public class TalkDocxService {
         try (InputStream is = new ClassPathResource(templatePath).getInputStream();
                 XWPFDocument doc = new XWPFDocument(is);
                 ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+
 
             for (IBodyElement el : doc.getBodyElements())
                 process(el, vals);
@@ -259,7 +310,7 @@ public class TalkDocxService {
             m.put("${gender}", "0".equals(stu.getGender()) ? "男" : "1".equals(stu.getGender()) ? "女" : "");
             m.put("${nation}", s(stu.getNation()));
             m.put("${phone}", s(stu.getPhone()));
-            m.put("${political_status}", s(stu.getPoliticalStatus()));
+            m.put("${political_status}", studentLabel("political_status", stu.getPoliticalStatus(), TalkConstants.POLITICAL_STATUS_LABELS));
             m.put("${dorm}", (s(stu.getDormBuilding()) + " " + s(stu.getDormRoom())).trim());
             if (stu.getDeptId() != null) {
                 SysDept d = sysDeptMapper.selectDeptById(stu.getDeptId());
@@ -275,7 +326,7 @@ public class TalkDocxService {
 
         // 标签：使用数据库驱动，hardcoded常量作为兜底
         Map<String, String> tagLabelMap = getTagLabelMap();
-        Set<String> sel = tags != null ? tags.stream().map(TalkSessionTag::getTagValue).collect(Collectors.toSet())
+        Set<String> sel = tags != null ? tags.stream().flatMap(tag -> tagValues(tag.getTagValue()).stream()).filter(Objects::nonNull).map(String::trim).filter(key -> !key.isEmpty()).collect(Collectors.toSet())
                 : Collections.emptySet();
         StringBuilder tb = new StringBuilder();
         for (Map.Entry<String, String> e : tagLabelMap.entrySet()) {
@@ -311,17 +362,15 @@ public class TalkDocxService {
             m.put("${student_feedback}", s(rec.getStudentFeedback()));
             m.put("${followup_plan}", s(rec.getFollowupPlan()));
             m.put("${followup_status}",
-                    TalkConstants.FOLLOWUP_STATUS_LABELS.getOrDefault(rec.getFollowupStatus(), ""));
+                    studentLabel("followup_status", rec.getFollowupStatus(), TalkConstants.FOLLOWUP_STATUS_LABELS));
         }
 
         if (stu != null) {
             m.put("${enrollment_status}",
-                    TalkConstants.ENROLLMENT_STATUS_LABELS.getOrDefault(stu.getEnrollmentStatus(),
-                            s(stu.getEnrollmentStatus())));
-            m.put("${mental_health}", TalkConstants.MENTAL_HEALTH_LABELS.getOrDefault(stu.getMentalHealthStatus(),
-                    s(stu.getMentalHealthStatus())));
+                    studentLabel("enrollment_status", stu.getEnrollmentStatus(), TalkConstants.ENROLLMENT_STATUS_LABELS));
+            m.put("${mental_health}", studentLabel("mental_health_status", stu.getMentalHealthStatus(), TalkConstants.MENTAL_HEALTH_LABELS));
             m.put("${poverty_level}",
-                    TalkConstants.POVERTY_LEVEL_LABELS.getOrDefault(stu.getPovertyLevel(), s(stu.getPovertyLevel())));
+                    studentLabel("poverty_level", stu.getPovertyLevel(), TalkConstants.POVERTY_LEVEL_LABELS));
             m.put("${remark}", s(stu.getRemark()));
         }
 
@@ -330,7 +379,9 @@ public class TalkDocxService {
 
     private Map<String, String> getTagLabelMap() {
         try {
-            List<TalkTag> tags = talkTagMapper.selectActiveTags();
+            TalkTag query = new TalkTag();
+            TalkPermissionUtils.applyCollegeScope(query);
+            List<TalkTag> tags = talkTagMapper.selectActiveTags(query);
             if (tags != null && !tags.isEmpty()) {
                 Map<String, String> m = new LinkedHashMap<>();
                 for (TalkTag t : tags) {
@@ -352,7 +403,7 @@ public class TalkDocxService {
         try (XWPFDocument d = new XWPFDocument(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
             t(d, "集体谈话汇总表");
             bl(d);
-            f(d, "谈话类型", s(session.getTalkType()));
+            f(d, "谈话类型", "group".equals(session.getTalkType()) ? "集体谈话" : "个别谈话");
             f(d, "谈话时间", session.getTalkTime() != null ? FMT.get().format(session.getTalkTime()) : "");
             f(d, "谈话人", s(session.getTalkPerson()));
             f(d, "谈话地点", s(session.getTalkLocation()));
@@ -375,7 +426,7 @@ public class TalkDocxService {
                         : "-");
                 row.getCell(4).setText(s(rec.getStudentFeedback()));
                 row.getCell(5).setText(s(rec.getFollowupPlan()));
-                row.getCell(6).setText(TalkConstants.FOLLOWUP_STATUS_LABELS.getOrDefault(rec.getFollowupStatus(), ""));
+                row.getCell(6).setText(studentLabel("followup_status", rec.getFollowupStatus(), TalkConstants.FOLLOWUP_STATUS_LABELS));
                 idx++;
             }
             bl(d);
@@ -394,6 +445,7 @@ public class TalkDocxService {
         if (content == null) {
             return null;
         }
+        content = TalkContentText.toPlainText(content);
         int idx = content.indexOf("【谈话记录】");
         if (idx < 0) {
             return content;
@@ -414,7 +466,7 @@ public class TalkDocxService {
             f(d, "标签",
                     tags != null
                             ? tags.stream()
-                                    .map(t -> getTagLabelMap().getOrDefault(t.getTagValue(), t.getTagValue()))
+                                    .map(t -> tagDisplay(t.getTagValue(), getTagLabelMap()))
                                     .collect(Collectors.joining("、"))
                             : "");
             h(d, "谈话内容");
@@ -450,12 +502,10 @@ public class TalkDocxService {
                 c(d, s(rec.getFollowupPlan()));
             }
             h(d, "备注");
-            f(d, "学籍", TalkConstants.ENROLLMENT_STATUS_LABELS.getOrDefault(stu.getEnrollmentStatus(),
-                    s(stu.getEnrollmentStatus())));
-            f(d, "心理", TalkConstants.MENTAL_HEALTH_LABELS.getOrDefault(stu.getMentalHealthStatus(),
-                    s(stu.getMentalHealthStatus())));
+            f(d, "学籍", studentLabel("enrollment_status", stu.getEnrollmentStatus(), TalkConstants.ENROLLMENT_STATUS_LABELS));
+            f(d, "心理", studentLabel("mental_health_status", stu.getMentalHealthStatus(), TalkConstants.MENTAL_HEALTH_LABELS));
             f(d, "贫困",
-                    TalkConstants.POVERTY_LEVEL_LABELS.getOrDefault(stu.getPovertyLevel(), s(stu.getPovertyLevel())));
+                    studentLabel("poverty_level", stu.getPovertyLevel(), TalkConstants.POVERTY_LEVEL_LABELS));
             f(d, "备注", s(stu.getRemark()));
             d.write(bos);
             return bos.toByteArray();
@@ -518,18 +568,22 @@ public class TalkDocxService {
             return;
         }
         String profile = RuoYiConfig.getProfile();
+        int attachmentIndex = 0;
         for (TalkAttachment att : attachments) {
             String filePath = att.getFilePath();
             if (filePath == null)
                 continue;
-            String absPath = profile + filePath.replace(Constants.RESOURCE_PREFIX, "");
-            File file = new File(absPath);
-            if (!file.exists()) {
-                log.warn("附件文件不存在: {}", absPath);
+            Path file;
+            try {
+                file = AttachmentPathUtils.resolveWithinProfile(profile, filePath);
+            } catch (IOException | java.nio.file.InvalidPathException e) {
+                log.warn("附件路径无效，跳过打包 {}: {}", att.getAttachmentId(), e.getMessage());
                 continue;
             }
-            try (FileInputStream fis = new FileInputStream(file)) {
-                zos.putNextEntry(new ZipEntry("attachments/" + s(att.getFileName())));
+            if (file == null) continue;
+            try (InputStream fis = java.nio.file.Files.newInputStream(file)) {
+                zos.putNextEntry(new ZipEntry("attachments/" + sessionId + "_" + (++attachmentIndex) + "_"
+                        + att.getAttachmentId() + "_" + ArchiveEntryNames.basename(att.getFileName())));
                 byte[] buffer = new byte[8192];
                 int len;
                 while ((len = fis.read(buffer)) > 0) {

@@ -25,6 +25,14 @@ export function delTeacher(teacherIds) {
   return request({ url: '/talk/teacher/' + teacherIds, method: 'delete' })
 }
 
+export function changeCollegeAdminRole(teacherId, promote) {
+  return request({
+    url: '/talk/teacher/' + teacherId + '/collegeAdminRole',
+    method: 'put',
+    params: { promote }
+  })
+}
+
 // 获取学院下的辅导员/班主任列表
 export function getCounselors(deptId) {
   return request({ url: '/talk/teacher/counselors/' + deptId, method: 'get' })

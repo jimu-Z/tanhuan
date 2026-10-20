@@ -7,6 +7,7 @@ public interface ITalkAttachmentService
 {
     public List<TalkAttachment> selectTalkAttachmentBySessionId(Long sessionId);
     public TalkAttachment selectTalkAttachmentById(Long attachmentId);
+    public void checkWriteAccess(Long sessionId);
     public int insertTalkAttachment(TalkAttachment attachment);
     public int deleteTalkAttachmentById(Long attachmentId);
     public int deleteTalkAttachmentBySessionId(Long sessionId);

@@ -70,13 +70,20 @@ public class DataScopeAspect
         if (StringUtils.isNotNull(loginUser))
         {
             SysUser currentUser = loginUser.getUser();
-            // 如果是超级管理员，则不过滤数据
-            if (StringUtils.isNotNull(currentUser) && !currentUser.isAdmin())
+            // 校管理员与内置管理员均为全校范围，不能依赖其未填充的菜单权限元数据。
+            if (StringUtils.isNotNull(currentUser) && !currentUser.isAdmin() && !isSchoolAdmin(currentUser))
             {
                 String permission = StringUtils.defaultIfEmpty(controllerDataScope.permission(), PermissionContextHolder.getContext());
                 dataScopeFilter(joinPoint, currentUser, controllerDataScope.deptAlias(), controllerDataScope.userAlias(), permission);
             }
         }
+    }
+
+    private boolean isSchoolAdmin(SysUser user)
+    {
+        return user.getRoles() != null && user.getRoles().stream().anyMatch(role ->
+                StringUtils.equals("school_admin", role.getRoleKey())
+                        && StringUtils.equals(UserConstants.ROLE_NORMAL, role.getStatus()));
     }
 
     /**

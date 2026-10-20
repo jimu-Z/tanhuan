@@ -10,14 +10,20 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.SecurityUtils;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.talk.domain.TalkAppointment;
 import com.ruoyi.talk.domain.TalkSession;
+import com.ruoyi.talk.domain.TalkStudent;
 import com.ruoyi.talk.domain.TalkStudentRecord;
 import com.ruoyi.talk.domain.TalkTeacher;
 import com.ruoyi.talk.mapper.TalkAppointmentMapper;
 import com.ruoyi.talk.mapper.TalkSessionMapper;
+import com.ruoyi.talk.mapper.TalkStudentMapper;
 import com.ruoyi.talk.mapper.TalkStudentRecordMapper;
 import com.ruoyi.talk.mapper.TalkTeacherMapper;
+import com.ruoyi.common.core.domain.entity.SysDept;
+import com.ruoyi.system.mapper.SysDeptMapper;
+import com.ruoyi.talk.security.TalkPermissionUtils;
 import com.ruoyi.talk.service.ITalkAppointmentService;
 
 /**
@@ -39,6 +45,12 @@ public class TalkAppointmentServiceImpl implements ITalkAppointmentService {
 
     @Autowired
     private TalkTeacherMapper talkTeacherMapper;
+
+    @Autowired
+    private TalkStudentMapper talkStudentMapper;
+
+    @Autowired
+    private SysDeptMapper sysDeptMapper;
 
     @Override
     public List<TalkAppointment> selectTalkAppointmentList(TalkAppointment appointment) {
@@ -100,11 +112,26 @@ public class TalkAppointmentServiceImpl implements ITalkAppointmentService {
     public int confirmAppointment(Long appointmentId) {
         TalkAppointment appointment = talkAppointmentMapper.selectTalkAppointmentById(appointmentId);
         if (appointment == null) {
-            throw new RuntimeException("预约不存在");
+            throw new ServiceException("预约不存在");
         }
         if (!"pending".equals(appointment.getStatus())) {
-            throw new RuntimeException("当前预约状态不允许确认，仅待确认的预约可确认");
+            throw new ServiceException("当前预约状态不允许确认，仅待确认的预约可确认");
         }
+
+        TalkStudent student = talkStudentMapper.selectTalkStudentByStudentId(appointment.getStudentId());
+        if (student == null) {
+            throw new ServiceException("预约学生不存在");
+        }
+        TalkTeacher teacher = talkTeacherMapper.selectTalkTeacherById(appointment.getTeacherId());
+        if (teacher == null) {
+            throw new ServiceException("预约教师不存在");
+        }
+        Long studentCollegeId = resolveCollegeDeptId(student.getDeptId());
+        Long teacherCollegeId = resolveCollegeDeptId(teacher.getDeptId());
+        if (!studentCollegeId.equals(teacherCollegeId)) {
+            throw new ServiceException("预约学生和教师必须属于同一学院");
+        }
+        TalkPermissionUtils.requireCollegeAccess(studentCollegeId);
 
         // 1. 更新预约状态为confirmed
         appointment.setStatus("confirmed");
@@ -112,18 +139,15 @@ public class TalkAppointmentServiceImpl implements ITalkAppointmentService {
         appointment.setUpdateTime(DateUtils.getNowDate());
         talkAppointmentMapper.updateTalkAppointment(appointment);
 
-        // 2. 查询教师信息获取教师姓名
-        TalkTeacher teacher = talkTeacherMapper.selectTalkTeacherById(appointment.getTeacherId());
-        String teacherName = teacher != null ? teacher.getTeacherName() : "";
-
-        // 3. 创建 TalkSession
+        // 2. 创建 TalkSession，并固化学生所属学院作为历史数据范围快照。
         TalkSession session = new TalkSession();
+        session.setCollegeDeptId(studentCollegeId);
         session.setTalkType("individual");
         session.setTalkTime(appointment.getAppointmentTime());
         session.setTalkLocation(appointment.getLocation());
-        session.setTalkPerson(teacherName);
+        session.setTalkPerson(teacher.getTeacherName());
         session.setTalkContent("");
-        session.setCreateBy(appointment.getCreateBy());
+        session.setCreateBy(SecurityUtils.getUsername());
         session.setCreateTime(new Date());
         talkSessionMapper.insertTalkSession(session);
 
@@ -141,6 +165,21 @@ public class TalkAppointmentServiceImpl implements ITalkAppointmentService {
         appointment.setSessionId(session.getSessionId());
         appointment.setUpdateTime(DateUtils.getNowDate());
         return talkAppointmentMapper.updateTalkAppointment(appointment);
+    }
+
+    private Long resolveCollegeDeptId(Long deptId) {
+        Long currentId = deptId;
+        while (currentId != null && currentId > 0) {
+            SysDept dept = sysDeptMapper.selectDeptById(currentId);
+            if (dept == null) {
+                break;
+            }
+            if ("college".equals(dept.getDeptType())) {
+                return dept.getDeptId();
+            }
+            currentId = dept.getParentId();
+        }
+        throw new ServiceException("预约对象未归属有效学院");
     }
 
     @Override

@@ -359,9 +359,7 @@ export default {
     },
     /** 导出按钮操作 */
     handleExport() {
-      this.download('system/dict/type/export', {
-        ...this.queryParams
-      }, `type_${new Date().getTime()}.xlsx`)
+      this.download('system/dict/type/export', this.addDateRange(this.queryParams, this.dateRange), `type_${new Date().getTime()}.xlsx`)
     },
     /** 刷新缓存按钮操作 */
     handleRefreshCache() {

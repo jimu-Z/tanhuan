@@ -9,7 +9,7 @@ export function uploadAttachment(formData) {
     url: '/ruoyi-system/talkattachment/upload',
     method: 'post',
     data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data', repeatSubmit: false }
   })
 }
 

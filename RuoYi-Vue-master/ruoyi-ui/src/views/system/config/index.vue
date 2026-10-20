@@ -328,9 +328,7 @@ export default {
     },
     /** 导出按钮操作 */
     handleExport() {
-      this.download('system/config/export', {
-        ...this.queryParams
-      }, `config_${new Date().getTime()}.xlsx`)
+      this.download('system/config/export', this.addDateRange(this.queryParams, this.dateRange), `config_${new Date().getTime()}.xlsx`)
     },
     /** 刷新缓存按钮操作 */
     handleRefreshCache() {

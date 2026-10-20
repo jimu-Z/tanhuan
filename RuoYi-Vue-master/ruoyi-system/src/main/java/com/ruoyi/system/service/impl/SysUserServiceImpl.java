@@ -18,6 +18,7 @@ import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.utils.UserNameUtils;
 import com.ruoyi.common.utils.bean.BeanValidators;
 import com.ruoyi.common.utils.spring.SpringUtils;
 import com.ruoyi.system.domain.SysPost;
@@ -28,6 +29,7 @@ import com.ruoyi.system.mapper.SysRoleMapper;
 import com.ruoyi.system.mapper.SysUserMapper;
 import com.ruoyi.system.mapper.SysUserPostMapper;
 import com.ruoyi.system.mapper.SysUserRoleMapper;
+import com.ruoyi.system.service.BusinessRoleCollegeValidator;
 import com.ruoyi.system.service.ISysConfigService;
 import com.ruoyi.system.service.ISysDeptService;
 import com.ruoyi.system.service.ISysUserService;
@@ -65,6 +67,9 @@ public class SysUserServiceImpl implements ISysUserService
 
     @Autowired
     protected Validator validator;
+
+    @Autowired
+    private BusinessRoleCollegeValidator collegeValidator;
 
     /**
      * 根据条件分页查询用户列表
@@ -261,6 +266,8 @@ public class SysUserServiceImpl implements ISysUserService
     @Transactional
     public int insertUser(SysUser user)
     {
+        user.setUserName(UserNameUtils.normalize(user.getUserName()));
+        collegeValidator.checkRoleDepartment(user.getDeptId(), user.getRoleIds());
         // 新增用户信息
         int rows = userMapper.insertUser(user);
         // 新增用户岗位关联
@@ -279,6 +286,7 @@ public class SysUserServiceImpl implements ISysUserService
     @Override
     public boolean registerUser(SysUser user)
     {
+        user.setUserName(UserNameUtils.normalize(user.getUserName()));
         return userMapper.insertUser(user) > 0;
     }
 
@@ -292,6 +300,7 @@ public class SysUserServiceImpl implements ISysUserService
     @Transactional
     public int updateUser(SysUser user)
     {
+        collegeValidator.checkRoleDepartment(user.getDeptId(), user.getRoleIds());
         Long userId = user.getUserId();
         // 删除用户与角色关联
         userRoleMapper.deleteUserRoleByUserId(userId);
@@ -314,6 +323,7 @@ public class SysUserServiceImpl implements ISysUserService
     @Transactional
     public void insertUserAuth(Long userId, Long[] roleIds)
     {
+        collegeValidator.checkUserForRoles(userId, roleIds);
         userRoleMapper.deleteUserRoleByUserId(userId);
         insertUserRole(userId, roleIds);
     }
@@ -511,6 +521,7 @@ public class SysUserServiceImpl implements ISysUserService
         {
             try
             {
+                user.setUserName(UserNameUtils.normalize(user.getUserName()));
                 // 验证是否存在这个用户
                 SysUser u = userMapper.selectUserByUserName(user.getUserName());
                 if (StringUtils.isNull(u))
@@ -530,6 +541,7 @@ public class SysUserServiceImpl implements ISysUserService
                     checkUserAllowed(u);
                     checkUserDataScope(u.getUserId());
                     deptService.checkDeptDataScope(user.getDeptId());
+                    collegeValidator.checkExistingUserDepartment(u);
                     user.setUserId(u.getUserId());
                     user.setDeptId(u.getDeptId());
                     user.setUpdateBy(operName);

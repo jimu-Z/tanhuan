@@ -126,6 +126,11 @@ export default {
     init() {
       const editor = this.$refs.editor
       this.Quill = new Quill(editor, this.options)
+      const tooltipInput = editor.querySelector('.ql-tooltip input')
+      if (tooltipInput) {
+        tooltipInput.setAttribute('data-link', '请输入链接地址')
+        tooltipInput.setAttribute('data-video', '请输入视频地址')
+      }
       // 如果设置了上传地址则自定义图片上传事件
       if (this.type == 'url') {
         let toolbar = this.Quill.getModule("toolbar")
@@ -227,6 +232,15 @@ export default {
 .quill-img {
   display: none;
 }
+.ql-snow .ql-tooltip::before {
+  content: "链接地址:";
+}
+.ql-snow .ql-tooltip a.ql-action::after {
+  content: "编辑";
+}
+.ql-snow .ql-tooltip a.ql-remove::before {
+  content: "移除";
+}
 .ql-snow .ql-tooltip[data-mode="link"]::before {
   content: "请输入链接地址:";
 }
@@ -240,19 +254,19 @@ export default {
 }
 .ql-snow .ql-picker.ql-size .ql-picker-label::before,
 .ql-snow .ql-picker.ql-size .ql-picker-item::before {
-  content: "14px";
+  content: "默认";
 }
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="small"]::before,
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="small"]::before {
-  content: "10px";
+  content: "小号";
 }
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="large"]::before,
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="large"]::before {
-  content: "18px";
+  content: "大号";
 }
 .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="huge"]::before,
 .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="huge"]::before {
-  content: "32px";
+  content: "超大号";
 }
 .ql-snow .ql-picker.ql-header .ql-picker-label::before,
 .ql-snow .ql-picker.ql-header .ql-picker-item::before {

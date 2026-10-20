@@ -60,7 +60,7 @@
     </el-row>
 
     <el-table v-loading="loading" :data="userList" @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="55" align="center" />
+      <el-table-column type="selection" :selectable="isUserSelectable" width="55" align="center" />
       <el-table-column label="用户名称" prop="userName" :show-overflow-tooltip="true" />
       <el-table-column label="用户昵称" prop="nickName" :show-overflow-tooltip="true" />
       <el-table-column label="邮箱" prop="email" :show-overflow-tooltip="true" />
@@ -81,6 +81,7 @@
             size="mini"
             type="text"
             icon="el-icon-circle-close"
+            v-if="isUserSelectable(scope.row)"
             @click="cancelAuthUser(scope.row)"
             v-hasPermi="['system:role:remove']"
           >取消授权</el-button>
@@ -139,6 +140,9 @@ export default {
     }
   },
   methods: {
+    isUserSelectable(row) {
+      return Number(row.userId) !== 1
+    },
     /** 查询授权用户列表 */
     getList() {
       this.loading = true
@@ -166,8 +170,8 @@ export default {
     },
     // 多选框选中数据
     handleSelectionChange(selection) {
-      this.userIds = selection.map(item => item.userId)
-      this.multiple = !selection.length
+      this.userIds = selection.filter(this.isUserSelectable).map(item => item.userId)
+      this.multiple = !this.userIds.length
     },
     /** 打开授权用户表弹窗 */
     openSelectUser() {
@@ -175,6 +179,7 @@ export default {
     },
     /** 取消授权按钮操作 */
     cancelAuthUser(row) {
+      if (!this.isUserSelectable(row)) return
       const roleId = this.queryParams.roleId
       this.$modal.confirm('确认要取消该用户"' + row.userName + '"角色吗？').then(function() {
         return authUserCancel({ userId: row.userId, roleId: roleId })

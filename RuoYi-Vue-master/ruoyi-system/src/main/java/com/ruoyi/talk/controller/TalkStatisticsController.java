@@ -15,15 +15,19 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.entity.SysDept;
-import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.system.mapper.SysDeptMapper;
 import com.ruoyi.talk.constant.TalkConstants;
 import com.ruoyi.talk.mapper.TalkSessionMapper;
 import com.ruoyi.talk.mapper.TalkSessionTagMapper;
 import com.ruoyi.talk.mapper.TalkStudentMapper;
 import com.ruoyi.talk.mapper.TalkStudentRecordMapper;
+import com.ruoyi.talk.security.TalkPermissionUtils;
+import com.ruoyi.talk.service.ITalkTagService;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.talk.domain.TalkStudentRecord;
+import com.ruoyi.talk.domain.TalkTag;
 
 @RestController
 @RequestMapping("/ruoyi-system/talk/statistics")
@@ -39,23 +43,14 @@ public class TalkStatisticsController extends BaseController {
     private TalkSessionTagMapper talkSessionTagMapper;
     @Autowired
     private SysDeptMapper sysDeptMapper;
+    @Autowired
+    private ITalkTagService talkTagService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private Map<String, Object> createQueryParams() {
         Map<String, Object> params = new HashMap<>();
-        if (SecurityUtils.isAdmin()) {
-            return params;
-        }
-        String username = SecurityUtils.getUsername();
-        if (username == null) {
-            return params;
-        }
-        if (SecurityUtils.hasRole("talk_counselor")) {
-            params.put("counselorUsername", username);
-        } else if (SecurityUtils.hasRole("talk_secretary")) {
-            Long deptId = SecurityUtils.getDeptId();
-            if (deptId != null) {
-                params.put("secretaryDeptId", deptId);
-            }
+        if (!TalkPermissionUtils.isGlobalAdmin()) {
+            params.put("collegeDeptId", TalkPermissionUtils.currentCollegeId());
         }
         return params;
     }
@@ -68,11 +63,13 @@ public class TalkStatisticsController extends BaseController {
         int totalSessions = talkSessionMapper.countTalkSessionsFiltered(params);
 
         int totalRecords = talkStudentRecordMapper.countRecordsFiltered(params);
+        int coveredStudents = talkStudentRecordMapper.countCoveredStudentsFiltered(params);
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("totalStudents", totalStudents);
         data.put("totalSessions", totalSessions);
         data.put("totalRecords", totalRecords);
+        data.put("coveredStudents", coveredStudents);
 
         List<HashMap<String, Object>> typeStats = talkSessionMapper.countTalkSessionsByTypeFiltered(params);
         long individualCount = 0, groupCount = 0;
@@ -91,21 +88,46 @@ public class TalkStatisticsController extends BaseController {
     private List<Map<String, Object>> buildTagChart() {
         Map<String, Object> params = createQueryParams();
         List<HashMap<String, Object>> tagStats = talkSessionTagMapper.countTagsByValueFiltered(params);
-        List<Map<String, Object>> tagChart = new ArrayList<>();
-        for (String key : TalkConstants.TAG_LABELS.keySet()) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("name", TalkConstants.TAG_LABELS.get(key));
-            long cnt = 0;
-            for (HashMap<String, Object> row : tagStats) {
-                if (key.equals(row.get("tag"))) {
-                    cnt = ((Number) row.get("cnt")).longValue();
-                    break;
-                }
+        Map<String, String> labels = new LinkedHashMap<>(TalkConstants.TAG_LABELS);
+        for (TalkTag tag : talkTagService.selectActiveTags()) {
+            labels.put(tag.getTagKey(), tag.getTagName());
+        }
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (HashMap<String, Object> row : tagStats) {
+            long count = ((Number) row.get("cnt")).longValue();
+            for (String key : parseTagKeys(String.valueOf(row.get("tag")))) {
+                counts.merge(key, count, Long::sum);
             }
-            item.put("value", cnt);
+        }
+        List<Map<String, Object>> tagChart = new ArrayList<>();
+        for (Map.Entry<String, String> entry : labels.entrySet()) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("name", entry.getValue());
+            Long count = counts.remove(entry.getKey());
+            item.put("value", count == null ? 0 : count);
+            tagChart.add(item);
+        }
+        for (Map.Entry<String, Long> entry : counts.entrySet()) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("name", entry.getKey());
+            item.put("value", entry.getValue());
             tagChart.add(item);
         }
         return tagChart;
+    }
+
+    private List<String> parseTagKeys(String value) {
+        if (value == null || value.isBlank() || "null".equals(value)) {
+            return List.of();
+        }
+        if (value.startsWith("[") && value.endsWith("]")) {
+            try {
+                return objectMapper.readValue(value, new TypeReference<List<String>>() { });
+            } catch (Exception ignored) {
+                // 兼容历史非标准 JSON 标签值，按普通字符串继续处理。
+            }
+        }
+        return List.of(value);
     }
 
     private List<Map<String, Object>> buildMonthlyChart() {
@@ -128,16 +150,15 @@ public class TalkStatisticsController extends BaseController {
 
         int totalStudents = (int) data.get("totalStudents");
         int totalRecords = (int) data.get("totalRecords");
+        int coveredStudents = (int) data.get("coveredStudents");
         data.put("avgRecordsPerStudent", totalStudents > 0
                 ? String.format("%.1f", (double) totalRecords / totalStudents)
                 : "0");
         data.put("coverageRate", totalStudents > 0
-                ? String.format("%.1f", Math.min(100.0, 100.0 * totalRecords / Math.max(1, totalStudents)))
+                ? String.format("%.1f", 100.0 * coveredStudents / totalStudents)
                 : "0");
 
         Map<String, Object> scopeParams = createQueryParams();
-        int pendingFeedback = talkStudentRecordMapper.countPendingFeedback(scopeParams);
-        data.put("pendingFeedback", pendingFeedback);
 
         data.put("tagDistribution", buildTagChart());
         data.put("monthlyTrend", buildMonthlyChart());
@@ -145,61 +166,37 @@ public class TalkStatisticsController extends BaseController {
         List<SysDept> depts = sysDeptMapper.selectDeptList(new SysDept());
         List<Map<String, Object>> collegeRanking = new ArrayList<>();
         int totalColleges = 0;
-        // 数据权限过滤：书记只看本学院，辅导员不看排名（返回空）
-        boolean isCounselor = SecurityUtils.hasRole("talk_counselor");
-        Long secretaryDeptId = scopeParams.containsKey("secretaryDeptId")
-                ? ((Number) scopeParams.get("secretaryDeptId")).longValue()
+        Long collegeDeptId = scopeParams.containsKey("collegeDeptId")
+                ? ((Number) scopeParams.get("collegeDeptId")).longValue()
                 : null;
         for (SysDept d : depts) {
             if (!"college".equals(d.getDeptType()))
                 continue;
+            if (collegeDeptId != null && !collegeDeptId.equals(d.getDeptId()))
+                continue;
             totalColleges++;
-            // 书记只能看到自己学院的数据
-            if (secretaryDeptId != null && !secretaryDeptId.equals(d.getDeptId()))
-                continue;
-            // 辅导员不展示学院排名（权限不足）
-            if (isCounselor && secretaryDeptId == null && !SecurityUtils.isAdmin())
-                continue;
             int count = talkStudentMapper.countStudentsByDeptId(d.getDeptId());
+            Map<String, Object> collegeParams = new HashMap<>();
+            collegeParams.put("collegeDeptId", d.getDeptId());
+            int coveredCount = talkStudentRecordMapper.countCoveredStudentsFiltered(collegeParams);
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("name", d.getDeptName());
             item.put("count", count);
+            item.put("coveredCount", coveredCount);
+            item.put("coverageRate", count > 0
+                    ? String.format("%.1f", 100.0 * coveredCount / count)
+                    : "0");
             collegeRanking.add(item);
         }
+        collegeRanking.sort((left, right) -> Integer.compare(
+                ((Number) right.get("count")).intValue(), ((Number) left.get("count")).intValue()));
         data.put("collegeRanking", collegeRanking);
         data.put("totalColleges", totalColleges);
 
-        // 工作提醒数据
-        Map<String, Object> todoParams = createQueryParams();
-        int untalkedCount = talkStudentMapper.countUntalkedStudentsFiltered(todoParams);
-        int pendingFeedbackCount = talkStudentRecordMapper.countPendingFeedback(todoParams);
-        List<HashMap<String, Object>> followupStats = talkStudentRecordMapper
-                .countRecordsByFollowupStatusFiltered(todoParams);
-        long pendingFollowup = 0;
-        for (HashMap<String, Object> row : followupStats) {
-            if ("pending".equals(row.get("status"))) {
-                pendingFollowup = ((Number) row.get("cnt")).longValue();
-            }
-        }
+        // 当前上线业务仅保留未谈学生提醒。
+        int untalkedCount = talkStudentMapper.countUntalkedStudentsFiltered(scopeParams);
+        data.put("untalkedStudents", untalkedCount);
         List<Map<String, Object>> todoItems = new ArrayList<>();
-        if (pendingFeedbackCount > 0) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("type", "feedback");
-            item.put("label", "待处理反馈");
-            item.put("count", pendingFeedbackCount);
-            item.put("icon", "el-icon-chat-dot-round");
-            item.put("color", "#f56c6c");
-            todoItems.add(item);
-        }
-        if (pendingFollowup > 0) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("type", "followup");
-            item.put("label", "待跟进记录");
-            item.put("count", pendingFollowup);
-            item.put("icon", "el-icon-warning-outline");
-            item.put("color", "#e6a23c");
-            todoItems.add(item);
-        }
         if (untalkedCount > 0) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("type", "untalked");
@@ -211,54 +208,8 @@ public class TalkStatisticsController extends BaseController {
         }
         data.put("todoItems", todoItems);
 
-        // 预警概览数据
-        List<HashMap<String, Object>> mentalStats = talkStudentMapper.countByMentalHealthFiltered(todoParams);
-        List<HashMap<String, Object>> povertyStats = talkStudentMapper.countByPovertyLevelFiltered(todoParams);
-        List<HashMap<String, Object>> enrollmentStats = talkStudentMapper.countByEnrollmentStatusFiltered(todoParams);
-        List<Map<String, Object>> alertItems = new ArrayList<>();
-        long mentalTotal = 0;
-        for (HashMap<String, Object> row : mentalStats) {
-            mentalTotal += ((Number) row.get("cnt")).longValue();
-        }
-        if (mentalTotal > 0) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("type", "mental");
-            item.put("label", "心理健康关注");
-            item.put("count", mentalTotal);
-            item.put("detail", mentalStats);
-            item.put("color", "#f56c6c");
-            alertItems.add(item);
-        }
-        long povertyTotal = 0;
-        for (HashMap<String, Object> row : povertyStats) {
-            povertyTotal += ((Number) row.get("cnt")).longValue();
-        }
-        if (povertyTotal > 0) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("type", "poverty");
-            item.put("label", "贫困生关注");
-            item.put("count", povertyTotal);
-            item.put("detail", povertyStats);
-            item.put("color", "#e6a23c");
-            alertItems.add(item);
-        }
-        long enrollmentTotal = 0;
-        for (HashMap<String, Object> row : enrollmentStats) {
-            enrollmentTotal += ((Number) row.get("cnt")).longValue();
-        }
-        if (enrollmentTotal > 0) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("type", "enrollment");
-            item.put("label", "学籍异常");
-            item.put("count", enrollmentTotal);
-            item.put("detail", enrollmentStats);
-            item.put("color", "#909399");
-            alertItems.add(item);
-        }
-        data.put("alertItems", alertItems);
-
         // 最近谈话动态
-        List<TalkStudentRecord> recentRecords = talkStudentRecordMapper.selectRecentRecordsFiltered(todoParams);
+        List<TalkStudentRecord> recentRecords = talkStudentRecordMapper.selectRecentRecordsFiltered(scopeParams);
         List<Map<String, Object>> recentActivities = new ArrayList<>();
         for (TalkStudentRecord r : recentRecords) {
             Map<String, Object> item = new LinkedHashMap<>();
@@ -266,7 +217,6 @@ public class TalkStatisticsController extends BaseController {
             item.put("talkType", r.getTalkType());
             item.put("talkTime", r.getTalkTime());
             item.put("talkPerson", r.getTalkPerson());
-            item.put("followupStatus", r.getFollowupStatus());
             recentActivities.add(item);
         }
         data.put("recentActivities", recentActivities);
@@ -310,25 +260,19 @@ public class TalkStatisticsController extends BaseController {
         List<SysDept> depts = sysDeptMapper.selectDeptList(new SysDept());
         List<Map<String, Object>> deptCoverage = new ArrayList<>();
         int totalStudents = talkStudentMapper.countTalkStudentsFiltered(scopeParams);
-        // 数据权限过滤：只展示权限范围内的部门
-        boolean isCounselor = SecurityUtils.hasRole("talk_counselor");
-        Long secretaryDeptId = scopeParams.containsKey("secretaryDeptId")
-                ? ((Number) scopeParams.get("secretaryDeptId")).longValue()
+        Long collegeDeptId = scopeParams.containsKey("collegeDeptId")
+                ? ((Number) scopeParams.get("collegeDeptId")).longValue()
                 : null;
         for (SysDept d : depts) {
             if (!"college".equals(d.getDeptType()) && !"class".equals(d.getDeptType()))
                 continue;
-            // 书记只能看到本学院及下属部门
-            if (secretaryDeptId != null) {
-                boolean isDescendant = String.valueOf(secretaryDeptId).equals(d.getAncestors())
-                        || d.getAncestors() != null && d.getAncestors().contains(String.valueOf(secretaryDeptId))
-                        || secretaryDeptId.equals(d.getDeptId());
+            if (collegeDeptId != null) {
+                boolean isDescendant = d.getAncestors() != null
+                        && java.util.Arrays.asList(d.getAncestors().split(",")).contains(String.valueOf(collegeDeptId))
+                        || collegeDeptId.equals(d.getDeptId());
                 if (!isDescendant)
                     continue;
             }
-            // 辅导员不展示部门覆盖率（权限不足）
-            if (isCounselor && secretaryDeptId == null && !SecurityUtils.isAdmin())
-                continue;
             int count = talkStudentMapper.countStudentsByDeptId(d.getDeptId());
             if (count > 0) {
                 Map<String, Object> item = new LinkedHashMap<>();

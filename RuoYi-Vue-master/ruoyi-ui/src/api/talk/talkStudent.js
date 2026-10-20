@@ -1,11 +1,25 @@
 import request from '@/utils/request'
 
+// 列表与导出共用期间未谈筛选，保留其他字段并避免日期数组绑定失效。
+export function buildStudentQuery(query) {
+  const { dateRange, ...filters } = query
+  const params = { ...query.params }
+  delete params.beginTime
+  delete params.endTime
+  if (Array.isArray(dateRange) && dateRange.length === 2) {
+    params.beginTime = dateRange[0]
+    params.endTime = dateRange[1]
+  }
+  const deptId = Array.isArray(query.deptId) ? (query.deptId.length ? query.deptId[query.deptId.length - 1] : null) : query.deptId
+  return { ...filters, deptId, params }
+}
+
 // 查询学生信息管理列表
 export function listTalk(query) {
   return request({
     url: '/ruoyi-system/talk/list',
     method: 'get',
-    params: query
+    params: buildStudentQuery(query)
   })
 }
 

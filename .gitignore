@@ -1,0 +1,38 @@
+# Generated dependencies and build outputs
+**/node_modules/
+**/target/
+**/dist/
+**/.cache/
+**/.gradle/
+# Local QA data, release binaries and evidence
+/qa-runtime/
+/deploy/
+/logs/
+**/logs/
+**/uploads/
+**/upload/
+**/profile/
+*.log
+*.jar
+*.war
+*.zip
+# Local database exports and operational credential reset helpers
+/*.sql
+/RuoYi-Vue-master/fix_pwd.sql
+# Local data workbooks; source templates under project resources remain included
+/*.xlsx
+/*.xls
+/docs/*.xlsx
+# Private runtime credentials (publish environment-variable examples instead)
+**/.env.local
+**/.env.*.local
+**/application-*.private.yml
+**/application-*.private.yaml
+**/connection.private.*
+# Editor and OS state
+**/.DS_Store
+**/Thumbs.db
+**/.idea/
+*.iml
+
+/deploy-backup-*/
