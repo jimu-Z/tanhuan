@@ -1,3 +1,17 @@
+# 当前交接入口（2026-10-21）
+
+当前领域规则以 `RuoYi-Vue-master/CONTEXT.md` 和 `docs/adr/0003-four-role-college-scope.md` 为准。下方 2026-06-16 内容仅为历史，不再作为角色或部署操作依据。
+
+- 当前四角色：admin、school_admin、college_admin、talk_teacher；岗位不决定权限。
+- 只部署后端和管理端（6060/6080），学生端及预约、预警等隐藏功能继续停用。
+- 全角色浏览器阶段已结项：68 passed、1 completed-with-user-exception，详见 `qa-runtime/ui-full-role-20261012/all-role-full-function-report-final-20261020.md`，不是 69 项全部自动化通过。
+- 最近部署包：`deploy/release-complete-20261020-212153/`，含学生导入 v10、附件存储修复和标签/模板连续序号。部署前核对实际版本与增量脚本，不用旧包覆盖新数据。
+- 本地稳定性修复与定向验证已完成，断点与基线：`qa-runtime/stability-20261021/ledger.md`。候选包目录为 `deploy/candidate-20261021-stability/`，只有目录内 manifest.json 与完整 ZIP 校验完成才可交付；最终结果见同一证据目录 final-report.md。
+- 公开仓库数据库入口：`database/README.md`，包含完整45表结构与角色/菜单/字典基础数据，不包含师生资料、谈话、日志或账号哈希；已有环境仅执行必要增量脚本。
+- 不将历史密码、服务器目录或 Nginx 样例视为当前生产配置。
+
+---
+
 # 交接文档 — 学生谈心谈话管理系统
 
 > 更新时间：2026-06-16

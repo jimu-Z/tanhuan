@@ -45,7 +45,7 @@
 
     <el-table v-loading="loading" :data="tagList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="标签ID" align="center" prop="tagId" />
+      <el-table-column label="序号" type="index" align="center" width="80" :index="(queryParams.pageNum - 1) * queryParams.pageSize + 1" />
       <el-table-column label="标签标识" align="center" prop="tagName" />
       <el-table-column label="标签名称" align="center" prop="tagName" />
       <el-table-column label="标签类型" align="center" prop="scopeType" width="100">
@@ -246,8 +246,11 @@ export default {
       })
     },
     handleDelete(row) {
-      const tagIds = row.tagId || this.ids
-      this.$modal.confirm('是否确认删除标签编号为"' + tagIds + '"的数据项？').then(function() {
+      const tagIds = row && row.tagId ? row.tagId : this.ids
+      const message = row && row.tagId
+        ? '是否确认删除标签“' + row.tagName + '”？'
+        : '是否确认删除选中的 ' + this.ids.length + ' 个标签？'
+      this.$modal.confirm(message).then(function() {
         return delTag(tagIds)
       }).then(() => {
         this.getList()

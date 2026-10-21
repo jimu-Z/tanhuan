@@ -14,6 +14,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.utils.DictUtils;
+import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.system.mapper.SysDeptMapper;
 import com.ruoyi.talk.domain.TalkStudent;
 import com.ruoyi.talk.mapper.TalkStudentMapper;
@@ -25,6 +26,7 @@ class TalkStudentImportEnumsTest {
         TalkStudentServiceImpl s=new TalkStudentServiceImpl();
         ReflectionTestUtils.setField(s,"talkStudentMapper",students);
         ReflectionTestUtils.setField(s,"sysDeptMapper",departments);
+        StudentImportTestSupport.unrelatedRelations(s);
         ReflectionTestUtils.setField(s,"talkAlertService",mock(ITalkAlertService.class));return s;
     }
     private void dictionary(MockedStatic<DictUtils> dictionaries){
@@ -58,9 +60,14 @@ class TalkStudentImportEnumsTest {
         TalkStudentMapper students=mock(TalkStudentMapper.class);SysDeptMapper departments=mock(SysDeptMapper.class);TalkStudentServiceImpl s=service(students,departments);
         TalkStudent existing=new TalkStudent();existing.setStudentId(5L);existing.setDeptId(203L);
         when(students.selectTalkStudentList(any(TalkStudent.class))).thenReturn(List.of(existing));
+        when(students.selectTalkStudentByCode("QA001")).thenReturn(existing);
+        SysDept clazz=new SysDept();clazz.setDeptId(203L);clazz.setDeptType("class");when(departments.selectDeptById(203L)).thenReturn(clazz);
+        when(students.updateTalkStudent(any())).thenReturn(1);
         when(departments.selectDeptList(any(SysDept.class))).thenAnswer(call->{SysDept q=call.getArgument(0),d=new SysDept();d.setDeptName(q.getDeptName());d.setParentId(q.getParentId());d.setDeptType("class");d.setDeptId("测试学院".equals(q.getDeptName())?201L:"2026级".equals(q.getDeptName())?202L:203L);return List.of(d);});
         Map<String,Object> data=new HashMap<>();data.put("student_code","QA001");data.put("student_name","测试学生");data.put("college","测试学院");data.put("grade","2026级");data.put("class","测试班");data.put("gender","女");data.put("political_status","群众");data.put("enrollment_status","休学");data.put("mental_health_status","轻度干预");data.put("poverty_level","C.家庭经济一般困难");
-        try(MockedStatic<TalkPermissionUtils> permissions=mockStatic(TalkPermissionUtils.class);MockedStatic<DictUtils> dictionaries=mockStatic(DictUtils.class)){
+        try(MockedStatic<TalkPermissionUtils> permissions=mockStatic(TalkPermissionUtils.class);MockedStatic<DictUtils> dictionaries=mockStatic(DictUtils.class);
+            MockedStatic<SecurityUtils> security=mockStatic(SecurityUtils.class)){
+            security.when(SecurityUtils::getUsername).thenReturn("qa-importer");
             permissions.when(TalkPermissionUtils::isGlobalAdmin).thenReturn(true);dictionary(dictionaries);
             assertThat(s.importExecute(List.of(data),"update").get("successCount")).isEqualTo(1);
             ArgumentCaptor<TalkStudent> saved=ArgumentCaptor.forClass(TalkStudent.class);verify(students).updateTalkStudent(saved.capture());

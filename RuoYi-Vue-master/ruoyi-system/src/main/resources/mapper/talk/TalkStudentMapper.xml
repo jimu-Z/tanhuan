@@ -340,8 +340,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectByTeacherCode" parameterType="String" resultMap="TalkStudentResult">
         <include refid="selectTalkStudentVo"/>
-        where d.dept_name in (
-            select class_name from talk_teacher_class where teacher_code = #{teacherCode}
+        where exists (
+            select 1 from talk_teacher t
+            where t.teacher_code = #{teacherCode}
+              and (t.dept_id = d.dept_id or find_in_set(t.dept_id, d.ancestors))
+              and (
+                  exists (select 1 from talk_student_manager sm where sm.student_id = s.student_id and sm.teacher_id = t.teacher_id)
+                  or exists (select 1 from talk_class_manager cm where cm.class_dept_id = s.dept_id and cm.teacher_id = t.teacher_id)
+                  or (
+                      exists (select 1 from talk_teacher_class tc where tc.teacher_code = t.teacher_code and tc.class_name = d.dept_name)
+                      and not exists (
+                          select 1 from talk_class_manager precise join sys_dept bound_class on bound_class.dept_id = precise.class_dept_id
+                          where precise.teacher_id = t.teacher_id and bound_class.dept_name = d.dept_name
+                      )
+                  )
+              )
         )
         order by s.student_code
     </select>

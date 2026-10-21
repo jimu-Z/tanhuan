@@ -33,6 +33,25 @@ public class TalkAttachmentServiceImpl implements ITalkAttachmentService
     private String profile;
 
     @Override
+    public boolean isRegisteredResource(String resourcePath)
+    {
+        try {
+            java.nio.file.Path requested = AttachmentPathUtils.resourceIdentity(profile, resourcePath);
+            for (TalkAttachment attachment : talkAttachmentMapper.selectTalkAttachmentList(new TalkAttachment())) {
+                try {
+                    if (requested.equals(AttachmentPathUtils.resourceIdentity(profile, attachment.getFilePath()))) return true;
+                } catch (java.io.IOException | IllegalArgumentException ignored) {
+                    // Invalid historical metadata never authorizes access to a different file.
+                }
+            }
+            return false;
+        } catch (java.io.IOException | IllegalArgumentException error) {
+            // Invalid or escaping paths fail closed even on legacy resource endpoints.
+            return true;
+        }
+    }
+
+    @Override
     public List<TalkAttachment> selectTalkAttachmentBySessionId(Long sessionId)
     {
         requireSession(sessionId, false);

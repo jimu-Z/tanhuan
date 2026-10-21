@@ -30,6 +30,7 @@ public class TalkTeacherClassServiceImpl implements ITalkTeacherClassService {
     @Override
     @Transactional
     public int saveTeacherClasses(String teacherCode, List<String> classNames) {
+        mapper.deleteIdBindingsByTeacherCode(teacherCode);
         mapper.deleteByTeacherCode(teacherCode);
         if (classNames == null || classNames.isEmpty()) return 0;
         List<TalkTeacherClass> list = classNames.stream().map(cn -> {

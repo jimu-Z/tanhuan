@@ -1,0 +1,22 @@
+{
+  "tableCount": 45,
+  "schemaMatchesOriginal": true,
+  "businessAndUserTablesEmpty": true,
+  "seedReimportIdempotent": true,
+  "bootstrapWithoutHashCreatesNoAccount": true,
+  "nonEmptyReferenceTables": {
+    "sys_config": 6,
+    "sys_dept": 1,
+    "sys_dict_data": 90,
+    "sys_dict_type": 24,
+    "sys_menu": 139,
+    "sys_post": 5,
+    "sys_role": 8,
+    "sys_role_menu": 442
+  },
+  "filesSHA256": {
+    "bootstrap-admin.sql": "e15f311738e03fe1bb278f121c9f4121561d74d997ef654673e2b3e5e491c929",
+    "schema.sql": "45d3dda8b2110ba5bf2da36f56d35394167eb7f70b19b6064da00b73f78841e5",
+    "seed.sql": "8d46f525065abbb32b43bbc4886fefc7d117ce8589f731a9d0cad701fce0b192"
+  }
+}

@@ -17,6 +17,8 @@ public interface TalkTeacherClassMapper {
     /** 删除某教师的所有班级关联 */
     int deleteByTeacherCode(@Param("teacherCode") String teacherCode);
 
+    int deleteIdBindingsByTeacherCode(@Param("teacherCode") String teacherCode);
+
     /** 删除某班级的所有教师关联 */
     int deleteByClassName(@Param("className") String className);
 }

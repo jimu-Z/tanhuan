@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.talk.mapper.StudentImportBindingMapper">
+    <select id="selectAccountOwner" resultType="java.util.HashMap">
+        select student_code as studentCode, user_id as userId, student_id as studentId, college_dept_id as collegeId
+        from talk_student_account where user_id = #{userId}
+    </select>
+    <select id="selectAccountByStudentId" resultType="java.util.HashMap">
+        select student_code as studentCode, user_id as userId, student_id as studentId, college_dept_id as collegeId
+        from talk_student_account where student_id = #{studentId}
+    </select>
+    <update id="renameAccountOwner">
+        update talk_student_account set student_code = #{studentCode}, college_dept_id = #{collegeId}
+        where user_id = #{userId} and student_id = #{studentId}
+    </update>
+    <update id="renameStudentUsername">
+        update sys_user u join talk_student_account a on a.user_id = u.user_id
+        set u.user_name = #{studentCode}, u.update_time = now()
+        where u.user_id = #{userId} and a.student_id = #{studentId} and u.del_flag = '0'
+    </update>
+    <insert id="bindAccount">
+        insert ignore into talk_student_account (student_code, user_id, student_id, college_dept_id)
+        values (#{studentCode}, #{userId}, #{studentId}, #{collegeId})
+    </insert>
+    <update id="updateAccountOwner">
+        update talk_student_account set student_id = #{studentId}, college_dept_id = #{collegeId}
+        where student_code = #{studentCode} and user_id = #{userId}
+          and (student_id is null or student_id = #{studentId})
+    </update>
+    <insert id="materializeLegacyClassBindings">
+        insert ignore into talk_class_manager (class_dept_id, teacher_id, create_time)
+        select d.dept_id, t.teacher_id, now()
+        from talk_teacher t join talk_teacher_class tc on tc.teacher_code = t.teacher_code
+        join sys_dept d on d.dept_name = tc.class_name and d.dept_type = 'class' and d.del_flag = '0'
+        where t.teacher_id = #{teacherId} and find_in_set(t.dept_id, d.ancestors)
+          and not exists (select 1 from talk_class_manager cm join sys_dept precise on precise.dept_id = cm.class_dept_id
+                          where cm.teacher_id = t.teacher_id and precise.dept_name = tc.class_name)
+    </insert>
+    <select id="bindingExists" resultType="int">
+        select (exists(select 1 from talk_student_manager where student_id = #{studentId} and teacher_id = #{teacherId})
+                and exists(select 1 from talk_class_manager where class_dept_id = #{classDeptId} and teacher_id = #{teacherId}))
+    </select>
+    <insert id="bindStudent">
+        insert ignore into talk_student_manager (student_id, teacher_id, create_time)
+        values (#{studentId}, #{teacherId}, now())
+    </insert>
+    <insert id="bindClass">
+        insert ignore into talk_class_manager (class_dept_id, teacher_id, create_time)
+        values (#{classDeptId}, #{teacherId}, now())
+    </insert>
+    <insert id="bindLegacyClass">
+        insert ignore into talk_teacher_class (teacher_code, class_name, create_time)
+        values (#{teacherCode}, #{className}, now())
+    </insert>
+    <select id="selectStudentManagers" resultType="com.ruoyi.talk.domain.TalkTeacher">
+        select t.teacher_id, t.teacher_code, t.teacher_name, t.dept_id, t.position, t.user_id, t.status
+        from talk_student_manager m
+        join talk_student s on s.student_id = m.student_id
+        join talk_teacher t on t.teacher_id = m.teacher_id
+        join sys_dept d on d.dept_id = s.dept_id
+        where m.student_id = #{studentId}
+          and (t.dept_id = d.dept_id or find_in_set(t.dept_id, d.ancestors))
+        order by t.teacher_code
+    </select>
+</mapper>

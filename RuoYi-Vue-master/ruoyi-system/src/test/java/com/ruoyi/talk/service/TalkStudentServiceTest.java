@@ -23,7 +23,7 @@ import com.ruoyi.talk.domain.TalkStudent;
 import com.ruoyi.talk.mapper.TalkStudentMapper;
 import com.ruoyi.talk.service.impl.TalkStudentServiceImpl;
 
-/** 学生不再绑定登录账号的回归测试。 */
+/** 未经导入建立明确归属的旧学生账号，不由普通学生编辑接管。 */
 @ExtendWith(MockitoExtension.class)
 class TalkStudentServiceTest {
 
@@ -38,6 +38,8 @@ class TalkStudentServiceTest {
     private TalkStudentMapper talkStudentMapper;
     @Mock
     private SysUserMapper sysUserMapper;
+    @Mock
+    private com.ruoyi.talk.service.impl.StudentImportRelationsService importRelations;
     @InjectMocks
     private TalkStudentServiceImpl studentService;
 

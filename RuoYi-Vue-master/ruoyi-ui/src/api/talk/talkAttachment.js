@@ -16,3 +16,7 @@ export function uploadAttachment(formData) {
 export function delAttachment(ids) {
   return request({ url: '/ruoyi-system/talkattachment/' + ids, method: 'delete' })
 }
+
+export function downloadAttachmentFile(attachmentId) {
+  return request({ url: '/ruoyi-system/talkattachment/download/' + attachmentId, method: 'get', responseType: 'blob', timeout: 0 })
+}

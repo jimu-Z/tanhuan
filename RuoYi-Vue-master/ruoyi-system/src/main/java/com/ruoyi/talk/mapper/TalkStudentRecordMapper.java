@@ -12,6 +12,7 @@ import com.ruoyi.talk.domain.TalkStudentRecord;
  */
 public interface TalkStudentRecordMapper 
 {
+    List<TalkStudentRecord> selectRecordsForUpdate(Long sessionId);
     /**
      * 查询谈话记录管理
      * 

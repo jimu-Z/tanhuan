@@ -36,7 +36,7 @@
     </el-row>
 
     <el-table v-loading="loading" :data="templateList" @selection-change="handleSelectionChange">
-      <el-table-column label="模板ID" align="center" prop="templateId" width="80" />
+      <el-table-column label="序号" type="index" align="center" width="80" :index="(queryParams.pageNum - 1) * queryParams.pageSize + 1" />
       <el-table-column label="模板名称" align="center" prop="templateName" show-overflow-tooltip />
       <el-table-column label="模板类型" align="center" prop="templateType" width="100">
         <template slot-scope="scope">

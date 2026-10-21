@@ -211,4 +211,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by tsr.create_time desc
         limit 8
     </select>
+    <select id="selectRecordsForUpdate" parameterType="Long" resultMap="TalkStudentRecordResult">
+        select record_id, session_id, student_id from talk_student_record where session_id = #{sessionId} for update
+    </select>
 </mapper>

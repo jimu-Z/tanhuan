@@ -13,6 +13,8 @@ import com.ruoyi.talk.domain.TalkSession;
  */
 public interface TalkSessionMapper 
 {
+    Long lockTalkSession(Long sessionId);
+
     /**
      * 查询谈话会话管理
      * 

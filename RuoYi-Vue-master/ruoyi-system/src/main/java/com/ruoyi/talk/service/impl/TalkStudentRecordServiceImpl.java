@@ -1,6 +1,7 @@
 package com.ruoyi.talk.service.impl;
 
 import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.utils.DateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -60,8 +61,15 @@ public class TalkStudentRecordServiceImpl implements ITalkStudentRecordService {
     }
 
     @Override
+    @Transactional
     public int insertTalkStudentRecord(TalkStudentRecord talkStudentRecord) {
+        talkSessionMapper.lockTalkSession(talkStudentRecord.getSessionId());
         TalkSession session = requireSessionWrite(talkStudentRecord.getSessionId());
+        List<TalkStudentRecord> current = talkStudentRecordMapper.selectRecordsForUpdate(session.getSessionId());
+        if (current.stream().anyMatch(row -> java.util.Objects.equals(row.getStudentId(), talkStudentRecord.getStudentId())))
+            throw new ServiceException("参与学生不能重复");
+        if ("individual".equals(session.getTalkType()) && !current.isEmpty())
+            throw new ServiceException("个别谈话只能选择一名学生");
         TalkStudent student = talkStudentRecord.getStudentId() == null ? null
                 : talkStudentMapper.selectTalkStudentByStudentId(talkStudentRecord.getStudentId());
         if (student == null) {
@@ -98,17 +106,31 @@ public class TalkStudentRecordServiceImpl implements ITalkStudentRecordService {
     }
 
     @Override
+    @Transactional
     public int deleteTalkStudentRecordByRecordIds(Long[] recordIds) {
-        for (Long recordId : recordIds) {
-            requireRecordAccess(talkStudentRecordMapper.selectTalkStudentRecordByRecordId(recordId), true);
+        if (recordIds == null || recordIds.length == 0) throw new ServiceException("请选择谈话记录");
+        java.util.Set<Long> ids = new java.util.LinkedHashSet<>(java.util.Arrays.asList(recordIds));
+        java.util.Set<Long> sessionIds = new java.util.TreeSet<>();
+        for (Long id : ids) {
+            TalkStudentRecord record = talkStudentRecordMapper.selectTalkStudentRecordByRecordId(id);
+            requireRecordAccess(record, true);
+            sessionIds.add(record.getSessionId());
         }
-        return talkStudentRecordMapper.deleteTalkStudentRecordByRecordIds(recordIds);
+        for (Long sessionId : sessionIds) talkSessionMapper.lockTalkSession(sessionId);
+        // Re-read after the parent locks: concurrent writers may have removed records while we waited.
+        for (Long id : ids) requireRecordAccess(talkStudentRecordMapper.selectTalkStudentRecordByRecordId(id), true);
+        for (Long sessionId : sessionIds) {
+            List<TalkStudentRecord> current = talkStudentRecordMapper.selectRecordsForUpdate(sessionId);
+            if (current.stream().noneMatch(record -> !ids.contains(record.getRecordId())))
+                throw new ServiceException("谈话至少保留一名学生，请删除整个谈话会话");
+        }
+        return talkStudentRecordMapper.deleteTalkStudentRecordByRecordIds(ids.toArray(new Long[0]));
     }
 
     @Override
+    @Transactional
     public int deleteTalkStudentRecordByRecordId(Long recordId) {
-        requireRecordAccess(talkStudentRecordMapper.selectTalkStudentRecordByRecordId(recordId), true);
-        return talkStudentRecordMapper.deleteTalkStudentRecordByRecordId(recordId);
+        return deleteTalkStudentRecordByRecordIds(new Long[]{recordId});
     }
 
     private void requireRecordAccess(TalkStudentRecord record, boolean write)

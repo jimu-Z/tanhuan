@@ -426,6 +426,8 @@
           <div class="el-upload__text">将Excel文件拖到此处，或<em>点击上传</em></div>
           <div class="el-upload__tip" slot="tip">
             支持 .xlsx / .xls 格式；使用下载模板，从第3行开始填写，系统自动识别标题行
+            <div>教师列可填本学院教师姓名或工号，不限岗位；多人用顿号分隔。导入后增量绑定学生和班级，不覆盖已有管理人。</div>
+            <div>新建学生账号以学号为用户名，分配学生角色，初始密码123456；学生端暂不开通，账号保持停用。覆盖导入不重置已有密码。</div>
             <el-link type="primary" :underline="false" style="font-size:12px;vertical-align:baseline;margin-left:8px" @click="handleDownloadTemplate">下载模板</el-link>
           </div>
         </el-upload>
@@ -798,7 +800,7 @@ export default {
       const importData = this.importResult.previewRows.map(row => row.data)
       importExecute(importData, this.importMode).then(response => {
         const data = response.data
-        const msg = '成功导入 ' + (data.successCount || 0) + ' 条，跳过 ' + (data.skipCount || 0) + ' 条'
+        const msg = '成功导入 ' + (data.successCount || 0) + ' 条，跳过 ' + (data.skipCount || 0) + ' 条，失败 ' + (data.errorCount || 0) + ' 条，新建学生账号 ' + (data.userCreatedCount || 0) + ' 个'
         const errors = data.errors || []
         if (errors.length > 0) {
           this.$alert(

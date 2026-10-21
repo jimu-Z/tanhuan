@@ -34,6 +34,11 @@
         delete from talk_teacher_class where teacher_code = #{teacherCode}
     </delete>
 
+    <delete id="deleteIdBindingsByTeacherCode">
+        delete cm from talk_class_manager cm join talk_teacher t on t.teacher_id = cm.teacher_id
+        where t.teacher_code = #{teacherCode}
+    </delete>
+
     <delete id="deleteByClassName" parameterType="String">
         delete from talk_teacher_class where class_name = #{className}
     </delete>

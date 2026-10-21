@@ -3,6 +3,9 @@ package com.ruoyi.common.utils.file;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.nio.file.Path;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.util.Objects;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -133,8 +136,21 @@ public class FileUploadUtils
 
         String fileName = useCustomNaming ? uuidFilename(file) : extractFilename(file);
 
-        String absPath = getAbsoluteFile(baseDir, fileName).getAbsolutePath();
-        file.transferTo(Paths.get(absPath));
+        Path destination = getAbsoluteFile(baseDir, fileName).toPath();
+        boolean existed = Files.exists(destination);
+        try
+        {
+            file.transferTo(destination);
+        }
+        catch (IOException | RuntimeException error)
+        {
+            if (!existed)
+            {
+                try { Files.deleteIfExists(destination); }
+                catch (IOException cleanupError) { error.addSuppressed(cleanupError); }
+            }
+            throw new IOException("文件保存失败，请检查上传目录写入权限及磁盘空间", error);
+        }
         return getPathFileName(baseDir, fileName);
     }
 
@@ -156,16 +172,25 @@ public class FileUploadUtils
 
     public static final File getAbsoluteFile(String uploadDir, String fileName) throws IOException
     {
-        File desc = new File(uploadDir + File.separator + fileName);
-
-        if (!desc.exists())
+        if (uploadDir == null || uploadDir.isBlank())
         {
-            if (!desc.getParentFile().exists())
-            {
-                desc.getParentFile().mkdirs();
-            }
+            throw new IOException("未配置上传目录，请联系管理员设置 ruoyi.profile");
         }
-        return desc;
+        try
+        {
+            Path root = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path destination = root.resolve(fileName).normalize();
+            if (destination.equals(root) || !destination.startsWith(root))
+                throw new IOException("上传文件路径超出上传目录");
+            Files.createDirectories(destination.getParent());
+            if (!Files.isWritable(destination.getParent()))
+                throw new IOException("上传目录没有写入权限");
+            return destination.toFile();
+        }
+        catch (IOException | InvalidPathException | SecurityException error)
+        {
+            throw new IOException("上传目录不可用，请联系管理员检查目录配置及写入权限", error);
+        }
     }
 
     public static final String getPathFileName(String uploadDir, String fileName) throws IOException

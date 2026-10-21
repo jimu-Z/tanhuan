@@ -31,6 +31,7 @@ class TalkStudentClassBindingTest {
         departments = mock(SysDeptMapper.class);
         ReflectionTestUtils.setField(service, "talkStudentMapper", students);
         ReflectionTestUtils.setField(service, "sysDeptMapper", departments);
+        ReflectionTestUtils.setField(service, "importRelations", mock(com.ruoyi.talk.service.impl.StudentImportRelationsService.class));
         when(departments.selectDeptById(100L)).thenReturn(dept(100L, 0L, "college"));
         when(departments.selectDeptById(150L)).thenReturn(dept(150L, 100L, "grade"));
         when(departments.selectDeptById(200L)).thenReturn(dept(200L, 150L, "class"));
@@ -87,5 +88,11 @@ class TalkStudentClassBindingTest {
         assertThatThrownBy(() -> service.insertTalkStudent(student(999L)))
             .isInstanceOf(ServiceException.class).hasMessageContaining("班级");
         verify(students, never()).insertTalkStudent(any());
+    }
+    @Test void normalizesStudentCodeBeforeUpdatingBothStudentAndAccount() {
+        login("admin");TalkStudent edited=student(200L);edited.setStudentCode(" CLASS-NEW ");
+        service.updateTalkStudent(edited);
+        var saved=org.mockito.ArgumentCaptor.forClass(TalkStudent.class);verify(students).updateTalkStudent(saved.capture());
+        assertThat(saved.getValue().getStudentCode()).isEqualTo("CLASS-NEW");
     }
 }

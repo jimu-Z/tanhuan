@@ -9,6 +9,7 @@ import java.util.*;
 import org.apache.poi.ss.usermodel.*;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import com.ruoyi.common.utils.SecurityUtils;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 import com.ruoyi.common.core.domain.entity.SysDept;
@@ -23,6 +24,7 @@ class TalkStudentImportValidationTest {
         TalkStudentServiceImpl service = new TalkStudentServiceImpl();
         ReflectionTestUtils.setField(service, "talkStudentMapper", students);
         ReflectionTestUtils.setField(service, "sysDeptMapper", departments);
+        StudentImportTestSupport.unrelatedRelations(service);
         return service;
     }
 
@@ -79,6 +81,9 @@ class TalkStudentImportValidationTest {
         TalkStudentServiceImpl service = service(students, departments);
         TalkStudent existing = new TalkStudent(); existing.setStudentId(5L); existing.setStudentCode("QA001"); existing.setDeptId(203L);
         when(students.selectTalkStudentList(any(TalkStudent.class))).thenReturn(List.of(existing));
+        when(students.selectTalkStudentByCode("QA001")).thenReturn(existing);
+        SysDept clazz=new SysDept();clazz.setDeptId(203L);clazz.setDeptType("class");
+        when(departments.selectDeptById(203L)).thenReturn(clazz);
         when(departments.selectDeptList(any(SysDept.class))).thenAnswer(call -> {
             SysDept query = call.getArgument(0);
             SysDept match = new SysDept(); match.setDeptName(query.getDeptName()); match.setParentId(query.getParentId()); match.setDeptType("class");
@@ -89,7 +94,9 @@ class TalkStudentImportValidationTest {
         when(students.updateTalkStudent(any(TalkStudent.class))).thenAnswer(call -> { savedNames.add(((TalkStudent)call.getArgument(0)).getStudentName()); return 1; });
         Map<String,Object> first = new HashMap<>(Map.of("student_code","QA001","student_name","第一条","college","测试学院","grade","2026级","class","测试班"));
         Map<String,Object> duplicate = new HashMap<>(first); duplicate.put("student_name","重复行不应覆盖");
-        try (MockedStatic<TalkPermissionUtils> permissions = mockStatic(TalkPermissionUtils.class)) {
+        try (MockedStatic<TalkPermissionUtils> permissions = mockStatic(TalkPermissionUtils.class);
+             MockedStatic<SecurityUtils> security=mockStatic(SecurityUtils.class)) {
+            security.when(SecurityUtils::getUsername).thenReturn("qa-importer");
             permissions.when(TalkPermissionUtils::isGlobalAdmin).thenReturn(true);
             Map<String,Object> result = service.importExecute(List.of(first,duplicate),"update");
             assertThat(result.get("successCount")).isEqualTo(1);

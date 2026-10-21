@@ -1,0 +1,13 @@
+const fs = require('fs')
+const vm = require('vm')
+const assert = require('node:assert/strict')
+const path = require('path')
+const code = fs.readFileSync(path.join(__dirname, '../RuoYi-Vue-master/ruoyi-ui/src/api/talk/talkAttachment.js'), 'utf8').replace(/^import .*$/mg, '').replace(/export /g, '')
+const context = { request: config => config }
+vm.createContext(context)
+vm.runInContext(code, context)
+const config = context.downloadAttachmentFile(42)
+assert.equal(config.url, '/ruoyi-system/talkattachment/download/42')
+assert.equal(config.responseType, 'blob')
+assert.equal(config.timeout, 0, 'Large attachment downloads must not inherit the shared 10-second timeout')
+console.log('Attachment endpoint/blob/large-download timeout checks passed')

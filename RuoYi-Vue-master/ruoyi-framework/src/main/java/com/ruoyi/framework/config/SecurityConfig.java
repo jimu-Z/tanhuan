@@ -49,6 +49,14 @@ public class SecurityConfig
 
     @Autowired
     private ProfileResourceSecurityFilter profileResourceSecurityFilter;
+
+    @Bean
+    public org.springframework.boot.web.servlet.FilterRegistrationBean<ProfileResourceSecurityFilter> profileFilterRegistration()
+    {
+        var registration = new org.springframework.boot.web.servlet.FilterRegistrationBean<>(profileResourceSecurityFilter);
+        registration.setEnabled(false);
+        return registration;
+    }
     
     /**
      * 跨域过滤器

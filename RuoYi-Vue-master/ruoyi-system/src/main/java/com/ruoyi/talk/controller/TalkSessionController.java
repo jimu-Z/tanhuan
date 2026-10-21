@@ -297,7 +297,7 @@ public class TalkSessionController extends BaseController {
     @Log(title = "谈话会话管理", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@RequestBody TalkSession talkSession) {
-        return toAjax(talkSessionService.insertTalkSession(talkSession));
+        return error("请通过发起谈话创建会话并选择参与学生");
     }
 
     /**

@@ -10,6 +10,7 @@
         <el-descriptions-item label="学号">{{ student.studentCode }}</el-descriptions-item>
         <el-descriptions-item label="姓名">{{ student.studentName }}</el-descriptions-item>
         <el-descriptions-item label="班级">{{ student.deptName || '未设置' }}</el-descriptions-item>
+        <el-descriptions-item label="管理教师" :span="3">{{ managers.map(t => t.teacherName + '（' + t.teacherCode + '）').join('、') || '未绑定' }}</el-descriptions-item>
         <el-descriptions-item label="性别">{{ $talkLabel('gender', student.gender) }}</el-descriptions-item>
         <el-descriptions-item label="民族">{{ student.nation }}</el-descriptions-item>
         <el-descriptions-item label="政治面貌">{{ $talkLabel('politicalStatus', student.politicalStatus, studentDicts.politicalStatus) }}</el-descriptions-item>
@@ -86,6 +87,7 @@ export default {
       student: {},
       studentDicts: {},
       history: [],
+      managers: [],
       loadingHistory: false,
       tagCache: {},
       tagLabels: { ...TAG_LABELS }
@@ -107,6 +109,7 @@ export default {
       getStudentDetail(studentId).then(res => {
         const data = res.data || {}
         this.student = data.student || {}
+        this.managers = data.managers || []
         this.history = (data.history || []).sort((a, b) => {
           return ((b.session && b.session.talkTime) || '').localeCompare((a.session && a.session.talkTime) || '')
         })

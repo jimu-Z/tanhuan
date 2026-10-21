@@ -145,4 +145,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
         group by ts.talk_type
     </select>
+    <select id="lockTalkSession" parameterType="Long" resultType="Long">
+        select session_id from talk_session where session_id = #{sessionId} for update
+    </select>
 </mapper>

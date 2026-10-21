@@ -45,6 +45,10 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
+import com.ruoyi.common.core.domain.entity.SysUser;
 
 /**
  * 学生信息管理Service业务层处理
@@ -72,6 +76,9 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
 
     @Autowired
     private ITalkAlertService talkAlertService;
+
+    @Autowired private StudentImportRelationsService importRelations;
+    @Autowired private PlatformTransactionManager transactionManager;
 
     private static final Long TOP_DEPT_ID = 100L;
 
@@ -126,9 +133,14 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
      * @return 结果
      */
     @Override
+    @Transactional
     public int updateTalkStudent(TalkStudent talkStudent) {
         TalkStudent existing = talkStudentMapper.selectTalkStudentByStudentId(talkStudent.getStudentId());
         requireStudentAccess(existing);
+        if(talkStudent.getStudentCode()!=null) {
+            talkStudent.setStudentCode(talkStudent.getStudentCode().trim());
+            if(talkStudent.getStudentCode().isEmpty()) throw new ServiceException("学号不能为空");
+        }
         if (talkStudent.getDeptId() != null) {
             requireClassDepartment(talkStudent.getDeptId());
             TalkPermissionUtils.requireCollegeAccess(resolveCollegeDeptId(talkStudent.getDeptId()));
@@ -136,6 +148,9 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         talkStudent.setUpdateBy(SecurityUtils.getUsername());
         talkStudent.setUpdateTime(DateUtils.getNowDate());
         int rows = talkStudentMapper.updateTalkStudent(talkStudent);
+        if(importRelations.hasImportedAccount(existing.getStudentId()))
+            importRelations.syncExistingAccount(existing,talkStudent,
+                    resolveCollegeDeptId(talkStudent.getDeptId()==null?existing.getDeptId():talkStudent.getDeptId()));
         // 心理健康状态变化时自动生成预警
         if (StringUtils.isNotEmpty(talkStudent.getMentalHealthStatus()) && talkStudent.getStudentId() != null) {
             talkAlertService.autoGenerateAlertForStudent(talkStudent.getStudentId(),
@@ -197,6 +212,7 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
             return result;
         }
         result.put("student", student);
+        result.put("managers", importRelations.managers(studentId));
         List<TalkStudentRecord> records = talkStudentRecordMapper.selectTalkStudentRecordByStudentId(studentId);
         List<Map<String, Object>> history = new ArrayList<>();
         if (records != null && !records.isEmpty()) {
@@ -369,171 +385,102 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         return result;
     }
 
-    /**
-     * 执行Excel导入
-     * 注意：每行独立处理，不使用全局事务，部分行失败不影响其他行
-     */
+    /** 每行独立事务：学生、组织、账号、角色与管理绑定一起提交或回滚。 */
     @Override
     public Map<String, Object> importExecute(List<Map<String, Object>> confirmedRows, String importMode) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        int successCount = 0;
-        int skipCount = 0;
-        List<String> errors = new ArrayList<>();
-
-        if (confirmedRows == null || confirmedRows.isEmpty()) {
-            result.put("successCount", 0);
-            result.put("skipCount", 0);
-            result.put("userCreatedCount", 0);
-            result.put("errorCount", 0);
-            result.put("errors", errors);
-            return result;
-        }
-
-        Set<String> seenCodesInImport = new HashSet<>();
-        for (int rowIdx = 0; rowIdx < confirmedRows.size(); rowIdx++) {
-            Map<String, Object> rowMap = confirmedRows.get(rowIdx);
-            int rowNum = rowIdx + 1;
+        int successCount=0, skipCount=0, userCreatedCount=0, failureCount=0;
+        List<String> messages=new ArrayList<>();
+        Set<String> seen=new HashSet<>();
+        if (confirmedRows != null) for(int i=0;i<confirmedRows.size();i++) {
+            int rowNum=i+1;
             try {
-                Map<String, String> rowData = new HashMap<>();
-                for (Map.Entry<String, Object> entry : rowMap.entrySet()) {
-                    rowData.put(entry.getKey(), entry.getValue() != null ? entry.getValue().toString() : "");
-                }
-                normalizeImportEnums(rowData);
-                log.debug("[IMPORT-DEBUG] Execute row {}: code={}, name={}, college={}",
-                        rowNum, rowData.get("student_code"), rowData.get("student_name"), rowData.get("college"));
-                String studentCode = rowData.get("student_code");
-                String studentName = rowData.get("student_name");
-                String college = rowData.get("college");
-                String grade = rowData.get("grade");
-                String className = rowData.get("class");
-
-                if (StringUtils.isEmpty(studentCode) || StringUtils.isEmpty(studentName)) {
-                    skipCount++;
-                    errors.add("第" + rowNum + "行: 学号或姓名为空，已跳过");
-                    continue;
-                }
-
-                if (!seenCodesInImport.add(studentCode)) {
-                    skipCount++;
-                    errors.add("第" + rowNum + "行: 学号" + studentCode + " 在Excel中重复，已跳过");
-                    continue;
-                }
-
-                String phone = rowData.get("phone");
-                if (!StringUtils.isEmpty(phone) && !phone.matches("^1[3-9]\\d{9}$")) {
-                    errors.add("第" + rowNum + "行: 学号" + studentCode + " 手机号格式错误: " + phone + "，已清空");
-                    rowData.put("phone", "");
-                    phone = "";
-                }
-
-                if (StringUtils.isEmpty(college) || StringUtils.isEmpty(grade) || StringUtils.isEmpty(className)) {
-                    skipCount++;
-                    errors.add("第" + rowNum + "行: 学院/年级/班级为空，已跳过");
-                    continue;
-                }
-
-                Long collegeDeptId = resolveImportCollege(college);
-                if (collegeDeptId == null) {
-                    skipCount++;
-                    errors.add("第" + rowNum + "行: 学院[" + college + "]不存在或不在当前账号管理范围");
-                    continue;
-                }
-                Long gradeDeptId = resolveImportDept(grade, collegeDeptId, "grade");
-                if (gradeDeptId == null) {
-                    skipCount++;
-                    errors.add("第" + rowNum + "行: 年级[" + grade + "]不存在；老师不能创建年级或班级");
-                    continue;
-                }
-                Long classDeptId = resolveImportDept(className, gradeDeptId, "class");
-                if (classDeptId == null) {
-                    skipCount++;
-                    errors.add("第" + rowNum + "行: 班级[" + className + "]不存在；老师不能创建年级或班级");
-                    continue;
-                }
-
-                // 校验Excel中填写的辅导员/书记/班主任/副书记是否存在
-                String teacherError = validateImportTeachersByDeptId(collegeDeptId, rowData);
-                if (teacherError != null) {
-                    skipCount++;
-                    errors.add("第" + rowNum + "行: " + teacherError);
-                    continue;
-                }
-
-                TalkStudent student = new TalkStudent();
-                student.setStudentCode(studentCode);
-                student.setStudentName(studentName);
-                student.setDeptId(classDeptId);
-                student.setGender(getString(rowData, "gender", "0"));
-                student.setNation(getString(rowData, "nation"));
-                student.setPhone(getString(rowData, "phone"));
-                student.setIdCard(getString(rowData, "id_card"));
-                student.setAddress(getString(rowData, "address"));
-                student.setFatherName(getString(rowData, "father_name"));
-                student.setFatherPhone(getString(rowData, "father_phone"));
-                student.setMotherName(getString(rowData, "mother_name"));
-                student.setMotherPhone(getString(rowData, "mother_phone"));
-                student.setClassMonitor(getString(rowData, "class_monitor"));
-                student.setDormLeader(getString(rowData, "dorm_leader"));
-                student.setDormBuilding(getString(rowData, "dorm_building"));
-                student.setDormRoom(getString(rowData, "dorm_room"));
-                student.setEnrollmentStatus(getString(rowData, "enrollment_status"));
-                student.setMentalHealthStatus(getString(rowData, "mental_health_status"));
-                student.setPovertyLevel(getString(rowData, "poverty_level"));
-                student.setPoliticalStatus(getString(rowData, "political_status"));
-                student.setRemark(getString(rowData, "remark"));
-
-                if (isStudentCodeExists(studentCode)) {
-                    if ("update".equals(importMode)) {
-                        TalkStudent eq = new TalkStudent();
-                        eq.setStudentCode(studentCode);
-                        List<TalkStudent> existingList = talkStudentMapper.selectTalkStudentList(eq);
-                        TalkStudent existing = existingList != null && !existingList.isEmpty() ? existingList.get(0)
-                                : null;
-                        if (existing != null) {
-                            requireStudentAccess(existing);
-                            student.setStudentId(existing.getStudentId());
-                            student.setCreateBy(existing.getCreateBy());
-                            student.setCreateTime(existing.getCreateTime());
-                            student.setUpdateTime(DateUtils.getNowDate());
-                            talkStudentMapper.updateTalkStudent(student);
-                            if (StringUtils.isNotEmpty(student.getMentalHealthStatus())) {
-                                talkAlertService.autoGenerateAlertForStudent(student.getStudentId(),
-                                        student.getMentalHealthStatus());
-                            }
-                            successCount++;
-                            errors.add("第" + rowNum + "行: 学号" + studentCode + " 已存在，已更新");
-                            continue;
-                        }
-                    }
-                    skipCount++;
-                    errors.add("第" + rowNum + "行: 学号" + studentCode + " 已存在，已跳过");
-                    continue;
-                }
-
-                student.setCreateTime(DateUtils.getNowDate());
-                Long gapId = talkStudentMapper.selectMinAvailableStudentId();
-                if (gapId != null) {
-                    student.setStudentId(gapId);
-                }
-                talkStudentMapper.insertTalkStudent(student);
-                if (StringUtils.isNotEmpty(student.getMentalHealthStatus()) && student.getStudentId() != null) {
-                    talkAlertService.autoGenerateAlertForStudent(student.getStudentId(),
-                            student.getMentalHealthStatus());
-                }
-                successCount++;
-
-            } catch (Exception e) {
-                log.error("[IMPORT-ERROR] 第{}行导入失败: {}", rowNum, e.getMessage(), e);
-                errors.add("第" + rowNum + "行: 导入失败 - " + e.getMessage());
+                Map<String,String> data=new HashMap<>();
+                for(Map.Entry<String,Object> entry:confirmedRows.get(i).entrySet())
+                    data.put(entry.getKey(),entry.getValue()==null?"":entry.getValue().toString().trim());
+                normalizeImportEnums(data);
+                String code=data.get("student_code");
+                if(StringUtils.isEmpty(code) || StringUtils.isEmpty(data.get("student_name")))
+                    throw new ServiceException("学号或姓名为空");
+                if(!seen.add(code)) { skipCount++;messages.add("第"+rowNum+"行: 学号在Excel中重复，已跳过");continue; }
+                TransactionTemplate transaction=new TransactionTemplate(transactionManager);
+                transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+                ImportRowOutcome outcome=transaction.execute(status->importStudentRow(data,importMode));
+                if(outcome.skipped()) skipCount++; else { successCount++;userCreatedCount+=outcome.usersCreated(); }
+                for(String message:outcome.messages()) messages.add("第"+rowNum+"行: "+message);
+            } catch(Exception error) {
+                failureCount++;
+                log.error("学生导入第{}行失败，当前行已回滚",rowNum,error);
+                messages.add("第"+rowNum+"行: 导入失败 - "+error.getMessage());
             }
         }
+        Map<String,Object> result=new LinkedHashMap<>();
+        result.put("successCount",successCount);result.put("skipCount",skipCount);
+        result.put("userCreatedCount",userCreatedCount);result.put("errorCount",failureCount);
+        result.put("errors",messages);return result;
+    }
 
-        result.put("successCount", successCount);
-        result.put("skipCount", skipCount);
-        result.put("userCreatedCount", 0);
-        result.put("errorCount", errors.size());
-        result.put("errors", errors);
-        return result;
+    private record ImportRowOutcome(boolean skipped, int usersCreated, List<String> messages) {}
+
+    private ImportRowOutcome importStudentRow(Map<String,String> rowData, String importMode) {
+        String studentCode=rowData.get("student_code"), studentName=rowData.get("student_name");
+        String college=rowData.get("college"),grade=rowData.get("grade"),className=rowData.get("class");
+        if(StringUtils.isEmpty(college)||StringUtils.isEmpty(grade)||StringUtils.isEmpty(className))
+            throw new ServiceException("学院/年级/班级不能为空");
+        TalkStudent existing=talkStudentMapper.selectTalkStudentByCode(studentCode);
+        if(existing!=null) {
+            requireStudentAccess(existing);
+            if(!"update".equals(importMode)) return new ImportRowOutcome(true,0,List.of("学号已存在，已跳过"));
+        }
+        SysUser account=importRelations.validateAccount(studentCode,existing);
+        Long collegeDeptId=resolveImportCollege(college);
+        if(collegeDeptId==null) throw new ServiceException("学院不存在或不在当前账号管理范围");
+        List<TalkTeacher> managers=importRelations.resolveTeachers(collegeDeptId,rowData);
+        Long gradeDeptId=resolveImportDept(grade,collegeDeptId,"grade");
+        if(gradeDeptId==null) throw new ServiceException("年级不存在；老师不能创建年级或班级");
+        Long classDeptId=resolveImportDept(className,gradeDeptId,"class");
+        if(classDeptId==null) throw new ServiceException("班级不存在；老师不能创建年级或班级");
+        requireClassDepartment(classDeptId);
+        List<String> notes=new ArrayList<>();
+        String phone=rowData.get("phone");
+        if(StringUtils.isNotEmpty(phone)&&!phone.matches("^1[3-9]\\d{9}$")) {
+            rowData.put("phone","");notes.add("手机号格式错误，已清空，学生资料继续导入");
+        }
+        TalkStudent student = new TalkStudent();
+        student.setStudentCode(studentCode);
+        student.setStudentName(studentName);
+        student.setDeptId(classDeptId);
+        student.setGender(getString(rowData, "gender", "0"));
+        student.setNation(getString(rowData, "nation"));
+        student.setPhone(getString(rowData, "phone"));
+        student.setIdCard(getString(rowData, "id_card"));
+        student.setAddress(getString(rowData, "address"));
+        student.setFatherName(getString(rowData, "father_name"));
+        student.setFatherPhone(getString(rowData, "father_phone"));
+        student.setMotherName(getString(rowData, "mother_name"));
+        student.setMotherPhone(getString(rowData, "mother_phone"));
+        student.setClassMonitor(getString(rowData, "class_monitor"));
+        student.setDormLeader(getString(rowData, "dorm_leader"));
+        student.setDormBuilding(getString(rowData, "dorm_building"));
+        student.setDormRoom(getString(rowData, "dorm_room"));
+        student.setEnrollmentStatus(getString(rowData, "enrollment_status"));
+        student.setMentalHealthStatus(getString(rowData, "mental_health_status"));
+        student.setPovertyLevel(getString(rowData, "poverty_level"));
+        student.setPoliticalStatus(getString(rowData, "political_status"));
+        student.setRemark(getString(rowData, "remark"));
+        student.setUpdateBy(SecurityUtils.getUsername());
+        if(existing!=null) {
+            student.setStudentId(existing.getStudentId());student.setUpdateTime(DateUtils.getNowDate());
+            if(talkStudentMapper.updateTalkStudent(student)!=1) throw new ServiceException("学生资料更新失败");
+            notes.add("学号已存在，已更新");
+        } else {
+            student.setCreateBy(SecurityUtils.getUsername());student.setCreateTime(DateUtils.getNowDate());
+            Long gapId=talkStudentMapper.selectMinAvailableStudentId();if(gapId!=null) student.setStudentId(gapId);
+            if(talkStudentMapper.insertTalkStudent(student)!=1) throw new ServiceException("学生资料保存失败");
+        }
+        int created=importRelations.saveAccountAndBindings(student,className,collegeDeptId,managers,account);
+        if(StringUtils.isNotEmpty(student.getMentalHealthStatus()))
+            talkAlertService.autoGenerateAlertForStudent(student.getStudentId(),student.getMentalHealthStatus());
+        return new ImportRowOutcome(false,created,notes);
     }
 
     private Map<String, Integer> buildFieldMapping(List<String> headers) {
@@ -824,66 +771,13 @@ public class TalkStudentServiceImpl implements ITalkStudentService {
         return validateImportTeachersByDeptId(collegeId, rowData);
     }
 
-    /** 辅导员/班主任岗位组（仅用于教师资料展示，不参与权限判断） */
-    private static final Set<String> COUNSELOR_POSITIONS = Set.of("辅导员", "班主任");
-    /** 书记/副书记岗位组（仅用于教师资料展示，不参与权限判断） */
-    private static final Set<String> SECRETARY_POSITIONS = Set.of("书记", "副书记");
-
-    /**
-     * 校验Excel中填写的辅导员/书记/班主任/副书记是否存在于该学院（执行用）
-     * 按岗位组匹配：辅导员列可匹配辅导员或班主任，书记列可匹配书记或副书记
-     */
-    private String validateImportTeachersByDeptId(Long collegeDeptId, Map<String, String> rowData) {
-        if (collegeDeptId == null) {
-            return null;
-        }
-        String counselor = rowData.get("counselor");
-        String headTeacher = rowData.get("head_teacher");
-        String secretary = rowData.get("secretary");
-        String viceSecretary = rowData.get("vice_secretary");
-
-        boolean hasAnyTeacherField = StringUtils.isNotEmpty(counselor) || StringUtils.isNotEmpty(headTeacher)
-                || StringUtils.isNotEmpty(secretary) || StringUtils.isNotEmpty(viceSecretary);
-        if (!hasAnyTeacherField) {
-            return null;
-        }
-
-        List<TalkTeacher> teachers = talkTeacherService.selectCounselorsByDeptId(collegeDeptId);
-        if (teachers == null) {
-            teachers = new ArrayList<>();
-        }
-
-        StringBuilder error = new StringBuilder();
-        if (StringUtils.isNotEmpty(counselor)) {
-            boolean found = teachers.stream()
-                    .anyMatch(t -> counselor.equals(t.getTeacherName()) && COUNSELOR_POSITIONS.contains(t.getPosition()));
-            if (!found) {
-                error.append("辅导员[").append(counselor).append("]不存在；");
-            }
-        }
-        if (StringUtils.isNotEmpty(headTeacher)) {
-            boolean found = teachers.stream()
-                    .anyMatch(t -> headTeacher.equals(t.getTeacherName()) && COUNSELOR_POSITIONS.contains(t.getPosition()));
-            if (!found) {
-                error.append("班主任[").append(headTeacher).append("]不存在；");
-            }
-        }
-        if (StringUtils.isNotEmpty(secretary)) {
-            boolean found = teachers.stream()
-                    .anyMatch(t -> secretary.equals(t.getTeacherName()) && SECRETARY_POSITIONS.contains(t.getPosition()));
-            if (!found) {
-                error.append("书记[").append(secretary).append("]不存在；");
-            }
-        }
-        if (StringUtils.isNotEmpty(viceSecretary)) {
-            boolean found = teachers.stream()
-                    .anyMatch(t -> viceSecretary.equals(t.getTeacherName()) && SECRETARY_POSITIONS.contains(t.getPosition()));
-            if (!found) {
-                error.append("副书记[").append(viceSecretary).append("]不存在；");
-            }
-        }
-
-        return error.length() > 0 ? error.toString() : null;
+    /** 预览与执行复用相同的学院内教师存在性检查，不限制岗位或账号角色。 */
+    private String validateImportTeachersByDeptId(Long collegeDeptId, Map<String,String> rowData) {
+        boolean hasNames=List.of("counselor","head_teacher","secretary","vice_secretary").stream()
+                .anyMatch(key->StringUtils.isNotEmpty(rowData.get(key)));
+        if(!hasNames) return null;
+        try { importRelations.resolveTeachers(collegeDeptId,rowData); return null; }
+        catch(ServiceException error) { return error.getMessage(); }
     }
 
     private Long findOrCreateDept(String deptName, Long parentId, String type) {

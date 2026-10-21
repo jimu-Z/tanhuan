@@ -296,6 +296,7 @@
 </template>
 
 <script>
+import { downloadAttachmentFile } from '@/api/talk/talkAttachment'
 import { listTalksession, getTalksession, delTalksession, updateTalksession, getBatchTags, exportGroupSummary, exportDocx, exportDocxForStudent, exportDocxBatch, TAG_LABELS } from "@/api/talk/talkSession"
 import { listTalkrecord, getTalkrecord, delTalkrecord, addTalkrecord, updateTalkrecord } from "@/api/talk/talkStudentRecord"
 import { getTalk, listTalk } from "@/api/talk/talkStudent"
@@ -501,9 +502,18 @@ export default {
       if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB'
       return (size / (1024 * 1024)).toFixed(1) + ' MB'
     },
-    downloadAttachment(att) {
-      if (!att.filePath) return
-      this.$download.resource(att.filePath)
+    async downloadAttachment(att) {
+      if (!att.attachmentId) return
+      try {
+        const blob = await downloadAttachmentFile(att.attachmentId)
+        if (blob.type && blob.type.includes('application/json')) {
+          await this.$download.printErrMsg(blob)
+          return
+        }
+        this.$download.saveAs(blob, att.fileName || '附件')
+      } catch (error) {
+        this.$message.error('附件下载失败，请检查权限或稍后重试')
+      }
     },
     handleQuery() {
       this.queryParams.pageNum = 1

@@ -29,7 +29,7 @@ public class TalkSession extends BaseEntity
     private String talkType;
 
     /** 谈话时间 */
-    @JsonFormat(pattern = "yyyy-MM-dd")
+    @JsonFormat(pattern = "yyyy-MM-dd", lenient = com.fasterxml.jackson.annotation.OptBoolean.FALSE)
     @Excel(name = "谈话时间", width = 30, dateFormat = "yyyy-MM-dd")
     private Date talkTime;
 

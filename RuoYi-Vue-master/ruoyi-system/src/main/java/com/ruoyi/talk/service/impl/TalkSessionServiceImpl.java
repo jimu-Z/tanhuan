@@ -89,9 +89,28 @@ public class TalkSessionServiceImpl implements ITalkSessionService {
     }
 
     @Override
+    @Transactional
     public int updateTalkSession(TalkSession talkSession) {
+        talkSessionMapper.lockTalkSession(talkSession.getSessionId());
         TalkSession existing = requireSession(talkSession.getSessionId());
         TalkPermissionUtils.requireOwnedWrite(existing.getCollegeDeptId(), existing.getCreateBy());
+        if (talkSession.getTalkType() == null) talkSession.setTalkType(existing.getTalkType());
+        if (talkSession.getTalkTime() == null) talkSession.setTalkTime(existing.getTalkTime());
+        if (talkSession.getTalkPerson() == null) talkSession.setTalkPerson(existing.getTalkPerson());
+        if (!"individual".equals(talkSession.getTalkType()) && !"group".equals(talkSession.getTalkType()))
+            throw new ServiceException("谈话类型只能为个别谈话或集体谈话");
+        if (talkSession.getTalkTime() == null) throw new ServiceException("谈话日期无效");
+        if (talkSession.getTalkPerson() == null || talkSession.getTalkPerson().trim().isEmpty())
+            throw new ServiceException("谈话人不能为空");
+        List<TalkStudentRecord> records = talkStudentRecordMapper.selectRecordsForUpdate(talkSession.getSessionId());
+        java.util.Set<Long> students = new java.util.HashSet<>();
+        if (records.isEmpty()) throw new ServiceException("谈话至少保留一名学生");
+        for (TalkStudentRecord record : records) {
+            if (record.getStudentId() == null || !students.add(record.getStudentId()))
+                throw new ServiceException("参与学生无效或重复");
+        }
+        if ("individual".equals(talkSession.getTalkType()) && students.size() != 1)
+            throw new ServiceException("个别谈话只能选择一名学生");
         talkSession.setCollegeDeptId(null);
         talkSession.setUpdateBy(SecurityUtils.getUsername());
         talkSession.setUpdateTime(DateUtils.getNowDate());
@@ -101,7 +120,8 @@ public class TalkSessionServiceImpl implements ITalkSessionService {
     @Override
     @Transactional
     public int deleteTalkSessionBySessionIds(Long[] sessionIds) {
-        for (Long sessionId : sessionIds) {
+        for (Long sessionId : new java.util.TreeSet<>(java.util.Arrays.asList(sessionIds))) {
+            talkSessionMapper.lockTalkSession(sessionId);
             TalkSession session = requireSession(sessionId);
             TalkPermissionUtils.requireOwnedWrite(session.getCollegeDeptId(), session.getCreateBy());
         }
@@ -115,6 +135,7 @@ public class TalkSessionServiceImpl implements ITalkSessionService {
     @Override
     @Transactional
     public int deleteTalkSessionBySessionId(Long sessionId) {
+        talkSessionMapper.lockTalkSession(sessionId);
         TalkSession existing = requireSession(sessionId);
         TalkPermissionUtils.requireOwnedWrite(existing.getCollegeDeptId(), existing.getCreateBy());
         List<TalkAttachment> attachments = talkAttachmentMapper.selectTalkAttachmentBySessionId(sessionId);

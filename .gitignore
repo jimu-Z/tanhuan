@@ -36,3 +36,6 @@
 *.iml
 
 /deploy-backup-*/
+
+# Python local helper caches
+**/__pycache__/

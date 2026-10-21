@@ -5,6 +5,8 @@ import com.ruoyi.talk.domain.TalkAttachment;
 
 public interface ITalkAttachmentService
 {
+    /** Used only to close legacy public download routes, never to grant access. */
+    boolean isRegisteredResource(String resourcePath);
     public List<TalkAttachment> selectTalkAttachmentBySessionId(Long sessionId);
     public TalkAttachment selectTalkAttachmentById(Long attachmentId);
     public void checkWriteAccess(Long sessionId);
